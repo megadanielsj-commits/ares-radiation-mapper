@@ -1,0 +1,181 @@
+schema_version: "1.1"
+application:
+  name: ARES Radiation Mapper
+  bind_host: 127.0.0.1
+  bind_port: 8000
+  data_directory: data/missions
+  log_level: INFO
+  open_browser: true
+mission:
+  name: referencia-probabilistica-v03
+  mode: simulated
+  seed: 42
+  duration_s: 60
+  simulation_speed: 1.0
+world:
+  frame_id: world
+  bounds_m: {x_min: 0.0, x_max: 20.0, y_min: 0.0, y_max: 20.0}
+  z_floor_m: 0.0
+  map_resolution_m: 0.5
+  background: {model: constant, dose_rate_uSv_h: 0.15}
+  obstacles: []
+pose:
+  provider: simulated
+  frame_id: world
+  child_frame_id: base
+  position_std_m: 0.10
+  yaw_std_rad: 0.03
+trajectory:
+  type: scripted
+  start_m: [2.0, 2.0, 0.32]
+  yaw_start_rad: 0.0
+  speed_m_s: 1.0
+  line_spacing_m: 1.0
+  rectangle_m: {x_min: 2.0, x_max: 18.0, y_min: 2.0, y_max: 18.0}
+  turn_duration_s: 1.0
+  dwell_at_waypoints_s: 0.0
+  loop: true
+  circle_center_m: [10.0, 10.0, 0.32]
+  circle_radius_m: 2.5
+  scripted_keyframes:
+    - {time_s: 0, x_m: 2.0, y_m: 2.0, z_m: 0.32, yaw_rad: 0.71}
+    - {time_s: 6, x_m: 9.0, y_m: 4.0, z_m: 0.32, yaw_rad: -0.17}
+    - {time_s: 12, x_m: 16.0, y_m: 3.0, z_m: 0.32, yaw_rad: 0.86}
+    - {time_s: 18, x_m: 17.0, y_m: 10.0, z_m: 0.32, yaw_rad: 2.16}
+    - {time_s: 24, x_m: 14.0, y_m: 16.0, z_m: 0.32, yaw_rad: 2.82}
+    - {time_s: 30, x_m: 8.0, y_m: 17.0, z_m: 0.32, yaw_rad: -2.47}
+    - {time_s: 36, x_m: 3.0, y_m: 13.0, z_m: 0.32, yaw_rad: -0.90}
+    - {time_s: 42, x_m: 6.0, y_m: 8.0, z_m: 0.32, yaw_rad: -0.27}
+    - {time_s: 48, x_m: 11.0, y_m: 6.0, z_m: 0.32, yaw_rad: 0.67}
+    - {time_s: 54, x_m: 15.0, y_m: 11.0, z_m: 0.32, yaw_rad: 2.68}
+    - {time_s: 60, x_m: 9.0, y_m: 13.0, z_m: 0.32, yaw_rad: 2.68}
+odometry:
+  publish_rate_hz: 20.0
+  position_noise_std_m: 0.10
+  yaw_noise_std_rad: 0.03
+  drift_m_per_min: 0.0
+  yaw_drift_rad_per_min: 0.0
+  latency_ms: 20
+  jitter_ms_std: 3
+  dropout_probability: 0.0
+  outlier_probability: 0.0
+radiation_sources:
+  - id: source_01
+    model: inverse_square
+    enabled: true
+    position_keyframes:
+      - {time_s: 0, x_m: 10.0, y_m: 10.0, z_m: 0.0}
+    strength_keyframes:
+      - {time_s: 0, dose_rate_at_reference_uSv_h: 10.0}
+    keyframe_interpolation: step
+    reference_distance_m: 1.0
+    minimum_distance_m: 0.25
+detectors:
+  - sensor_id: simulated_fs5000
+    source_type: simulated
+    publish_rate_hz: 1.0
+    transform_base_sensor:
+      translation_m: [0.0, 0.0, 0.25]
+      rpy_rad: [0.0, 0.0, 0.0]
+    extrinsic_position_std_m: 0.01
+    extrinsic_yaw_std_rad: 0.01
+    response_mode: dose_direct
+    response_time_constant_s: 0.3
+    fixed_latency_ms: 300
+    jitter_ms_std: 20
+    dose_rate_quantization_uSv_h: 0.01
+    cpm_per_uSv_h: 157.0
+    sensitivity_cps_per_uSv_h: 2.6166666667
+    observation_mode: dose_rate_robust
+    robust_degrees_of_freedom: 4.0
+    robust_base_std_uSv_h: 0.004
+    robust_fractional_std: 0.008
+    calibration_uncertainty_fraction: 0.002
+    cumulative_quantization_uSv: 0.01
+    additive_noise_std_uSv_h: 0.01
+    multiplicative_noise_fraction: 0.03
+    dropout_probability: 0.0
+    duplicate_probability: 0.0
+    outlier_probability: 0.0
+synchronization:
+  timebase: timeline
+  holdback_ms: 100
+  max_pose_gap_ms: 500
+  radiation_latency_ms: 300
+  radiation_time_uncertainty_ms: 50
+  strategy: linear_slerp
+  allow_nearest_fallback: true
+  nearest_fallback_max_ms: 250
+mapping:
+  value: dose_rate_uSv_h
+  interpolator: probabilistic
+  grid_resolution_m: 0.5
+  idw_power: 2.0
+  epsilon_m: 0.02
+  influence_radius_m: 1.5
+  minimum_neighbors: 1
+  maximum_neighbors: 8
+  coverage_mode: radius
+  temporal_mode: cumulative
+  sliding_window_s: 30
+  time_decay_tau_s: 15
+  refresh_rate_hz: 1.0
+  source_localization_min_samples: 6
+  source_reference_distance_m: 1.0
+  source_minimum_distance_m: 0.25
+  filter: {type: none}
+inference:
+  model: single_source_particle_filter
+  particles: 2048
+  render_particles: 256
+  resample_ess_fraction: 0.5
+  rejuvenation: liu_west
+  liu_west_h: 0.10
+  prior_refresh_fraction: 0.02
+  source_exists_prior: 0.5
+  source_exists_threshold: 0.95
+  source_strength_min_uSv_h: 0.05
+  source_strength_max_uSv_h: 200.0
+  source_z_m: 0.0
+  source_detection_floor_uSv_h: 0.03
+  background_prior_uSv_h: 0.15
+  background_prior_std_uSv_h: 0.04
+  background_min_uSv_h: 0.01
+  background_max_uSv_h: 1.0
+  minimum_independent_cells: 6
+  minimum_spatial_span_m: 1.0
+  stable_radius_95_m: 1.0
+  mismatch_normalized_rmse: 3.0
+grid:
+  type: quadtree
+  far_cell_m: 2.0
+  default_cell_m: 1.0
+  near_cell_m: 0.5
+  minimum_cell_m: 0.5
+  maximum_leaves: 5000
+  refine_relative_variation: 0.15
+  posterior_mass_refine: 0.002
+  merge_hysteresis_updates: 5
+  observation_cell_m: 1.0
+  probability_threshold_uSv_h: 1.0
+residual:
+  method: local_idw
+  neighbors: 8
+  power: 2.0
+  maximum_support_cells: 3.0
+  minimum_effective_observations: 0.25
+cadence:
+  posterior_update_hz: 1.0
+  map_update_hz: 1.0
+  ui_animation_hz: 20.0
+  persistence_flush_s: 2.0
+  maximum_pose_history_s: 120.0
+dashboard:
+  color_scale: Turbo
+  scale_mode: auto
+  scale_min_uSv_h: 0.0
+  scale_max_uSv_h: 5.0
+  show_truth_field: false
+  show_truth_sources: false
+  show_measured_points: true
+  show_coverage: true

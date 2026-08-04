@@ -1,0 +1,60 @@
+{
+  "acceptance": {
+    "100_sv_h_pipeline_is_finite": true,
+    "map_deterministic_without_measurement": true,
+    "near_source_color_change_p95_below_0_10": true,
+    "no_abrupt_return_to_local": true,
+    "no_remote_peaks": true,
+    "render_p95_below_250_ms": true,
+    "source_error_below_0_25_m": true,
+    "transition_completed": true
+  },
+  "all_acceptance_checks_passed": true,
+  "elapsed_s": 4.783389390999673,
+  "high_range": {
+    "all_detector_outputs_finite": true,
+    "configured_rate_at_1m_uSv_h": 100000000.0,
+    "field_rate_at_1m_uSv_h": 100000000.1,
+    "inference_strength_range_uSv_h": [
+      1000000.0,
+      10000000000.0
+    ],
+    "maximum_simulated_field_rate_uSv_h": 1600000000.1
+  },
+  "software_version": "0.4.4",
+  "validation_type": "video_feedback_regression_and_high_range",
+  "video_path": {
+    "diagnostic_values_uSv_h": {
+      "at_6_5": 166789.76971906776,
+      "at_6_75_5": 1079414.907023402,
+      "at_7_5": 969602.1682459905
+    },
+    "display_source_x_y": [
+      6.897299289215093,
+      4.97249289329479
+    ],
+    "estimated_strength_at_1m_uSv_h": 104195.28960091942,
+    "final_global_blend": 1.0,
+    "final_reconstruction_mode": "physical_global",
+    "first_full_global_observation": 46,
+    "first_transition_observation": 32,
+    "map_unchanged_without_measurement": true,
+    "maximum_near_source_color_change_fraction": 0.07030650719790031,
+    "observations": 52,
+    "posterior_map_x_y": [
+      6.877612554428141,
+      4.922033287982975
+    ],
+    "remote_peak_count": 0,
+    "remote_peak_locations": [],
+    "render_latency_p95_ms": 138.5261103,
+    "returned_abruptly_to_local": false,
+    "source_position_error_m": 0.14511200851876627,
+    "source_truth": {
+      "dose_rate_at_1m_uSv_h": 100000.0,
+      "x_m": 7.0,
+      "y_m": 5.0
+    },
+    "steady_response_delay_s": 0.5819767068693263
+  }
+}

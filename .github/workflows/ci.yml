@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev,fs5000]"
+      - name: Tests
+        run: pytest
+      - name: Lint
+        if: matrix.python-version == '3.12'
+        run: ruff check src tests
+      - name: Types
+        if: matrix.python-version == '3.12'
+        run: mypy src
+      - name: Build simulation image
+        if: matrix.python-version == '3.12'
+        run: docker build --target simulation -t ares-radiation-mapper:ci .
+      - name: Smoke-test simulation image
+        if: matrix.python-version == '3.12'
+        run: |
+          docker run --detach --name ares-ci --publish 8000:8000 ares-radiation-mapper:ci
+          trap 'docker rm --force ares-ci' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/api/v1/health && break
+            sleep 1
+          done
+          curl --fail --silent \
+            --header 'Content-Type: application/json' \
+            --data '{"x_m":7.5,"y_m":5.5,"dose_rate_at_1m_uSv_h":10000}' \
+            http://127.0.0.1:8000/api/v1/simulation/start
+          sleep 2
+          test "$(curl --fail --silent http://127.0.0.1:8000/api/v1/status \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["state"])')" = RUNNING
+      - name: Build hardware image
+        if: matrix.python-version == '3.12'
+        run: docker build --target hardware -t ares-radiation-mapper:hardware-ci .

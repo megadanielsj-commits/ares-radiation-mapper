@@ -1,0 +1,99 @@
+schema_version: "1.1"
+application:
+  data_directory: data/missions
+  bind_host: 127.0.0.1
+  bind_port: 8000
+  open_browser: true
+mission:
+  name: dois-detectores-simulados
+  mode: simulated
+  seed: 20260730
+  duration_s: 90
+  simulation_speed: 1.0
+world:
+  frame_id: world
+  bounds_m: {x_min: 0.0, x_max: 12.0, y_min: 0.0, y_max: 10.0}
+  background: {model: constant, dose_rate_uSv_h: 0.15}
+pose:
+  provider: manual_sim
+  frame_id: world
+  child_frame_id: base
+  position_std_m: 0.05
+  yaw_std_rad: 0.03
+trajectory:
+  type: manual
+  start_m: [2.0, 2.0, 0.32]
+  speed_m_s: 0.45
+  rectangle_m: {x_min: 0.4, x_max: 11.6, y_min: 0.4, y_max: 9.6}
+odometry:
+  publish_rate_hz: 20.0
+  position_noise_std_m: 0.05
+  yaw_noise_std_rad: 0.03
+  drift_m_per_min: 0.0
+  yaw_drift_rad_per_min: 0.0
+radiation_sources:
+  - id: source_01
+    enabled: true
+    model: inverse_square
+    position_keyframes:
+      - {time_s: 0, x_m: 9.0, y_m: 7.0, z_m: 0.0}
+    strength_keyframes:
+      - {time_s: 0, dose_rate_at_reference_uSv_h: 5.0}
+    keyframe_interpolation: step
+    reference_distance_m: 1.0
+    minimum_distance_m: 0.25
+detectors:
+  - sensor_id: fs5000_left
+    source_type: simulated
+    publish_rate_hz: 1.0
+    transform_base_sensor:
+      translation_m: [0.05, 0.22, 0.25]
+      rpy_rad: [0.0, 0.0, 0.0]
+    observation_mode: dose_rate_robust
+    response_mode: dose_direct
+    sensitivity_cps_per_uSv_h: 2.6166666667
+    cpm_per_uSv_h: 157.0
+  - sensor_id: fs5000_right
+    source_type: simulated
+    publish_rate_hz: 1.0
+    transform_base_sensor:
+      translation_m: [0.05, -0.22, 0.25]
+      rpy_rad: [0.0, 0.0, 0.0]
+    observation_mode: dose_rate_robust
+    response_mode: dose_direct
+    sensitivity_cps_per_uSv_h: 2.6166666667
+    cpm_per_uSv_h: 157.0
+synchronization:
+  max_pose_gap_ms: 500
+  allow_nearest_fallback: true
+  nearest_fallback_max_ms: 250
+mapping:
+  interpolator: probabilistic
+  grid_resolution_m: 0.5
+  temporal_mode: cumulative
+  source_minimum_distance_m: 0.25
+inference:
+  particles: 2048
+  render_particles: 256
+  background_prior_uSv_h: 0.15
+  source_exists_threshold: 0.95
+grid:
+  far_cell_m: 2.0
+  default_cell_m: 1.0
+  near_cell_m: 0.5
+  minimum_cell_m: 0.5
+  maximum_leaves: 5000
+residual:
+  method: local_idw
+  neighbors: 8
+  maximum_support_cells: 3.0
+cadence:
+  posterior_update_hz: 1.0
+  map_update_hz: 1.0
+  ui_animation_hz: 20.0
+  persistence_flush_s: 2.0
+  maximum_pose_history_s: 120.0
+dashboard:
+  scale_mode: auto
+  show_truth_field: false
+  show_truth_sources: false

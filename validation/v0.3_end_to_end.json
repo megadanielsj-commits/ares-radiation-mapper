@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.1",
+  "software_version": "0.3.0",
+  "scenario": "config/scenarios/probabilistic_reference.yaml",
+  "configuration_hash": "8fdbe8bc7131aac33f68b937f45c847a8d12b2d2f58e70a457b18b85e96f0e33",
+  "simulation_speed": 100.0,
+  "duration_s": 60.0,
+  "counts": {
+    "pose": 1201,
+    "radiation": 60,
+    "mapped": 60,
+    "unsynchronized": 0,
+    "dropped_by_processing": 0
+  },
+  "cadence": {
+    "pose_hz": 20.0,
+    "radiation_hz": 1.0
+  },
+  "source_truth": {
+    "x_m": 10.0,
+    "y_m": 10.0,
+    "strength_at_1m_uSv_h": 10.0,
+    "background_uSv_h": 0.15
+  },
+  "source_estimate": {
+    "x_m": 9.948488763618695,
+    "y_m": 9.95715919838941,
+    "position_error_m": 0.06699807277951055,
+    "strength_at_1m_uSv_h": 9.7429471635383,
+    "strength_relative_error": 0.02570528364617003,
+    "background_uSv_h": 0.1552037389697284,
+    "p_source_exists": 1.0,
+    "identifiability_state": "STABLE"
+  },
+  "field": {
+    "mae_uSv_h": 0.12435941392414573,
+    "rmse_uSv_h": 0.7464206803292097,
+    "active_quadtree_leaves": 400,
+    "physical_minimum_cell_m": 0.6066758241067098
+  },
+  "dose_audit": {
+    "reported_cumulative_dose_uSv": 0.01,
+    "path_integral_uSv": 0.009091666666666666,
+    "closure_error_uSv": 0.0009750000000000023,
+    "detector_quantization_uSv": 0.01,
+    "state": "CONSISTENT"
+  },
+  "performance": {
+    "posterior_update_p95_ms": 40.65154449999998,
+    "final_map_render_ms": 230.941372,
+    "isolated_map_render_p95_ms": 210.057222,
+    "posterior_target_ms": 50.0,
+    "map_target_ms": 250.0
+  },
+  "acceptance": {
+    "source_position_error_lte_0_5m": true,
+    "no_processing_drops": true,
+    "dose_closure_within_quantization": true,
+    "posterior_update_p95_lt_50ms": true,
+    "isolated_map_render_p95_lt_250ms": true
+  },
+  "passed": true
+}

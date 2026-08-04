@@ -1,0 +1,35 @@
+name: ares-radiation-mapper
+
+services:
+  simulation:
+    profiles: [simulation]
+    build:
+      context: .
+      target: simulation
+    image: ares-radiation-mapper:simulation
+    init: true
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/missions:/app/data/missions
+    command: ["--mode", "simulation", "--host", "0.0.0.0", "--no-open-browser"]
+
+  hardware:
+    profiles: [hardware]
+    build:
+      context: .
+      target: hardware
+      args:
+        UNITREE_SDK2_COMMIT: 65691c8a8bc53b98d3976dba4dbf9d5d20b2e7f5
+    image: ares-radiation-mapper:hardware
+    init: true
+    network_mode: host
+    devices:
+      - "${FS5000_DEVICE:-/dev/ttyUSB0}:/dev/ttyUSB0"
+    environment:
+      ARES_MODE: hardware
+      ARES_NETWORK_INTERFACE: "${ARES_NETWORK_INTERFACE:-}"
+      ARES_SERIAL_PORT: /dev/ttyUSB0
+    volumes:
+      - ./data/missions:/app/data/missions
+    command: ["--mode", "hardware", "--host", "0.0.0.0", "--no-open-browser"]

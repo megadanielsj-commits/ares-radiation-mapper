@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.1",
+  "source_trials": 100,
+  "background_trials": 100,
+  "measurements_per_trial": 60,
+  "median_source_position_error_m": 0.03839587038490917,
+  "median_source_strength_relative_error": 0.023257609326786798,
+  "credible_region_coverage_95": 0.94,
+  "false_positive_rate": 0.01,
+  "median_background_error_uSv_h": 0.00314638911466901,
+  "median_time_to_stable_s": 22.0,
+  "posterior_update_latency_p95_ms": 33.990547129999996,
+  "acceptance": {
+    "median_source_position_error_lte_0_5m": true,
+    "credible_95_coverage_between_0_90_and_0_98": true,
+    "false_positive_rate_lt_0_05": true,
+    "posterior_update_p95_lt_50ms": true
+  },
+  "passed": true
+}

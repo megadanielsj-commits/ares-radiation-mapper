@@ -1,0 +1,26 @@
+schema_version: "1.1"
+mission: {name: intensidade-variavel, mode: sim, seed: 20260730, duration_s: 90, simulation_speed: 5.0}
+world:
+  bounds_m: {x_min: 0.0, x_max: 10.0, y_min: 0.0, y_max: 8.0}
+  background: {model: constant, dose_rate_uSv_h: 0.10}
+trajectory:
+  type: circle
+  circle_center_m: [5.0, 4.0, 0.32]
+  circle_radius_m: 2.5
+  speed_m_s: 0.45
+  loop: true
+odometry: {publish_rate_hz: 20.0}
+radiation_sources:
+  - id: source_step
+    model: inverse_square
+    position_keyframes: [{time_s: 0, x_m: 5.0, y_m: 4.0, z_m: 0.8}]
+    strength_keyframes:
+      - {time_s: 0, dose_rate_at_reference_uSv_h: 3.0}
+      - {time_s: 44.999, dose_rate_at_reference_uSv_h: 3.0}
+      - {time_s: 45, dose_rate_at_reference_uSv_h: 8.0}
+detectors:
+  - sensor_id: simulated_fs5000
+    publish_rate_hz: 1.0
+    transform_base_sensor: {translation_m: [0.0, 0.0, 0.25], rpy_rad: [0.0, 0.0, 0.0]}
+mapping: {temporal_mode: sliding_window, sliding_window_s: 20, grid_resolution_m: 0.10}
+dashboard: {scale_mode: fixed, scale_min_uSv_h: 0.0, scale_max_uSv_h: 8.5}

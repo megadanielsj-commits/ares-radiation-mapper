@@ -1,0 +1,126 @@
+{
+  "acceptance": {
+    "10_sv_h_pipeline_is_finite": true,
+    "annualized_rates_are_exact": true,
+    "ioe_uses_2000_hours_per_year": true,
+    "map_deterministic_without_measurement": true,
+    "near_source_color_change_below_0_10": true,
+    "no_abrupt_return_to_local": true,
+    "no_remote_peaks": true,
+    "public_reference_is_green": true,
+    "regulatory_levels_get_progressively_hotter": true,
+    "render_p95_below_250_ms": true,
+    "scenario_uses_regulatory_scale": true,
+    "source_error_below_0_25_m": true,
+    "transition_completed": true
+  },
+  "all_acceptance_checks_passed": true,
+  "elapsed_s": 2.7685953479999625,
+  "high_range": {
+    "all_detector_outputs_finite": true,
+    "configured_rate_at_1m_uSv_h": 10000000.0,
+    "field_rate_at_1m_uSv_h": 10000000.1,
+    "inference_strength_range_uSv_h": [
+      100000.0,
+      1000000000.0
+    ],
+    "maximum_simulated_field_rate_uSv_h": 160000000.1
+  },
+  "regulatory_scale": {
+    "annualization": {
+      "ioe_hours_per_year": 2000.0,
+      "public_hours_per_year": 8760.0
+    },
+    "background_subtracted": true,
+    "equivalent_rates_uSv_h": {
+      "ioe_investigation": 3.0,
+      "ioe_limit": 10.0,
+      "ioe_maximum_single_year": 25.0,
+      "ioe_recording": 0.5,
+      "public_limit": 0.1141552511415525
+    },
+    "labelled_anchors": {
+      "0.1141552511415525": {
+        "fraction": 0.06,
+        "label": "P\u00fablico \u00b7 1 mSv/ano",
+        "rgb": [
+          43,
+          183,
+          94
+        ]
+      },
+      "0.5": {
+        "fraction": 0.13591883564851795,
+        "label": "IOE registro \u00b7 1 mSv/ano",
+        "rgb": [
+          139,
+          195,
+          74
+        ]
+      },
+      "3.0": {
+        "fraction": 0.22801349063177162,
+        "label": "IOE investiga\u00e7\u00e3o \u00b7 6 mSv/ano",
+        "rgb": [
+          243,
+          200,
+          57
+        ]
+      },
+      "10.0": {
+        "fraction": 0.28989649553721675,
+        "label": "IOE limite \u00b7 20 mSv/ano",
+        "rgb": [
+          239,
+          125,
+          43
+        ]
+      },
+      "25.0": {
+        "fraction": 0.3369929279912108,
+        "label": "IOE teto \u00b7 50 mSv/ano",
+        "rgb": [
+          220,
+          47,
+          54
+        ]
+      }
+    }
+  },
+  "software_version": "0.4.6",
+  "validation_type": "regulatory_scale_and_video_regression",
+  "video_path": {
+    "diagnostic_values_uSv_h": {
+      "at_6_5": 166789.76971906776,
+      "at_6_75_5": 1079414.907023402,
+      "at_7_5": 969602.1682459905
+    },
+    "display_source_x_y": [
+      6.897299289215093,
+      4.97249289329479
+    ],
+    "estimated_strength_at_1m_uSv_h": 104195.28960091942,
+    "final_global_blend": 1.0,
+    "final_reconstruction_mode": "physical_global",
+    "first_full_global_observation": 46,
+    "first_transition_observation": 32,
+    "map_unchanged_without_measurement": true,
+    "maximum_near_source_color_change_fraction": 0.0549345514011071,
+    "observations": 52,
+    "posterior_map_x_y": [
+      6.877612554428141,
+      4.922033287982975
+    ],
+    "remote_peak_count": 0,
+    "remote_peak_locations": [],
+    "render_latency_p95_ms": 77.23102349999999,
+    "returned_abruptly_to_local": false,
+    "source_position_error_m": 0.14511200851876627,
+    "source_truth": {
+      "dose_rate_at_1m_uSv_h": 100000.0,
+      "x_m": 7.0,
+      "y_m": 5.0
+    },
+    "steady_response_delay_s": 0.5819767068693263
+  }
+}

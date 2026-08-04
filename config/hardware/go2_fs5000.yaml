@@ -1,0 +1,146 @@
+schema_version: "1.1"
+application:
+  name: ARES Radiation Mapper
+  bind_host: 127.0.0.1
+  bind_port: 8000
+  data_directory: data/missions
+  log_level: INFO
+  open_browser: false
+mission:
+  name: go2-fs5000-real
+  mode: real
+  seed: 20260729
+  duration_s: 600
+  simulation_speed: 1.0
+world:
+  frame_id: odom
+  bounds_m: {x_min: -25.0, x_max: 25.0, y_min: -25.0, y_max: 25.0}
+  z_floor_m: 0.0
+  map_resolution_m: 0.5
+  background: {model: constant, dose_rate_uSv_h: 0.15}
+  obstacles: []
+pose:
+  provider: unitree_sportmode
+  network_interface: enp3s0
+  domain_id: 0
+  topic: rt/sportmodestate
+  frame_id: odom
+  child_frame_id: base
+  position_std_m: 0.20
+  yaw_std_rad: 0.10
+robot:
+  model: unitree_go2
+  posture: standing
+  length_m: 0.70
+  width_m: 0.31
+  height_m: 0.40
+  minimum_display_length_px: 30.0
+  visual_smoothing_time_constant_s: 0.08
+trajectory:
+  type: manual
+  start_m: [0.0, 0.0, 0.32]
+  yaw_start_rad: 0.0
+  speed_m_s: 0.40
+odometry:
+  publish_rate_hz: 20.0
+  position_noise_std_m: 0.20
+  yaw_noise_std_rad: 0.10
+  drift_m_per_min: 0.0
+  yaw_drift_rad_per_min: 0.0
+  latency_ms: 20
+  jitter_ms_std: 5
+  dropout_probability: 0.0
+  outlier_probability: 0.0
+radiation_sources: []
+detectors:
+  - sensor_id: fs5000_01
+    source_type: fs5000_serial
+    serial_port: auto
+    publish_rate_hz: 1.0
+    transform_base_sensor:
+      translation_m: [0.0, 0.0, 0.25]
+      rpy_rad: [0.0, 0.0, 0.0]
+    extrinsic_position_std_m: 0.02
+    extrinsic_yaw_std_rad: 0.02
+    response_mode: dose_direct
+    response_time_constant_s: 1.5
+    fixed_latency_ms: 0.0
+    jitter_ms_std: 50.0
+    dose_rate_quantization_uSv_h: 0.01
+    cpm_per_uSv_h: 157.0
+    sensitivity_cps_per_uSv_h: 2.6166666667
+    observation_mode: dose_rate_robust
+    robust_degrees_of_freedom: 4.0
+    robust_base_std_uSv_h: 0.03
+    robust_fractional_std: 0.12
+    calibration_id: fs5000-pending-calibration
+    calibration_uncertainty_fraction: 0.10
+    cumulative_quantization_uSv: 0.01
+synchronization:
+  timebase: timeline
+  holdback_ms: 150
+  max_pose_gap_ms: 500
+  radiation_latency_ms: 0
+  radiation_time_uncertainty_ms: 100
+  strategy: linear_slerp
+  allow_nearest_fallback: true
+  nearest_fallback_max_ms: 250
+mapping:
+  value: dose_rate_uSv_h
+  interpolator: probabilistic
+  grid_resolution_m: 0.5
+  temporal_mode: cumulative
+  refresh_rate_hz: 1.0
+  source_reference_distance_m: 1.0
+  source_minimum_distance_m: 0.25
+  filter: {type: none}
+inference:
+  model: single_source_particle_filter
+  particles: 2048
+  render_particles: 256
+  resample_ess_fraction: 0.5
+  rejuvenation: liu_west
+  liu_west_h: 0.10
+  prior_refresh_fraction: 0.02
+  source_exists_prior: 0.5
+  source_exists_threshold: 0.95
+  source_strength_min_uSv_h: 0.01
+  source_strength_max_uSv_h: 10000
+  source_z_m: 0.0
+  background_prior_uSv_h: 0.15
+  background_prior_std_uSv_h: 0.05
+  background_min_uSv_h: 0.001
+  background_max_uSv_h: 10.0
+grid:
+  type: quadtree
+  far_cell_m: 2.0
+  default_cell_m: 1.0
+  near_cell_m: 0.5
+  minimum_cell_m: 0.5
+  maximum_leaves: 5000
+  refine_relative_variation: 0.15
+  posterior_mass_refine: 0.002
+  merge_hysteresis_updates: 5
+  observation_cell_m: 1.0
+  probability_threshold_uSv_h: 1.0
+residual:
+  method: local_idw
+  neighbors: 8
+  power: 2.0
+  maximum_support_cells: 3.0
+  minimum_effective_observations: 0.25
+cadence:
+  posterior_update_hz: 1.0
+  map_update_hz: 1.0
+  ui_animation_hz: 20.0
+  persistence_flush_s: 2.0
+  maximum_pose_history_s: 120.0
+dashboard:
+  color_scale: Turbo
+  scale_mode: auto
+  scale_min_uSv_h: 0.0
+  scale_max_uSv_h: 5.0
+  show_truth_field: false
+  show_truth_sources: false
+  show_measured_points: true
+  show_coverage: true

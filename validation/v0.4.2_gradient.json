@@ -1,0 +1,36 @@
+{
+  "software_version": "0.4.2",
+  "validation_type": "deterministic_high_intensity_path",
+  "source_truth": {
+    "x_m": 4.0,
+    "y_m": 4.0,
+    "dose_rate_at_1m_uSv_h": 100000.0
+  },
+  "observations": 61,
+  "spatial_configuration": {
+    "raster_resolution_m": 0.25,
+    "observation_cell_m": 0.25,
+    "local_support_radius_m": 0.75,
+    "residual_support_radius_m": 0.75
+  },
+  "inference_strength_prior_uSv_h": [
+    1000.0,
+    10000000.0
+  ],
+  "maximum_observed_local_support_distance_m": 0.728869,
+  "global_model_transition_observation": 61,
+  "final_reconstruction_mode": "physical_global",
+  "estimated_source_position_error_m": 0.2936,
+  "estimated_strength_at_1m_uSv_h": 113037.7,
+  "grid_shape": [
+    33,
+    41
+  ],
+  "finite_final_cells": 1353,
+  "acceptance": {
+    "local_support_within_configured_radius": true,
+    "distant_measurement_preserves_previous_region": true,
+    "high_intensity_is_inside_inference_prior": true,
+    "global_model_stabilized": true
+  }
+}

@@ -1,0 +1,30 @@
+schema_version: "1.1"
+mission: {name: perdas-e-jitter, mode: sim, seed: 20260801, duration_s: 90, simulation_speed: 5.0}
+world:
+  bounds_m: {x_min: 0.0, x_max: 10.0, y_min: 0.0, y_max: 8.0}
+  background: {model: constant, dose_rate_uSv_h: 0.10}
+trajectory:
+  type: lawnmower
+  speed_m_s: 0.45
+  line_spacing_m: 0.8
+  rectangle_m: {x_min: 1.0, x_max: 9.0, y_min: 1.0, y_max: 7.0}
+odometry:
+  publish_rate_hz: 20.0
+  dropout_probability: 0.10
+  jitter_ms_std: 35
+  outlier_probability: 0.01
+  outlier_position_std_m: 0.50
+radiation_sources:
+  - id: source_01
+    position_keyframes: [{time_s: 0, x_m: 7.0, y_m: 5.5, z_m: 0.8}]
+    strength_keyframes: [{time_s: 0, dose_rate_at_reference_uSv_h: 3.0}]
+detectors:
+  - sensor_id: simulated_fs5000
+    publish_rate_hz: 1.0
+    fixed_latency_ms: 400
+    jitter_ms_std: 100
+    dropout_probability: 0.05
+    duplicate_probability: 0.02
+    transform_base_sensor: {translation_m: [0.0, 0.0, 0.25], rpy_rad: [0.0, 0.0, 0.0]}
+synchronization: {max_pose_gap_ms: 350, allow_nearest_fallback: true, nearest_fallback_max_ms: 200}
+mapping: {temporal_mode: sliding_window, sliding_window_s: 30, grid_resolution_m: 0.10}

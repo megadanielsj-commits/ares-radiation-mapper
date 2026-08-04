@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07101a">
+  <title>ARES Radiation Mapper</title>
+  <style>
+{{INLINE_STYLES}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <p>PROJETO ARES</p>
+        <h1>Mapa radiológico</h1>
+      </div>
+    </div>
+    <div class="connection" aria-live="polite">
+      <i id="connection-dot" aria-hidden="true"></i>
+      <span id="connection-label">Conectando</span>
+      <span class="version">v{{VERSION}}</span>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar">
+      <section class="panel setup-panel" aria-labelledby="setup-title">
+        <div class="section-heading">
+          <p class="kicker">SIMULAÇÃO</p>
+          <h2 id="setup-title">Configurar fonte</h2>
+          <p class="section-description">
+            Informe a posição e a taxa de dose da fonte.
+          </p>
+        </div>
+
+        <div class="coordinate-grid">
+          <label>
+            <span>Coordenada X</span>
+            <div class="input-unit">
+              <input id="source-x" type="number" step="0.1" inputmode="decimal">
+              <b>m</b>
+            </div>
+          </label>
+          <label>
+            <span>Coordenada Y</span>
+            <div class="input-unit">
+              <input id="source-y" type="number" step="0.1" inputmode="decimal">
+              <b>m</b>
+            </div>
+          </label>
+        </div>
+
+        <label class="dose-input">
+          <span>Taxa da fonte a 1 metro</span>
+          <div class="input-unit">
+            <input
+              id="source-strength"
+              type="number"
+              step="0.1"
+              min="0.000001"
+              max="10000"
+              value="10"
+              inputmode="decimal"
+            >
+            <b>mSv/h</b>
+          </div>
+        </label>
+
+        <button id="start-button" class="start-button" type="button">
+          Iniciar mapeamento
+        </button>
+        <p id="action-message" class="status-message" aria-live="polite">
+          Preencha os dados e clique em Iniciar.
+        </p>
+      </section>
+
+      <section class="panel telemetry-panel" aria-labelledby="telemetry-title">
+        <div class="section-heading compact-heading">
+          <p class="kicker">MISSÃO</p>
+          <h2 id="telemetry-title">Medições em tempo real</h2>
+        </div>
+
+        <article class="primary-reading">
+          <span>Taxa atual</span>
+          <div>
+            <strong id="dose-rate">—</strong>
+            <small id="dose-rate-unit">mSv/h</small>
+          </div>
+        </article>
+
+        <div class="secondary-readings">
+          <article>
+            <span>Dose acumulada</span>
+            <strong id="dose-total">0,00000</strong>
+            <small id="dose-total-unit">µSv</small>
+          </article>
+          <article>
+            <span>Medições</span>
+            <strong id="sample-count">0</strong>
+            <small>1 por segundo</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel control-panel" aria-label="Controle do robô">
+        <div>
+          <p class="kicker">CONTROLE DO GO2</p>
+          <h2>Use as setas do teclado</h2>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <kbd>↑</kbd>
+          <span></span><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
+        </div>
+        <p><b>↑ ↓</b> mover &nbsp;&nbsp; <b>← →</b> girar</p>
+      </section>
+    </aside>
+
+    <section class="panel map-panel" aria-labelledby="map-title">
+      <header class="map-heading">
+        <div>
+          <p class="kicker">GRADIENTE ESTIMADO · ESCALA LOGARÍTMICA DA MISSÃO</p>
+          <h2 id="map-title">Mapa construído pelas medições</h2>
+        </div>
+        <span id="map-mode" class="map-mode">Aguardando medições</span>
+      </header>
+
+      <div class="map-stage">
+        <canvas
+          id="radiation-map"
+          role="img"
+          aria-label="Mapa do gradiente radiológico, trajeto do Go2 e fonte configurada"
+        >
+          Seu navegador não oferece suporte ao mapa.
+        </canvas>
+        <div id="map-tooltip" class="map-tooltip" hidden></div>
+      </div>
+
+      <footer class="map-foot">
+        <span><i class="legend robot"></i>Go2</span>
+        <span><i class="legend path"></i>Caminho medido</span>
+        <span><i class="legend source"></i>Fonte configurada</span>
+        <span class="public-reference">Cores: intensidade relativa · referências CNEN no cursor</span>
+        <span id="map-coordinate">x — &nbsp; y —</span>
+      </footer>
+    </section>
+  </main>
+
+  <script>
+{{INLINE_APP}}
+  </script>
+</body>
+</html>

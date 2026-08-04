@@ -1,0 +1,28 @@
+schema_version: "1.1"
+mission: {name: deriva-odometria, mode: sim, seed: 20260731, duration_s: 100, simulation_speed: 5.0}
+world:
+  bounds_m: {x_min: 0.0, x_max: 10.0, y_min: 0.0, y_max: 8.0}
+  background: {model: constant, dose_rate_uSv_h: 0.10}
+trajectory:
+  type: circle
+  circle_center_m: [5.0, 4.0, 0.32]
+  circle_radius_m: 2.7
+  speed_m_s: 0.5
+  loop: true
+odometry:
+  publish_rate_hz: 20.0
+  position_noise_std_m: 0.01
+  drift_m_per_min: 0.35
+  yaw_drift_rad_per_min: 0.08
+radiation_sources:
+  - id: source_01
+    model: gaussian
+    gaussian_sigma_m: 1.0
+    position_keyframes: [{time_s: 0, x_m: 6.8, y_m: 5.2, z_m: 0.8}]
+    strength_keyframes: [{time_s: 0, dose_rate_at_reference_uSv_h: 3.0}]
+detectors:
+  - sensor_id: simulated_fs5000
+    publish_rate_hz: 1.0
+    transform_base_sensor: {translation_m: [0.0, 0.0, 0.25], rpy_rad: [0.0, 0.0, 0.0]}
+mapping: {temporal_mode: cumulative, grid_resolution_m: 0.10}
+dashboard: {show_truth_field: true, show_truth_sources: true}

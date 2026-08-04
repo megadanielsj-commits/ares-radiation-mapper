@@ -1,0 +1,19 @@
+schema_version: "1.1"
+mission: {name: somente-fundo, mode: sim, seed: 20260802, duration_s: 90, simulation_speed: 5.0}
+world:
+  bounds_m: {x_min: 0.0, x_max: 10.0, y_min: 0.0, y_max: 8.0}
+  background: {model: constant, dose_rate_uSv_h: 0.10}
+trajectory:
+  type: lawnmower
+  speed_m_s: 0.45
+  line_spacing_m: 0.8
+  rectangle_m: {x_min: 1.0, x_max: 9.0, y_min: 1.0, y_max: 7.0}
+odometry: {publish_rate_hz: 20.0, position_noise_std_m: 0.01}
+radiation_sources: []
+detectors:
+  - sensor_id: simulated_fs5000
+    publish_rate_hz: 1.0
+    additive_noise_std_uSv_h: 0.015
+    transform_base_sensor: {translation_m: [0.0, 0.0, 0.25], rpy_rad: [0.0, 0.0, 0.0]}
+mapping: {temporal_mode: cumulative, grid_resolution_m: 0.10}
+dashboard: {scale_mode: fixed, scale_min_uSv_h: 0.0, scale_max_uSv_h: 0.30}
