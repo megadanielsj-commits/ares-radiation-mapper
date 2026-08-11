@@ -77,6 +77,71 @@ function mapBounds() {
   };
 }
 
+// Auto-zoom: enquadra o robô e os pontos medidos, para que a representação não
+// fique minúscula quando os limites do mundo são amplos. mapBounds() continua
+// sendo os limites reais do mundo (usado na validação e como teto do zoom).
+const VIEW_MIN_SPAN_M = 6;
+const VIEW_PADDING = 0.18;
+const VIEW_SMOOTH_ALPHA = 0.15;
+
+function viewTargetBounds() {
+  const world = mapBounds();
+  const points = [];
+  const pose = finitePose(state.displayPose);
+  if (pose) points.push([pose.x_m, pose.y_m]);
+  for (const sample of state.mapped) {
+    const x = Number(sample.sensor_x_m);
+    const y = Number(sample.sensor_y_m);
+    if (Number.isFinite(x) && Number.isFinite(y)) points.push([x, y]);
+  }
+  if (!points.length) return null;
+  let xMin = Infinity;
+  let xMax = -Infinity;
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (const [x, y] of points) {
+    xMin = Math.min(xMin, x);
+    xMax = Math.max(xMax, x);
+    yMin = Math.min(yMin, y);
+    yMax = Math.max(yMax, y);
+  }
+  const worldWidth = Math.max(1e-6, world.x_max - world.x_min);
+  const worldHeight = Math.max(1e-6, world.y_max - world.y_min);
+  const spanX = Math.min(
+    Math.max(xMax - xMin, VIEW_MIN_SPAN_M) * (1 + VIEW_PADDING * 2),
+    worldWidth,
+  );
+  const spanY = Math.min(
+    Math.max(yMax - yMin, VIEW_MIN_SPAN_M) * (1 + VIEW_PADDING * 2),
+    worldHeight,
+  );
+  const clamp = (center, span, lo, hi) =>
+    Math.min(Math.max(center, lo + span / 2), hi - span / 2);
+  const cx = clamp((xMin + xMax) / 2, spanX, world.x_min, world.x_max);
+  const cy = clamp((yMin + yMax) / 2, spanY, world.y_min, world.y_max);
+  return {
+    x_min: cx - spanX / 2,
+    x_max: cx + spanX / 2,
+    y_min: cy - spanY / 2,
+    y_max: cy + spanY / 2,
+  };
+}
+
+function viewBounds() {
+  const target = viewTargetBounds();
+  if (!target) return state.viewBox || mapBounds();
+  if (!state.viewBox) {
+    state.viewBox = {...target};
+    return state.viewBox;
+  }
+  const box = state.viewBox;
+  box.x_min += (target.x_min - box.x_min) * VIEW_SMOOTH_ALPHA;
+  box.x_max += (target.x_max - box.x_max) * VIEW_SMOOTH_ALPHA;
+  box.y_min += (target.y_min - box.y_min) * VIEW_SMOOTH_ALPHA;
+  box.y_max += (target.y_max - box.y_max) * VIEW_SMOOTH_ALPHA;
+  return box;
+}
+
 function fallbackPose() {
   const start = state.scenario?.trajectory?.start_m || [2, 2, 0.32];
   return {
@@ -356,7 +421,7 @@ function resizeCanvas() {
 }
 
 function calculatePlotGeometry(width, height) {
-  const bounds = mapBounds();
+  const bounds = viewBounds();
   const margin = {
     left: width < 800 ? 58 : 72,
     right: width < 800 ? 105 : 145,
@@ -1010,6 +1075,7 @@ async function startSimulation() {
     state.radiation = null;
     state.mapped = [];
     state.map = null;
+    state.viewBox = null;
     state.accumulatedDose = 0;
     button.textContent = "Reiniciar mapeamento";
     $("map-mode").textContent = "Aguardando primeira medição";
