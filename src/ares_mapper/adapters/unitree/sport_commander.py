@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 from typing import Any
 
 from ares_mapper.adapters.unitree.channel_factory import ensure_channel_factory
@@ -38,6 +39,7 @@ class Go2SportCommander:
         self._channel_initializer = channel_initializer
         self._client: Any = None
         self._health = SourceHealth(source_id="unitree_sdk2_sport_commander")
+        self._command_lock = asyncio.Lock()
 
     async def start(self) -> None:
         self._health.state = HealthState.STARTING
@@ -58,30 +60,34 @@ class Go2SportCommander:
     async def send(self, linear_m_s: float, yaw_rate_rad_s: float) -> None:
         if self._client is None:
             raise RuntimeError("sport commander not started")
-        try:
-            if linear_m_s == 0.0 and yaw_rate_rad_s == 0.0:
-                await asyncio.to_thread(self._client.StopMove)
-            else:
-                await asyncio.to_thread(
-                    self._client.Move,
-                    float(linear_m_s),
-                    0.0,
-                    float(yaw_rate_rad_s),
-                )
-        except Exception as exc:
-            self._health.state = HealthState.FAULT
-            self._health.last_error_code = type(exc).__name__
-            self._health.last_error_message = str(exc)
-            raise
+        async with self._command_lock:
+            try:
+                if linear_m_s == 0.0 and yaw_rate_rad_s == 0.0:
+                    await asyncio.to_thread(self._client.StopMove)
+                else:
+                    await asyncio.to_thread(
+                        self._client.Move,
+                        float(linear_m_s),
+                        0.0,
+                        float(yaw_rate_rad_s),
+                    )
+            except Exception as exc:
+                self._health.state = HealthState.FAULT
+                self._health.last_error_code = type(exc).__name__
+                self._health.last_error_message = str(exc)
+                with suppress(Exception):
+                    await asyncio.to_thread(self._client.StopMove)
+                raise
 
     async def stop(self) -> None:
         if self._client is None:
             return
-        try:
-            await asyncio.to_thread(self._client.StopMove)
-        except Exception as exc:  # keep teardown resilient
-            self._health.last_error_code = type(exc).__name__
-            self._health.last_error_message = str(exc)
+        async with self._command_lock:
+            try:
+                await asyncio.to_thread(self._client.StopMove)
+            except Exception as exc:  # keep teardown resilient
+                self._health.last_error_code = type(exc).__name__
+                self._health.last_error_message = str(exc)
 
     async def close(self) -> None:
         self._client = None

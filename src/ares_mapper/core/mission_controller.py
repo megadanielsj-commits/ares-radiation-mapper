@@ -1020,6 +1020,8 @@ class MissionController:
         if self._finalized:
             return
         self._finalized = True
+        if self.sport_commander is not None:
+            await self.sport_commander.stop()
         if self.clock is not None:
             await self.clock.pause()
         if self.map_service is not None and self.mission_id is not None:
