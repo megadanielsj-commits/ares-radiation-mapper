@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Teste com Go2 REAL, sem FS-5000 (detector simulado acoplado a pose real).
+# Requer a imagem 'ares-radiation-mapper:hardware' (tem o SDK2 do Unitree).
+set -Eeuo pipefail
+cd "$(dirname "$0")"
+
+SCENARIO="config/hardware/go2_only_simdetector.yaml"
+
+if ! docker image inspect ares-radiation-mapper:hardware >/dev/null 2>&1; then
+    printf 'Imagem hardware ausente. Construindo (baixa o SDK2, demora)...\n' >&2
+    docker compose --profile hardware build hardware
+fi
+
+# --network host: DDS do Go2. Sem mapeamento de /dev/ttyUSB* (nao usa FS-5000).
+exec docker run --rm -it \
+    --network host \
+    -v "$PWD/config:/app/config" \
+    -v "$PWD/data/missions:/app/data/missions" \
+    --entrypoint ares-map \
+    ares-radiation-mapper:hardware \
+    run --scenario "$SCENARIO" --host 0.0.0.0 --no-open-browser "$@"
