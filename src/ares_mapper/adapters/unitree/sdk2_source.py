@@ -7,6 +7,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+from ares_mapper.adapters.unitree.channel_factory import ensure_channel_factory
 from ares_mapper.config import PoseProviderConfig
 from ares_mapper.core.clock import SimulationClock
 from ares_mapper.core.health import mark_sample, mark_stopped
@@ -52,19 +53,12 @@ class UnitreeSdk2PoseSource:
         self._health.state = HealthState.STARTING
         loop = asyncio.get_running_loop()
         try:
-            from unitree_sdk2py.core.channel import (
-                ChannelFactoryInitialize,
-                ChannelSubscriber,
-            )
+            from unitree_sdk2py.core.channel import ChannelSubscriber
             from unitree_sdk2py.idl.unitree_go.msg.dds_ import (
                 SportModeState_,
             )
 
-            await asyncio.to_thread(
-                ChannelFactoryInitialize,
-                self.domain_id,
-                self.network_interface,
-            )
+            await ensure_channel_factory(self.domain_id, self.network_interface)
             subscriber = ChannelSubscriber(self.topic, SportModeState_)
 
             def callback(message: Any) -> None:

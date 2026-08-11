@@ -14,6 +14,7 @@ from typing import Any
 from ares_mapper.adapters.fs5000.source import FS5000SerialSource
 from ares_mapper.adapters.unitree.ros2_tf_source import Ros2TfPoseSource
 from ares_mapper.adapters.unitree.sdk2_source import UnitreeSdk2PoseSource
+from ares_mapper.adapters.unitree.sport_commander import Go2SportCommander
 from ares_mapper.config import (
     IOE_INVESTIGATION_EQUIVALENT_RATE_USV_H,
     IOE_LIMIT_EQUIVALENT_RATE_USV_H,
@@ -80,6 +81,7 @@ class MissionController:
         self.map_service: MapService | None = None
         self.synchronizer: TemporalSynchronizer | None = None
         self.pose_source: PoseSource | None = None
+        self.sport_commander: Go2SportCommander | None = None
         self.radiation_sources: list[RadiationSource] = []
         self.latest_pose: PoseSample | None = None
         self.latest_radiation: RadiationSample | None = None
@@ -235,6 +237,7 @@ class MissionController:
                 buffer_duration_s=self.scenario.cadence.maximum_pose_history_s,
                 detectors={detector.sensor_id: detector for detector in self.scenario.detectors},
             )
+            self.sport_commander = None
             if self.scenario.pose.provider in {"manual_sim", "simulated"}:
                 self.pose_source = SimulatedPoseSource(
                     self.scenario.odometry,
@@ -250,6 +253,10 @@ class MissionController:
                     self.scenario.pose.topic,
                     config=self.scenario.pose,
                     clock=self.clock,
+                )
+                self.sport_commander = Go2SportCommander(
+                    self.scenario.pose.network_interface,
+                    self.scenario.pose.domain_id,
                 )
             elif self.scenario.pose.provider == "ros_tf":
                 self.pose_source = Ros2TfPoseSource(
@@ -311,6 +318,8 @@ class MissionController:
                 started_utc_ns=self._started_utc_ns,
             )
             await self.pose_source.start(context)
+            if self.sport_commander is not None:
+                await self.sport_commander.start()
             for source in self.radiation_sources:
                 await source.start(context)
             self.state = MissionState.RUNNING
@@ -363,6 +372,9 @@ class MissionController:
             await self.pose_source.stop()
         for source in self.radiation_sources:
             await source.stop()
+        if self.sport_commander is not None:
+            await self.sport_commander.stop()
+            await self.sport_commander.close()
         if self.clock is not None and self.clock.paused:
             await self.clock.resume()
         await self._publish_state()
@@ -530,23 +542,32 @@ class MissionController:
         linear_m_s: float,
         yaw_rate_rad_s: float,
     ) -> ScenarioEvent:
-        if self.trajectory is None or self.mission_id is None:
-            raise RuntimeError("start the mission before moving the simulated Go2")
-        if self.scenario.trajectory.type != "manual" or self.scenario.pose.provider not in {
-            "manual_sim",
-            "simulated",
-        }:
-            raise RuntimeError("the loaded scenario is not configured for manual control")
+        if self.mission_id is None:
+            raise RuntimeError("start the mission before moving the Go2")
+        provider = self.scenario.pose.provider
         old = dict(self._manual_command)
         command = {
             "linear_m_s": float(linear_m_s),
             "yaw_rate_rad_s": float(yaw_rate_rad_s),
         }
-        self.trajectory.set_manual_command(
-            self.current_time_ns / 1_000_000_000,
-            command["linear_m_s"],
-            command["yaw_rate_rad_s"],
-        )
+        if provider == "unitree_sportmode":
+            if self.sport_commander is None:
+                raise RuntimeError("real teleop is not available for this mission")
+            await self.sport_commander.send(
+                command["linear_m_s"], command["yaw_rate_rad_s"]
+            )
+        elif provider in {"manual_sim", "simulated"} and (
+            self.scenario.trajectory.type == "manual"
+        ):
+            if self.trajectory is None:
+                raise RuntimeError("start the mission before moving the simulated Go2")
+            self.trajectory.set_manual_command(
+                self.current_time_ns / 1_000_000_000,
+                command["linear_m_s"],
+                command["yaw_rate_rad_s"],
+            )
+        else:
+            raise RuntimeError("the loaded scenario is not configured for manual control")
         self._manual_command = command
         event = ScenarioEvent(
             mission_id=self.mission_id,
@@ -777,6 +798,8 @@ class MissionController:
             await self.pose_source.stop()
         for source in self.radiation_sources:
             await source.stop()
+        if self.sport_commander is not None:
+            await self.sport_commander.stop()
 
     async def _consume_pose(self) -> None:
         assert self.pose_source is not None
