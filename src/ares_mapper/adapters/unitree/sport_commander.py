@@ -79,23 +79,25 @@ class Go2SportCommander:
     async def send(self, linear_m_s: float, yaw_rate_rad_s: float) -> None:
         if self._client is None:
             raise RuntimeError("sport commander not started")
+        # Halting uses Move(0,0,0), not StopMove: StopMove is a blocking RPC
+        # that waits for a robot reply and stalls up to the SDK timeout when the
+        # reply is lost, holding the command lock and backing up the teleop
+        # stream. Move (including zero velocity) is fire-and-forget, so a zero
+        # command stops locomotion instantly while keeping the robot ready.
         async with self._command_lock:
             try:
-                if linear_m_s == 0.0 and yaw_rate_rad_s == 0.0:
-                    await asyncio.to_thread(self._client.StopMove)
-                else:
-                    await asyncio.to_thread(
-                        self._client.Move,
-                        float(linear_m_s),
-                        0.0,
-                        float(yaw_rate_rad_s),
-                    )
+                await asyncio.to_thread(
+                    self._client.Move,
+                    float(linear_m_s),
+                    0.0,
+                    float(yaw_rate_rad_s),
+                )
             except Exception as exc:
                 self._health.state = HealthState.FAULT
                 self._health.last_error_code = type(exc).__name__
                 self._health.last_error_message = str(exc)
                 with suppress(Exception):
-                    await asyncio.to_thread(self._client.StopMove)
+                    await asyncio.to_thread(self._client.Move, 0.0, 0.0, 0.0)
                 raise
 
     async def stop(self) -> None:
@@ -103,7 +105,7 @@ class Go2SportCommander:
             return
         async with self._command_lock:
             try:
-                await asyncio.to_thread(self._client.StopMove)
+                await asyncio.to_thread(self._client.Move, 0.0, 0.0, 0.0)
             except Exception as exc:  # keep teardown resilient
                 self._health.last_error_code = type(exc).__name__
                 self._health.last_error_message = str(exc)

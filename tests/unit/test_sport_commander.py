@@ -47,13 +47,16 @@ class ConcurrencyTrackingSportClient:
 
 class RaisingSportClient:
     def __init__(self) -> None:
-        self.stop_calls = 0
+        self.halt_calls = 0
 
     def Move(self, vx: float, vy: float, vyaw: float) -> None:
+        if vx == 0.0 and vy == 0.0 and vyaw == 0.0:
+            self.halt_calls += 1
+            return
         raise RuntimeError("move failed")
 
     def StopMove(self) -> None:
-        self.stop_calls += 1
+        raise AssertionError("StopMove must not be used on the hot path")
 
 
 def _commander_with_client() -> tuple[Go2SportCommander, FakeSportClient]:
@@ -76,17 +79,18 @@ async def test_yaw_command_maps_to_vyaw() -> None:
     assert client.moves == [(0.0, 0.0, 0.9)]
 
 
-async def test_zero_command_calls_stopmove_not_move() -> None:
+async def test_zero_command_halts_via_zero_move() -> None:
     commander, client = _commander_with_client()
     await commander.send(0.0, 0.0)
-    assert client.moves == []
-    assert client.stop_calls == 1
+    assert client.moves == [(0.0, 0.0, 0.0)]
+    assert client.stop_calls == 0
 
 
-async def test_stop_calls_stopmove() -> None:
+async def test_stop_halts_via_zero_move() -> None:
     commander, client = _commander_with_client()
     await commander.stop()
-    assert client.stop_calls == 1
+    assert client.moves == [(0.0, 0.0, 0.0)]
+    assert client.stop_calls == 0
 
 
 async def test_start_initializes_channel_and_client() -> None:
@@ -127,7 +131,7 @@ async def test_send_calls_are_serialized_never_concurrent() -> None:
     assert client.max_concurrent == 1
 
 
-async def test_send_error_attempts_stopmove_before_reraising() -> None:
+async def test_send_error_attempts_halt_before_reraising() -> None:
     client = RaisingSportClient()
     commander = Go2SportCommander("lo", 0, client_factory=lambda: client)
     commander._client = client  # noqa: SLF001
@@ -135,5 +139,5 @@ async def test_send_error_attempts_stopmove_before_reraising() -> None:
     with pytest.raises(RuntimeError, match="move failed"):
         await commander.send(0.45, 0.0)
 
-    assert client.stop_calls == 1
+    assert client.halt_calls == 1
     assert commander.health().state is HealthState.FAULT
