@@ -80,7 +80,7 @@ function mapBounds() {
 // Auto-zoom: enquadra o robô e os pontos medidos, para que a representação não
 // fique minúscula quando os limites do mundo são amplos. mapBounds() continua
 // sendo os limites reais do mundo (usado na validação e como teto do zoom).
-const VIEW_MIN_SPAN_M = 6;
+const VIEW_MIN_SPAN_M = 16;
 const VIEW_PADDING = 0.18;
 const VIEW_SMOOTH_ALPHA = 0.15;
 
@@ -108,11 +108,11 @@ function viewTargetBounds() {
   const worldWidth = Math.max(1e-6, world.x_max - world.x_min);
   const worldHeight = Math.max(1e-6, world.y_max - world.y_min);
   const spanX = Math.min(
-    Math.max(xMax - xMin, VIEW_MIN_SPAN_M) * (1 + VIEW_PADDING * 2),
+    Math.max((xMax - xMin) * (1 + VIEW_PADDING * 2), VIEW_MIN_SPAN_M),
     worldWidth,
   );
   const spanY = Math.min(
-    Math.max(yMax - yMin, VIEW_MIN_SPAN_M) * (1 + VIEW_PADDING * 2),
+    Math.max((yMax - yMin) * (1 + VIEW_PADDING * 2), VIEW_MIN_SPAN_M),
     worldHeight,
   );
   const clamp = (center, span, lo, hi) =>
