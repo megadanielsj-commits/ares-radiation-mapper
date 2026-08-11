@@ -1034,11 +1034,11 @@ function currentCommand() {
   };
 }
 
-async function sendCurrentCommand() {
+async function sendCurrentCommand(force = false) {
   if (state.missionState !== "RUNNING") return;
   const command = currentCommand();
   const signature = `${command.linear_m_s}:${command.yaw_rate_rad_s}`;
-  if (signature === state.lastCommand) return;
+  if (!force && signature === state.lastCommand) return;
   state.lastCommand = signature;
   try {
     await api("/mission/control", {
@@ -1080,6 +1080,13 @@ function bindKeyboard() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stopRobot();
   });
+  // Reenvia o comando de velocidade enquanto a tecla fica pressionada. O Go2
+  // para sozinho se o Move não for renovado (watchdog do serviço de esporte),
+  // então mantemos ~10 Hz enquanto houver tecla ativa. Ao soltar, o keyup já
+  // envia 0,0 (StopMove) e este laço fica ocioso.
+  setInterval(() => {
+    if (state.pressedKeys.size > 0) void sendCurrentCommand(true);
+  }, 100);
 }
 
 function nearestIndex(values, target) {
