@@ -104,6 +104,9 @@ async def test_start_initializes_channel_and_client() -> None:
     await commander.start()
     assert init_calls == [(0, "lo")]
     assert commander.health().state is HealthState.HEALTHY
+    # start() primes the API/lease handshake with zero-velocity Move calls so
+    # the first real user command is not delayed.
+    assert client.moves == [(0.0, 0.0, 0.0)] * 3
     channel_factory._reset_for_tests()  # noqa: SLF001
 
 

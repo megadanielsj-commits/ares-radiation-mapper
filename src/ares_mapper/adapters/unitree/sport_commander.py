@@ -12,6 +12,10 @@ from ares_mapper.core.health import mark_stopped
 from ares_mapper.domain.enums import HealthState
 from ares_mapper.domain.models import SourceHealth
 
+# Number of zero-velocity warm-up Move calls issued at startup to absorb the
+# one-time blocking API/lease handshake (~1 s each for the first calls).
+_PRIME_CALLS = 3
+
 
 def _default_client_factory() -> Any:
     from unitree_sdk2py.go2.sport.sport_client import SportClient
@@ -50,12 +54,27 @@ class Go2SportCommander:
                 initializer=self._channel_initializer,
             )
             self._client = await asyncio.to_thread(self._client_factory)
+            await self._prime()
             self._health.state = HealthState.HEALTHY
         except Exception as exc:
             self._health.state = HealthState.FAULT
             self._health.last_error_code = type(exc).__name__
             self._health.last_error_message = str(exc)
             raise
+
+    async def _prime(self) -> None:
+        """Warm up the SportClient API/lease handshake.
+
+        The first one or two SportClient RPCs block ~1 s each while the sport
+        service registers the API and grants the lease. Doing that here with a
+        zero-velocity Move (the robot does not move) keeps the first real user
+        command off that blocking path, so teleop is not stalled on first press.
+        """
+        for _ in range(_PRIME_CALLS):
+            try:
+                await asyncio.to_thread(self._client.Move, 0.0, 0.0, 0.0)
+            except Exception:  # priming is best-effort; real errors surface on use
+                return
 
     async def send(self, linear_m_s: float, yaw_rate_rad_s: float) -> None:
         if self._client is None:
