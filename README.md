@@ -79,6 +79,15 @@ O perfil real:
 Abra [http://127.0.0.1:8000](http://127.0.0.1:8000). Para encerrar qualquer
 modo, pressione `Ctrl+C` no terminal.
 
+### Teleop do Go2 real pela interface
+
+No modo real (`./ares hardware` ou `./ares-go2-only`), as setas do teclado na
+interface comandam o Go2 físico: `↑/↓` avançam/recuam, `←/→` giram. Soltar a
+tecla, tirar o foco da janela ou parar a missão envia `StopMove`. O robô deve
+ser levantado antes pelo controle oficial (ARES não faz bring-up). **Garanta
+área livre e mantenha o controle oficial à mão para parada de emergência: a
+primeira tecla move o robô de verdade.**
+
 ## Comandos Docker equivalentes
 
 O script `./ares` é apenas um iniciador com verificações e mensagens claras. Os
