@@ -821,6 +821,12 @@ class MapService:
         summaries = [tracker.summary for tracker in self.exposure_trackers.values()]
         if not summaries:
             return ExposureSummary()
+        reported_doses = [item.reported_cumulative_dose_uSv for item in summaries]
+        reported_total = (
+            sum(value for value in reported_doses if value is not None)
+            if all(value is not None for value in reported_doses)
+            else None
+        )
         return ExposureSummary(
             cumulative_detector_dose_uSv=sum(
                 item.cumulative_detector_dose_uSv for item in summaries
@@ -828,9 +834,7 @@ class MapService:
             cumulative_robot_path_dose_uSv=sum(
                 item.cumulative_robot_path_dose_uSv for item in summaries
             ),
-            reported_cumulative_dose_uSv=sum(
-                item.reported_cumulative_dose_uSv for item in summaries
-            ) if all(item.reported_cumulative_dose_uSv is not None for item in summaries) else None,
+            reported_cumulative_dose_uSv=reported_total,
             cumulative_closure_error_uSv=sum(
                 item.cumulative_closure_error_uSv for item in summaries
             ),

@@ -4,46 +4,60 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from collections.abc import AsyncIterator
+from typing import TextIO
 
+from ares_mapper.config import DetectorConfig
+from ares_mapper.core.clock import SimulationClock
 from ares_mapper.core.health import mark_sample, mark_stopped
 from ares_mapper.domain.enums import HealthState, Quality
-from ares_mapper.domain.models import RadiationSample, SourceHealth
+from ares_mapper.domain.models import RadiationSample, RunContext, SourceHealth
 
 
 class RadiacodeJsonlSource:
-    def __init__(self, config, clock, duration_s):
+    def __init__(
+        self, config: DetectorConfig, clock: SimulationClock, duration_s: float
+    ) -> None:
         self.config, self.clock, self.duration_s = config, clock, duration_s
         self._health = SourceHealth(source_id=config.sensor_id)
         self._stop = asyncio.Event()
-        self._stream = None
-        self._context = None
+        self._stream: TextIO | None = None
+        self._context: RunContext | None = None
         self._last_receive_ns = time.monotonic_ns()
 
-    async def start(self, context):
+    async def start(self, context: RunContext) -> None:
         self._context = context
         self._stop.clear()
         if self.clock.speed != 1.0:
             raise ValueError("Aquisição real exige velocidade 1x")
+        if self.config.live_jsonl_path is None:
+            raise ValueError("Informe o arquivo JSONL do leitor USB")
         self._stream = self.config.live_jsonl_path.open(encoding="utf-8")
         # Old records remain in the recorder's files; never position them at 'now'.
         self._stream.seek(0, 2)
         self._health.state = HealthState.STARTING
         self._last_receive_ns = time.monotonic_ns()
 
-    async def samples(self):
-        previous_time = None
-        previous_session = None
+    async def samples(self) -> AsyncIterator[RadiationSample]:
+        if self._context is None or self._stream is None:
+            raise RuntimeError("O leitor JSONL precisa ser iniciado")
+        context = self._context
+        stream = self._stream
+        previous_time: int | None = None
+        previous_session: str | None = None
         while not self._stop.is_set():
             if self.clock.timeline_time_ns() >= self.duration_s * 1e9:
                 break
-            position = self._stream.tell()
-            line = self._stream.readline()
+            position = stream.tell()
+            line = stream.readline()
             if not line.endswith("\n"):
-                self._stream.seek(position)
+                stream.seek(position)
                 if time.monotonic_ns() - self._last_receive_ns > 5_000_000_000:
                     self._health.state = HealthState.DISCONNECTED
                     self._health.last_error_code = "NO_RECENT_USB_DATA"
-                    self._health.last_error_message = "Sem leitura USB recente; conferir terminal do leitor"
+                    self._health.last_error_message = (
+                        "Sem leitura USB recente; conferir terminal do leitor"
+                    )
                 await asyncio.sleep(0.05)
                 continue
             try:
@@ -60,7 +74,7 @@ class RadiacodeJsonlSource:
                 if age_ns < 0 or age_ns > 5_000_000_000 or timeline <= 0:
                     self._health.dropped_count += 1
                     continue
-                session = row["session_id"]
+                session = str(row["session_id"])
                 if previous_session not in (None, session):
                     raise ValueError("Sessão do leitor mudou: reinicie o painel")
                 previous_session = session
@@ -73,9 +87,9 @@ class RadiacodeJsonlSource:
                     self._health.dropped_count += 1
                     continue
                 sample = RadiationSample(
-                    mission_id=self._context.mission_id,
+                    mission_id=context.mission_id,
                     sensor_id=self.config.sensor_id, sequence=int(row["sequence"]),
-                    time_domain_id=self._context.time_domain_id,
+                    time_domain_id=context.time_domain_id,
                     timeline_time_ns=timeline,
                     received_utc_ns=int(row["received_utc_ns"]),
                     received_monotonic_ns=receipt,
@@ -100,11 +114,11 @@ class RadiacodeJsonlSource:
                 self._health.last_error_message = str(exc)
         mark_stopped(self._health)
 
-    async def stop(self):
+    async def stop(self) -> None:
         self._stop.set()
         if self._stream is not None:
             self._stream.close()
         mark_stopped(self._health)
 
-    def health(self):
+    def health(self) -> SourceHealth:
         return self._health.model_copy(deep=True)

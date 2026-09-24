@@ -299,7 +299,9 @@ class MissionController:
                 elif detector.source_type == "radiacode_jsonl":
                     if self.scenario.pose.provider not in {"manual_sim", "simulated"}:
                         raise ValueError("USB test kit only permits virtual robot pose")
-                    source = RadiacodeJsonlSource(detector, self.clock, self.scenario.mission.duration_s)
+                    source = RadiacodeJsonlSource(
+                        detector, self.clock, self.scenario.mission.duration_s
+                    )
                 elif detector.source_type == "fs5000_serial":
                     source = FS5000SerialSource(
                         detector.serial_port,
@@ -759,7 +761,8 @@ class MissionController:
                 asyncio.create_task(self._stop_sources_at_duration(), name="duration-guard")
                 if self.scenario.pose.provider not in {"manual_sim", "simulated"}
                 or any(
-                    detector.source_type in {"fs5000_serial", "radiacode_jsonl"} for detector in self.scenario.detectors
+                    detector.source_type in {"fs5000_serial", "radiacode_jsonl"}
+                    for detector in self.scenario.detectors
                 )
                 else None
             )

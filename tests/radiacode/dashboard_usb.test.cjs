@@ -43,6 +43,7 @@ test("USB dashboard draws the Go2 after replacing the source setup panel", () =>
       addEventListener() {},
     },
     performance: {now: () => 0},
+    setInterval() {},
   };
   vm.createContext(sandbox);
   const source = fs.readFileSync(

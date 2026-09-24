@@ -1,14 +1,14 @@
 """Software-only tests: no real detector is claimed or required."""
 import argparse
 import asyncio
-from datetime import datetime, timedelta
 import importlib.util
 import json
-from pathlib import Path
 import time
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import pytest
-from radiacode import RealTimeData, RareData
+from radiacode import RareData, RealTimeData
 from radiacode.types import Spectrum
 
 from ares_mapper.config import ScenarioConfig
@@ -135,20 +135,26 @@ async def test_live_file_drives_virtual_robot_and_stops_cleanly(tmp_path):
 @pytest.mark.asyncio
 async def test_partial_lines_and_slow_consumer_preserve_receipt_time(tmp_path):
     from ares_mapper.adapters.radiacode_jsonl import RadiacodeJsonlSource
+    from ares_mapper.config import DetectorConfig
     from ares_mapper.core.clock import SimulationClock
     from ares_mapper.domain.models import RunContext
-    from ares_mapper.config import DetectorConfig
     path = tmp_path / "readings.jsonl"
     path.touch()
     clock = SimulationClock()
-    source = RadiacodeJsonlSource(DetectorConfig(source_type="radiacode_jsonl", live_jsonl_path=path), clock, 30)
+    source = RadiacodeJsonlSource(
+        DetectorConfig(source_type="radiacode_jsonl", live_jsonl_path=path),
+        clock,
+        30,
+    )
     await source.start(RunContext(mission_id="test", mode="test", time_domain_id="test", seed=1,
                                   started_utc_ns=time.time_ns()))
     await clock.resume()
     await asyncio.sleep(.1)
     receipt = time.monotonic_ns()
-    row = reader.measurement(RealTimeData(datetime.now(), 7.25, 12, .000012, 10, 0, 0),
-                             1, time.time_ns(), receipt, scale=10000, session_id="test", serial="TEST", status={})
+    row = reader.measurement(
+        RealTimeData(datetime.now(), 7.25, 12, .000012, 10, 0, 0),
+        1, time.time_ns(), receipt, scale=10000, session_id="test", serial="TEST", status={},
+    )
     iterator = source.samples()
     task = asyncio.create_task(anext(iterator))
     with path.open("a") as stream:
@@ -170,7 +176,9 @@ def test_missing_accumulated_dose_does_not_become_zero_or_gap_evidence():
     common = dict(mission_id="test", sensor_id="test", time_domain_id="test",
                   received_utc_ns=0, received_monotonic_ns=0, dose_rate_uSv_h=.12,
                   cumulative_dose_uSv=None)
-    first = RadiationSample(**common, sequence=1, timeline_time_ns=1, effective_measurement_time_ns=1)
+    first = RadiationSample(
+        **common, sequence=1, timeline_time_ns=1, effective_measurement_time_ns=1
+    )
     last = RadiationSample(**common, sequence=10, timeline_time_ns=10_000_000_000,
                            effective_measurement_time_ns=10_000_000_000)
     assert recover_cumulative_gap(first, last, .01) is None

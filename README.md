@@ -14,8 +14,8 @@ O iniciador público oferece somente dois modos completos:
 | `./ares simulation` | Go2 simulado | FS-5000 simulado |
 | `./ares hardware` | Unitree Go2 real | FS-5000 real |
 
-Não existe modo operacional com apenas um dos dois equipamentos reais. No modo
-`hardware`, Go2 e FS-5000 são verificados e iniciados juntos.
+O comando `./ares hardware` continua verificando Go2 e FS-5000 juntos.
+Os testes independentes do Go2 e do Radiacode têm iniciadores próprios.
 
 ## Requisitos
 
@@ -39,6 +39,35 @@ Na raiz do repositório:
 Abra [http://127.0.0.1:8000](http://127.0.0.1:8000), informe a posição e a
 intensidade da fonte, clique em **Iniciar** e mova o Go2 simulado pelas setas do
 teclado.
+
+### Fonte simulada sem Docker
+
+Com Python 3.10–3.12, também é possível iniciar o Go2 virtual com uma fonte
+radiológica simulada pelo próprio ARES:
+
+```bash
+bash 06_FONTE_SIMULADA.sh
+```
+
+Esse script prepara seu ambiente local na primeira execução, abre o painel
+em `http://127.0.0.1:8000` e não acessa nenhum detector USB. Escolha posição
+X/Y e intensidade em mSv/h a 1 metro, clique em **Iniciar mapeamento** e use
+as setas do teclado. Encerre com `Ctrl+C`.
+
+### Radiacode 110 por USB, independente da odometria
+
+Para registrar dados reais no Linux ou visualizá-los com o Go2 virtual:
+
+```bash
+bash 04_teste_usb.sh
+bash 05_robo_simulado_usb.sh
+```
+
+Antes da primeira execução, siga [`LEIA_PRIMEIRO_USB.md`](LEIA_PRIMEIRO_USB.md).
+O leitor USB grava CSV/JSONL em `resultados/` em um processo separado do
+painel e do Go2. O teste do mapa usa **posição virtual**, e a conversão da
+taxa de dose ainda precisa ser confrontada com o visor. Consulte a
+[documentação do módulo](docs/RADIACODE_110.md) para formatos e limites.
 
 ## 2. Rodar com Go2 e FS-5000
 
@@ -105,7 +134,7 @@ Requer Python 3.10 a 3.12:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[dev,fs5000]"
+python -m pip install -e ".[dev,fs5000,radiacode-usb]"
 ```
 
 Simulação:
@@ -130,6 +159,7 @@ para desenvolvimento, replay e validação, mas não faz parte da operação nor
 
 ```bash
 pytest
+node --test tests/radiacode/dashboard_usb.test.cjs
 ruff check src tests
 mypy src
 ```
@@ -137,16 +167,17 @@ mypy src
 O workflow em `.github/workflows/ci.yml` executa esses testes e também constrói
 as imagens de simulação e hardware a cada `push` ou `pull request`.
 
-## Publicar em um repositório novo
+## Preparar a integração no GitHub
 
 ```bash
-git init
-git add .
-git commit -m "Initial ARES Radiation Mapper release"
-git branch -M main
-git remote add origin URL_DO_REPOSITORIO
-git push -u origin main
+git switch feat/radiacode-independent
+git push -u origin feat/radiacode-independent
 ```
+
+Abra um pull request com base em `feat/go2-real-teleop` e comparação com
+`feat/radiacode-independent`. Essa branch conserva a teleop do CEIA; os
+scripts Radiacode não iniciam a odometria do robô físico. Arquivos de
+`resultados/` e o ambiente `.venv-radiacode/` ficam fora do Git.
 
 ## Estrutura principal
 
