@@ -283,6 +283,15 @@ function colorMinimum() {
 }
 
 function sourceRateForScaleUSvH() {
+  if (isUsbTest()) {
+    const measuredRate = Number(
+      state.radiation?.dose_rate_uSv_h
+        ?? state.mapped.at(-1)?.dose_rate_uSv_h_filtered,
+    );
+    // The USB scenario has no configured source. Scale the map from real
+    // measurements without consulting controls removed from the USB panel.
+    return Math.max(Number.isFinite(measuredRate) ? measuredRate : 0, 0.25);
+  }
   const inputRateMSvH = numberFromInput("source-strength");
   const inputRateUSvH = inputRateMSvH * microSievertsPerMilliSievert;
   return Math.max(
