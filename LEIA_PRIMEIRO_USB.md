@@ -1,5 +1,17 @@
 # ARES — primeiro teste USB do Radiacode 110
 
+## Executar o pacote corrigido com um comando
+
+O script `00_INICIAR_USB_CORRIGIDO.sh` procura uma instalação anterior com o nome
+`ARES_Radiacode_USB` e ambiente Python funcionando na pasta pessoal. Se a
+encontrar, atualiza apenas o painel e inicia o teste com Go2 virtual. Caso
+contrário, prepara esta pasta e inicia o mesmo teste. Encerre qualquer teste
+anterior com `Ctrl+C` antes de executá-lo.
+
+```bash
+bash 00_INICIAR_USB_CORRIGIDO.sh
+```
+
 Pacote preparado em 24/09/2026. Base: `ares-radiation-mapper`, commit
 `fcf4377be8ccfd86f7d56343c58b0fc342fd3cdc` (main, v0.4.10).
 Biblioteca do detector: `radiacode==0.4.0`.
