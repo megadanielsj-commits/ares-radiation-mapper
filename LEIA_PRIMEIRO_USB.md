@@ -2,11 +2,10 @@
 
 ## Executar o pacote corrigido com um comando
 
-O script `00_INICIAR_USB_CORRIGIDO.sh` procura uma instalação anterior com o nome
-`ARES_Radiacode_USB` e ambiente Python funcionando na pasta pessoal. Se a
-encontrar, atualiza apenas o painel e inicia o teste com Go2 virtual. Caso
-contrário, prepara esta pasta e inicia o mesmo teste. Encerre qualquer teste
-anterior com `Ctrl+C` antes de executá-lo.
+O script `00_INICIAR_USB_CORRIGIDO.sh` prepara o ambiente USB desta versão,
+quando necessário, e inicia o teste com Go2 virtual. Ele grava resultados nesta
+pasta, separadamente de instalações anteriores. Encerre qualquer teste anterior
+com `Ctrl+C` antes de executá-lo.
 
 ```bash
 bash 00_INICIAR_USB_CORRIGIDO.sh
