@@ -256,3 +256,22 @@ configuração, identificação, medições e espectro usam a API existente da b
 
 O README original do ARES está incluído para referência. Para este teste use os
 scripts numerados acima, pois os iniciadores originais têm outros modos de operação.
+
+## Versão com fonte simulada
+
+Para observar um gradiente conhecido, encerre primeiro o teste USB (`Ctrl+C`) e
+execute, na mesma pasta:
+
+```bash
+bash 06_FONTE_SIMULADA.sh
+```
+
+Esse modo não acessa o Radiacode. O painel mostra a fonte configurada, o Go2
+virtual e medições geradas pelo modelo do ARES. Escolha X, Y e a taxa da fonte
+**em mSv/h a 1 metro**, clique em **Iniciar mapeamento** e mova o Go2 pelas setas.
+Os resultados ficam em `data/missions/`. Os pontos e as cores nesse modo são
+sintéticos; compare com a execução USB somente como teste da interface.
+
+Para voltar à aquisição real, encerre a simulação (`Ctrl+C`) e execute
+`bash 05_robo_simulado_usb.sh`. Os dois modos devem ser executados um por vez
+quando usam a porta 8000.

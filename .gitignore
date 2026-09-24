@@ -1,4 +1,6 @@
 .venv/
+.venv-radiacode/
+resultados/
 .env
 __pycache__/
 *.py[cod]
