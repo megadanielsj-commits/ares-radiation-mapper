@@ -105,9 +105,9 @@ class RadiationSample(ContractModel):
     time_uncertainty_ns: int = 0
     effective_measurement_time_ns: int
     dose_rate_uSv_h: float
-    cumulative_dose_uSv: float = 0.0
-    cps: int | None = None
-    cpm: int | None = None
+    cumulative_dose_uSv: float | None = 0.0
+    cps: float | None = None
+    cpm: float | None = None
     average_dose_rate_uSv_h: float | None = None
     timer_s: int | None = None
     timed_dose_uSv: float | None = None
@@ -128,7 +128,9 @@ class RadiationSample(ContractModel):
 
     @field_validator("dose_rate_uSv_h", "cumulative_dose_uSv")
     @classmethod
-    def non_negative_finite(cls, value: float) -> float:
+    def non_negative_finite(cls, value: float | None) -> float | None:
+        if value is None:
+            return None
         if not math.isfinite(value) or value < 0:
             raise ValueError("radiological values must be finite and non-negative")
         return value
@@ -223,9 +225,9 @@ class MappedSample(ContractModel):
     sensor_yaw_rad: float
     dose_rate_uSv_h_raw: float
     dose_rate_uSv_h_filtered: float
-    cumulative_dose_uSv: float = 0.0
-    cps: int | None = None
-    cpm: int | None = None
+    cumulative_dose_uSv: float | None = 0.0
+    cps: float | None = None
+    cpm: float | None = None
     average_dose_rate_uSv_h: float | None = None
     timer_s: int | None = None
     timed_dose_uSv: float | None = None
@@ -327,7 +329,7 @@ class ExposureSummary(ContractModel):
     schema_version: str = "1.1"
     cumulative_detector_dose_uSv: float = 0.0
     cumulative_robot_path_dose_uSv: float = 0.0
-    reported_cumulative_dose_uSv: float = 0.0
+    reported_cumulative_dose_uSv: float | None = 0.0
     cumulative_closure_error_uSv: float = 0.0
     time_above_threshold_s: float = 0.0
     recovered_gap_count: int = 0

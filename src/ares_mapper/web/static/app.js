@@ -926,7 +926,16 @@ function updateReadings() {
   $("dose-rate-unit").textContent = rateDisplay.unit || "mSv/h";
   $("dose-total").textContent = formatNumber(doseDisplay.value, 5);
   $("dose-total-unit").textContent = doseDisplay.unit || "µSv";
-  $("sample-count").textContent = String(state.mapped.length);
+  $("sample-count").textContent = String(isUsbTest() ? (state.radiation?.sequence ?? 0) : state.mapped.length);
+  if (isUsbTest()) {
+    $("usb-cps").textContent = state.radiation?.cps == null ? "—" : Number(state.radiation.cps).toFixed(2);
+    const received = Number(state.radiation?.received_utc_ns ?? 0) / 1e6;
+    const age = received ? (Date.now() - received) / 1000 : Infinity;
+    const live = age < 5;
+    $("usb-age").textContent = received ? `${Math.max(0, age).toFixed(1)} s desde a leitura` : "Aguardando USB";
+    $("usb-age").style.color = live ? "#80e0c0" : "#ffb078";
+    if (!live) $("dose-rate").textContent = "—";
+  }
 }
 
 function updateStatus(payload) {
@@ -1050,7 +1059,12 @@ function validateSetup() {
   };
 }
 
+function isUsbTest() {
+  return state.scenario?.detectors?.some(d => d.source_type === "radiacode_jsonl");
+}
+
 async function startSimulation() {
+  if (isUsbTest()) return;
   let setup;
   try {
     setup = validateSetup();
@@ -1247,6 +1261,14 @@ async function initialise() {
         state.configuredSource?.dose_rate_at_1m_uSv_h ?? 10_000,
       ) / microSievertsPerMilliSievert,
     );
+    if (isUsbTest()) {
+      document.querySelector(".setup-panel").innerHTML = `<div class="section-heading"><p class="kicker">TESTE USB RADIACODE</p><h2>Radiação real · Go2 virtual</h2><p class="section-description">As coordenadas são simuladas. Este mapa testa o software e não representa a distribuição física da radiação.</p><p class="section-description">Taxa convertida provisoriamente: compare com o visor em µSv/h.</p><p>CPS: <b id="usb-cps">—</b></p><p id="usb-age">Aguardando USB</p><button id="start-button" hidden disabled></button><p id="action-message" class="status-message">Leitura iniciada pelo terminal. Use as setas para mover o robô virtual.</p></div>`;
+      document.querySelector(".secondary-readings article span").textContent = "Dose integrada no teste";
+      document.querySelector(".secondary-readings article:nth-child(2) small").textContent = "sequência de aquisição";
+      document.querySelector(".map-heading .kicker").textContent = "POSIÇÃO SIMULADA · SEM VALIDADE ESPACIAL";
+      document.querySelector(".public-reference").textContent = "Teste de software · cores relativas";
+      setInterval(updateReadings, 1000);
+    }
     acceptPose(fallbackPose(), true);
     const status = await api("/status");
     updateStatus(status);

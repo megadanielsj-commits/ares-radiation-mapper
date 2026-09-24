@@ -63,6 +63,8 @@ def observation_weights(
         delta_s = (
             current.effective_measurement_time_ns - previous.effective_measurement_time_ns
         ) / 1_000_000_000
+        if current.cumulative_dose_uSv is None or previous.cumulative_dose_uSv is None:
+            continue
         observed_delta = current.cumulative_dose_uSv - previous.cumulative_dose_uSv
         if delta_s <= 0 or observed_delta < 0:
             continue

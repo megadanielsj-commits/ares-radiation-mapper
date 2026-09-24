@@ -42,6 +42,8 @@ def recover_cumulative_gap(
     prevents ``D`` from duplicating the current ``DR``/count observation.
     """
 
+    if previous.cumulative_dose_uSv is None or current.cumulative_dose_uSv is None:
+        return None
     if previous.sensor_id != current.sensor_id:
         return None
     previous_end = previous.integration_end_time_ns or previous.effective_measurement_time_ns
@@ -101,6 +103,9 @@ class MissionExposureTracker:
         if previous is None:
             self._summary.audit_state = "BASELINE"
             return DoseAudit("BASELINE", path_integral_uSv=path_dose)
+        if sample.cumulative_dose_uSv is None or previous.cumulative_dose_uSv is None:
+            self._summary.audit_state = "CUMULATIVE_UNAVAILABLE"
+            return DoseAudit("CUMULATIVE_UNAVAILABLE", path_integral_uSv=path_dose)
         cumulative_delta = sample.cumulative_dose_uSv - previous.cumulative_dose_uSv
         if cumulative_delta < -self.quantization_uSv / 2.0:
             self._summary.reset_count += 1

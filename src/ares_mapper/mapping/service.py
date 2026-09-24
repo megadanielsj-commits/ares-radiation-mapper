@@ -830,7 +830,7 @@ class MapService:
             ),
             reported_cumulative_dose_uSv=sum(
                 item.reported_cumulative_dose_uSv for item in summaries
-            ),
+            ) if all(item.reported_cumulative_dose_uSv is not None for item in summaries) else None,
             cumulative_closure_error_uSv=sum(
                 item.cumulative_closure_error_uSv for item in summaries
             ),

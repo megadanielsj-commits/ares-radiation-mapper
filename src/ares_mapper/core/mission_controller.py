@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from ares_mapper.adapters.fs5000.source import FS5000SerialSource
+from ares_mapper.adapters.radiacode_jsonl import RadiacodeJsonlSource
 from ares_mapper.adapters.unitree.ros2_tf_source import Ros2TfPoseSource
 from ares_mapper.adapters.unitree.sdk2_source import UnitreeSdk2PoseSource
 from ares_mapper.adapters.unitree.sport_commander import Go2SportCommander
@@ -295,6 +296,10 @@ class MissionController:
                         self.clock,
                         self.scenario.mission.duration_s,
                     )
+                elif detector.source_type == "radiacode_jsonl":
+                    if self.scenario.pose.provider not in {"manual_sim", "simulated"}:
+                        raise ValueError("USB test kit only permits virtual robot pose")
+                    source = RadiacodeJsonlSource(detector, self.clock, self.scenario.mission.duration_s)
                 elif detector.source_type == "fs5000_serial":
                     source = FS5000SerialSource(
                         detector.serial_port,
@@ -332,6 +337,8 @@ class MissionController:
             return self.mission_id
 
     async def pause(self) -> None:
+        if any(d.source_type == "radiacode_jsonl" for d in self.scenario.detectors):
+            raise ValueError("O teste USB usa tempo real; encerre a missão em vez de pausar")
         if self.state != MissionState.RUNNING or self.clock is None:
             raise RuntimeError("only a running mission can be paused")
         await self.clock.pause()
@@ -355,6 +362,8 @@ class MissionController:
         return value
 
     async def set_speed(self, speed: float) -> None:
+        if any(d.source_type == "radiacode_jsonl" for d in self.scenario.detectors) and speed != 1:
+            raise ValueError("O teste USB exige velocidade 1x")
         if self.clock is None:
             self.scenario.mission.simulation_speed = speed
             return
@@ -750,7 +759,7 @@ class MissionController:
                 asyncio.create_task(self._stop_sources_at_duration(), name="duration-guard")
                 if self.scenario.pose.provider not in {"manual_sim", "simulated"}
                 or any(
-                    detector.source_type == "fs5000_serial" for detector in self.scenario.detectors
+                    detector.source_type in {"fs5000_serial", "radiacode_jsonl"} for detector in self.scenario.detectors
                 )
                 else None
             )

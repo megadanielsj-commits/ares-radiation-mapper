@@ -305,6 +305,7 @@ class DetectorConfig(ConfigModel):
     sensor_id: str = "simulated_fs5000"
     source_type: str = "simulated"
     replay_csv_path: Path | None = None
+    live_jsonl_path: Path | None = None
     serial_port: str = "auto"
     publish_rate_hz: float = 1.0
     transform_base_sensor: SensorTransformConfig = Field(default_factory=SensorTransformConfig)
@@ -370,6 +371,8 @@ class DetectorConfig(ConfigModel):
 
     @model_validator(mode="after")
     def replay_requires_path(self) -> DetectorConfig:
+        if self.source_type == "radiacode_jsonl" and self.live_jsonl_path is None:
+            raise ValueError("radiacode_jsonl requires live_jsonl_path")
         if self.source_type == "csv_replay" and self.replay_csv_path is None:
             raise ValueError("csv_replay detector requires replay_csv_path")
         return self
