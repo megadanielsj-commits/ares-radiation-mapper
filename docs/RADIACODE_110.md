@@ -63,3 +63,21 @@ python -m pip install -e '.[dev,fs5000,radiacode-usb]'
 pytest
 node --test tests/radiacode/dashboard_usb.test.cjs
 ```
+
+## Transferir a branch com o pacote Git
+
+O arquivo `ARES_Radiacode_GITHUB.bundle` contém a branch
+`feat/radiacode-independent` com histórico completo, baseada na branch
+`feat/go2-real-teleop` do CEIA. Em um clone Git do seu repositório, após baixar
+o bundle para `~/Downloads`:
+
+```bash
+git fetch ~/Downloads/ARES_Radiacode_GITHUB.bundle \
+  feat/radiacode-independent:feat/radiacode-independent
+git switch feat/radiacode-independent
+git push -u origin feat/radiacode-independent
+```
+
+No GitHub, abra o pull request com base em `feat/go2-real-teleop`. Os arquivos
+do ZIP de execução não incluem `.git`; use o bundle para preservar commits e
+autorizar a publicação pelo seu próprio clone.
