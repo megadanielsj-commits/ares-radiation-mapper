@@ -100,6 +100,29 @@ def test_no_data_and_disconnect_never_report_success(tmp_path):
     assert "device disconnected" in (tmp_path / "unplugged/error.txt").read_text()
 
 
+def test_repeated_buffered_measurement_cannot_mask_stalled_detector(tmp_path):
+    class RepeatsOldReading(FakeDevice):
+        def __init__(self, serial_number=None):
+            super().__init__(serial_number)
+            now = datetime.now()
+            self.old = [RealTimeData(now, 7.25, 12, .000012, 10, 0, 0),
+                        RealTimeData(now + timedelta(seconds=1), 8.25, 12, .000013, 10, 0, 0)]
+
+        def data_buf(self):
+            return self.old
+
+    settings = options(tmp_path / "stalled")
+    settings.seconds = .3
+    settings.no_data_timeout = .07
+    assert reader.run(settings, RepeatsOldReading) == 1
+    summary = json.loads((tmp_path / "stalled/summary.json").read_text())
+    assert summary["state"] == "error"
+    assert summary["fresh_measurements"] == 2
+    rows = [json.loads(x) for x in (tmp_path / "stalled/readings.jsonl").read_text().splitlines()]
+    assert len(rows) >= 4 and rows[2]["is_duplicate"] and rows[3]["is_duplicate"]
+    assert "Sem RealTimeData nova" in (tmp_path / "stalled/error.txt").read_text()
+
+
 @pytest.mark.asyncio
 async def test_live_file_drives_virtual_robot_and_stops_cleanly(tmp_path):
     readings = tmp_path / "readings.jsonl"

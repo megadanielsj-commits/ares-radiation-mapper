@@ -109,6 +109,7 @@ def run(args, device_factory=None):
     started = time.monotonic()
     deadline = started + args.seconds if args.seconds > 0 else float("inf")
     count = 0
+    fresh_count = 0
     result = "starting"
     device = None
     serial = None
@@ -152,7 +153,7 @@ def run(args, device_factory=None):
         save_json(out / "session.json", metadata)
         print(f"Conectado: {serial} | firmware {metadata['firmware']}", flush=True)
         status = {}
-        previous_key = None
+        newest_device_time = None
         last_sample = time.monotonic()
         next_spectrum = time.monotonic() + args.spectrum_interval
         result = "running"
@@ -170,24 +171,27 @@ def run(args, device_factory=None):
                     status = serializable(record)
                 if not isinstance(record, RealTimeData):
                     continue
-                key = (record.dt, record.count_rate, record.dose_rate)
+                duplicate = newest_device_time is not None and record.dt <= newest_device_time
                 count += 1
                 row = measurement(record, count, utc_ns, mono_ns, scale=args.dose_scale,
                                   session_id=session_id, serial=serial, status=status,
-                                  duplicate=(key == previous_key))
-                previous_key = key
+                                  duplicate=duplicate)
                 json_line(readings, row)
                 writer.writerow(row)
                 csvfile.flush()
-                last_sample = time.monotonic()
+                if not duplicate:
+                    newest_device_time = record.dt
+                    fresh_count += 1
+                    last_sample = time.monotonic()
                 print(f"{row['timestamp_utc']}  #{count}  "
                       f"DR≈{row['dose_rate_uSv_h']:.6g} µSv/h  "
                       f"CPS={row['cps']:.4g}  CPM*={row['cpm_derived']:.4g}  "
-                      f"raw={row['dose_rate_raw']:.8g}", flush=True)
-                if count == 1:
+                      f"raw={row['dose_rate_raw']:.8g}"
+                      f"{' (repetida)' if duplicate else ''}", flush=True)
+                if fresh_count == 1 and not duplicate:
                     print("PRIMEIRA LEITURA REAL RECEBIDA. CPM* = 60 × CPS.", flush=True)
             if time.monotonic() - last_sample > args.no_data_timeout:
-                raise TimeoutError(f"Sem RealTimeData por {args.no_data_timeout:g} s; consulte raw_records.jsonl")
+                raise TimeoutError(f"Sem RealTimeData nova por {args.no_data_timeout:g} s; consulte raw_records.jsonl")
             if args.spectrum_interval > 0 and time.monotonic() >= next_spectrum:
                 before = time.time_ns()
                 try:
@@ -210,8 +214,8 @@ def run(args, device_factory=None):
                     print(f"Espectro indisponível nesta consulta: {exc}", file=sys.stderr, flush=True)
                 next_spectrum = time.monotonic() + args.spectrum_interval
             time.sleep(args.poll)
-        if count == 0:
-            raise TimeoutError("Nenhuma leitura RealTimeData recebida")
+        if fresh_count == 0:
+            raise TimeoutError("Nenhuma leitura RealTimeData nova recebida")
         result = "stopped" if stopping else "completed"
         return 0
     except Exception as exc:
@@ -235,6 +239,7 @@ def run(args, device_factory=None):
             stream.close()
         lock.close()
         save_json(out / "summary.json", {"state": result, "measurements": count,
+                  "fresh_measurements": fresh_count,
                   "serial_number": serial, "elapsed_s": time.monotonic() - started,
                   "hardware_test": device_factory is None,
                   "dose_conversion_verified": False})

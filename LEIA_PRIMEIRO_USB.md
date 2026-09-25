@@ -144,6 +144,12 @@ Para coletar por cinco minutos:
 bash 04_teste_usb.sh --seconds 300
 ```
 
+Confira `summary.json` na pasta dessa execução: `state=completed` e
+`fresh_measurements>0` indicam que chegaram registros novos. Se o aparelho
+continuar devolvendo apenas a mesma leitura, o leitor grava as repetições com
+`is_duplicate=true` e termina com erro após o tempo sem leitura nova. Compare
+os horários e as taxas com o visor; essa revisão exige o detector físico.
+
 ## 5. Radiacode real com o robô simulado
 
 Espere o teste anterior terminar para liberar o detector e execute:
@@ -186,7 +192,7 @@ O teste do mapa cria também uma subpasta `detector` e outra `missions`.
 | `raw_records.jsonl` | Todos os registros decodificados retornados pela biblioteca, incluindo RawData, RareData e eventos |
 | `spectra.jsonl` | Contagens por canal, energia em keV, coeficientes e duração de cada espectro |
 | `events.jsonl` | Falhas de consulta de espectro |
-| `summary.json` | Estado final, número de leituras e duração |
+| `summary.json` | Estado final, total de registros, medições novas e duração |
 | `error.txt` | Exceção completa, se houver falha |
 | `dashboard.log` | Log do painel, no teste com Go2 virtual |
 

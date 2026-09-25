@@ -40,6 +40,9 @@ monotônico ficam em cada linha; espectros são snapshots acumulados. O cálculo
 como provisória nos arquivos (`dose_conversion_verified=false`); a dose
 acumulada do instrumento permanece em unidade bruta até comparação documentada
 com o visor. Nada disso depende da posição virtual.
+O resumo da sessão informa `fresh_measurements` para separar registros novos
+dos buffers repetidos. Uma sequência de registros repetidos não confirma uma
+aquisição ativa e faz o gravador falhar após o intervalo sem dados novos.
 
 O painel USB só usa coordenadas fictícias. Ele serve para verificar fluxo,
 latência aparente e desenho da interface; o gradiente espacial desse teste não

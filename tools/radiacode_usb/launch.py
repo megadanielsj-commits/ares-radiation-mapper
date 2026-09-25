@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import signal
 import socket
@@ -62,8 +63,12 @@ def main():
     parser.add_argument("--dose-scale", type=float, default=10000)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
-    if args.duration <= 0:
-        parser.error("duration deve ser positiva")
+    if not math.isfinite(args.duration) or args.duration <= 0:
+        parser.error("duration deve ser positiva e finita")
+    if not math.isfinite(args.dose_scale) or args.dose_scale <= 0:
+        parser.error("dose-scale deve ser positiva e finita")
+    if not 1 <= args.port <= 65535:
+        parser.error("port deve estar entre 1 e 65535")
     # Fail before opening USB if the HTTP port is already in use.
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", args.port))
