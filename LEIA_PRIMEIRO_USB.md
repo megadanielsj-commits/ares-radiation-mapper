@@ -2,6 +2,22 @@
 
 ## Executar o pacote corrigido com um comando
 
+Se preferir Docker Engine + Compose no Linux, use o repositório Git na branch
+`feat/radiacode-independent`. No host, confirme o USB com
+`bash 01_diagnostico_usb.sh`, configure a permissão com
+`bash 03_permissao_usb.sh` e reconecte o detector. Depois:
+
+```bash
+./ares radiacode-usb          # somente detector, 60 segundos
+./ares radiacode-dashboard    # detector real com Go2 virtual
+./ares fonte-simulada         # fonte simulada, sem detector
+```
+
+O Docker instala as dependências na imagem; nesse caminho não é necessário
+executar `02_preparar_ambiente.sh` no host. Os arquivos ficam em `resultados/`.
+Execute somente um dos modos USB por vez. O modo Docker USB depende da
+passagem do detector conectado à mesma máquina Linux que executa o Docker.
+
 O script `00_INICIAR_USB_CORRIGIDO.sh` prepara o ambiente USB desta versão,
 quando necessário, e inicia o teste com Go2 virtual. Ele grava resultados nesta
 pasta, separadamente de instalações anteriores. Encerre qualquer teste anterior

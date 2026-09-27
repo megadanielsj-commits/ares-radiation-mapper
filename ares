@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 usage() {
-    printf 'Uso: ./ares simulation | ./ares hardware\n'
+    printf 'Uso: ./ares simulation | ./ares hardware | ./ares fonte-simulada | ./ares radiacode-usb | ./ares radiacode-dashboard\n'
 }
 
 require_docker() {
@@ -22,6 +22,20 @@ require_docker
 case "$mode" in
     simulation)
         exec docker compose --profile simulation up --build --remove-orphans simulation
+        ;;
+    fonte-simulada)
+        exec docker compose --profile fonte-simulada up --build --remove-orphans fonte-simulada
+        ;;
+    radiacode-usb|radiacode-dashboard)
+        if [[ ! -d /dev/bus/usb ]]; then
+            printf 'USB não disponível em /dev/bus/usb. Conecte o Radiacode no Linux e rode bash 01_diagnostico_usb.sh.\n' >&2
+            exit 2
+        fi
+        mkdir -p resultados
+        export ARES_DOCKER_UID ARES_DOCKER_GID
+        ARES_DOCKER_UID="$(id -u)"
+        ARES_DOCKER_GID="$(id -g)"
+        exec docker compose --profile "$mode" up --build --remove-orphans "$mode"
         ;;
     hardware)
         if [[ ! -f .env ]]; then

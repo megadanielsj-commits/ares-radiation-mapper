@@ -58,3 +58,10 @@ jobs:
       - name: Build hardware image
         if: matrix.python-version == '3.12'
         run: docker build --target hardware -t ares-radiation-mapper:hardware-ci .
+      - name: Build Radiacode USB image and validate Compose
+        if: matrix.python-version == '3.12'
+        run: |
+          docker build --target radiacode -t ares-radiation-mapper:radiacode-ci .
+          docker run --rm --entrypoint python ares-radiation-mapper:radiacode-ci \
+            -c 'import radiacode, ares_mapper; print("Radiacode USB image ready")'
+          docker compose --profile radiacode-dashboard config --quiet

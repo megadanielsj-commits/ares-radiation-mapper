@@ -7,15 +7,20 @@ provável da fonte. A interface é acessada pelo navegador em
 
 ## Modos de execução
 
-O iniciador público oferece somente dois modos completos:
+O iniciador oferece os seguintes modos. Os testes do Radiacode não comandam o
+Go2 físico:
 
 | Comando | Posição | Radiação |
 |---|---|---|
 | `./ares simulation` | Go2 simulado | FS-5000 simulado |
 | `./ares hardware` | Unitree Go2 real | FS-5000 real |
+| `./ares fonte-simulada` | Go2 virtual | Fonte e detector simulados |
+| `./ares radiacode-usb` | Sem robô | Radiacode real por USB, 60 segundos |
+| `./ares radiacode-dashboard` | Go2 virtual | Radiacode real por USB |
 
 O comando `./ares hardware` continua verificando Go2 e FS-5000 juntos.
 Os testes independentes do Go2 e do Radiacode têm iniciadores próprios.
+Os três últimos modos também podem ser iniciados com Docker Compose.
 
 ## Requisitos
 
@@ -68,6 +73,27 @@ O leitor USB grava CSV/JSONL em `resultados/` em um processo separado do
 painel e do Go2. O teste do mapa usa **posição virtual**, e a conversão da
 taxa de dose ainda precisa ser confrontada com o visor. Consulte a
 [documentação do módulo](docs/RADIACODE_110.md) para formatos e limites.
+
+### Radiacode com Docker no Linux
+
+Na primeira vez, conecte o detector, rode `bash 01_diagnostico_usb.sh` e
+`bash 03_permissao_usb.sh` no computador (fora do contêiner). Reconecte o cabo
+após configurar a permissão. Feche o aplicativo ou outro leitor que esteja
+utilizando o USB. O Docker Engine com o plugin Compose deve estar instalado.
+
+```bash
+./ares radiacode-usb          # grava leituras por 60 s em resultados/
+./ares radiacode-dashboard    # USB real + Go2 virtual em http://127.0.0.1:8000
+./ares fonte-simulada         # fonte + detector simulados; dispensa USB
+```
+
+Execute um modo de cada vez e termine o painel com `Ctrl+C`. O Docker entrega
+`/dev/bus/usb` ao contêiner; o script usa o usuário atual para preservar a
+permissão dos arquivos em `resultados/`. O leitor USB continua em um processo
+separado do painel. Essa configuração foi preparada para Docker Engine em Linux;
+nenhum contêiner conecta automaticamente um USB de outra máquina ou de um
+servidor remoto. A montagem e o acesso ao USB precisam ser confirmados no
+computador que receberá o detector.
 
 ## 2. Rodar com Go2 e FS-5000
 
@@ -125,6 +151,8 @@ comandos equivalentes são:
 ```bash
 docker compose --profile simulation up --build simulation
 docker compose --profile hardware up --build hardware
+docker compose --profile fonte-simulada up --build fonte-simulada
+# Para os dois perfis USB, prefira ./ares: ele ajusta UID/GID e cria resultados/.
 ```
 
 ## Execução local para desenvolvimento
@@ -186,8 +214,8 @@ src/ares_mapper/       aplicação, adaptadores, mapa e estimador
 config/                 cenários de simulação e perfil Go2 + FS-5000
 tests/                  testes unitários e de integração
 Dockerfile              imagens de simulação e hardware
-compose.yaml            acesso à rede e ao USB
-ares                    troca simples entre os dois modos
+compose.yaml            acesso à rede e aos detectores USB
+ares                    iniciador de cada modo
 .env.example            configuração local do hardware
 ```
 

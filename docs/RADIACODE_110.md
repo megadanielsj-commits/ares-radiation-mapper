@@ -20,6 +20,23 @@ Para conferir um campo radiológico conhecido, sem detector conectado:
 bash 06_FONTE_SIMULADA.sh              # fonte simulada + pose virtual
 ```
 
+Com Docker Engine e Compose no Linux, após configurar a permissão no host com
+`bash 03_permissao_usb.sh` e reconectar o cabo, os modos equivalentes são:
+
+```bash
+./ares radiacode-usb          # leitor independente, 60 s
+./ares radiacode-dashboard    # leitura real + Go2 virtual
+./ares fonte-simulada         # campo simulado, sem USB
+```
+
+O painel Docker abre em `http://127.0.0.1:8000`; os arquivos de cada sessão
+ficam em `resultados/` no computador. `radiacode-usb` e `radiacode-dashboard`
+acessam o dispositivo conectado ao computador Linux que executa o Docker.
+O modo `fonte-simulada` simula o campo e o detector do ARES; não reproduz o
+firmware ou o protocolo USB do Radiacode. Não execute dois leitores USB ao
+mesmo tempo. O acesso USB em contêiner ainda requer validação com o aparelho
+físico no computador de destino.
+
 Na página da simulação configure a fonte e clique em **Iniciar mapeamento**.
 Use as setas para deslocar o Go2. Para comparar os modos, encerre um com
 `Ctrl+C` antes de iniciar o outro na mesma porta HTTP.

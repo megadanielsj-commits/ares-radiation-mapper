@@ -58,6 +58,7 @@ def stop_process(process):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--serial")
+    parser.add_argument("--host", default="127.0.0.1", help="Endereço do painel; 0.0.0.0 em Docker")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--duration", type=float, default=3600)
     parser.add_argument("--dose-scale", type=float, default=10000)
@@ -69,9 +70,14 @@ def main():
         parser.error("dose-scale deve ser positiva e finita")
     if not 1 <= args.port <= 65535:
         parser.error("port deve estar entre 1 e 65535")
+    # Docker Compose stops the container with SIGTERM. Let finally close both
+    # processes so the independent recorder can write its session summary.
+    def request_stop(_signal, _frame):
+        raise KeyboardInterrupt
+
     # Fail before opening USB if the HTTP port is already in use.
     with socket.socket() as probe:
-        probe.bind(("127.0.0.1", args.port))
+        probe.bind((args.host, args.port))
     name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:6]
     output = ROOT / "resultados" / name
     output.mkdir(parents=True)
@@ -84,6 +90,7 @@ def main():
     recorder = None
     dashboard = None
     log = None
+    previous_sigterm = signal.signal(signal.SIGTERM, request_stop)
     try:
         recorder = subprocess.Popen(command, cwd=ROOT, start_new_session=True)
         print("Aguardando a primeira leitura USB real antes de abrir o mapa...", flush=True)
@@ -108,7 +115,7 @@ def main():
                                            allow_unicode=True, sort_keys=False))
         log = (output / "dashboard.log").open("w")
         cmd = [str(Path(sys.executable).parent / "ares-map"), "run", "--scenario", str(scenario),
-               "--host", "127.0.0.1", "--port", str(args.port), "--auto-start"]
+               "--host", args.host, "--port", str(args.port), "--auto-start"]
         if args.no_browser:
             cmd += ["--no-open-browser"]
         dashboard = subprocess.Popen(cmd, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
@@ -136,6 +143,7 @@ def main():
         stop_process(dashboard)
         if log:
             log.close()
+        signal.signal(signal.SIGTERM, previous_sigterm)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 .git
 .github
 .venv
+.venv-radiacode
+resultados
 __pycache__
 *.py[cod]
 .pytest_cache

@@ -51,3 +51,17 @@ CMD ["--mode", "hardware", "--host", "0.0.0.0", "--no-open-browser"]
 
 
 FROM base AS simulation
+
+
+# USB access stays in its own image: the legacy FS-5000/Go2 profile is unchanged.
+FROM base AS radiacode
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libusb-1.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir '.[radiacode-usb]'
+COPY tools/radiacode_usb ./tools/radiacode_usb
+
+ENTRYPOINT ["bash", "/app/tools/radiacode_usb/docker-entrypoint.sh"]
+CMD ["record", "--seconds", "60"]

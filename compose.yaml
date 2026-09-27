@@ -33,3 +33,54 @@ services:
     volumes:
       - ./data/missions:/app/data/missions
     command: ["--mode", "hardware", "--host", "0.0.0.0", "--no-open-browser"]
+
+  fonte-simulada:
+    profiles: [fonte-simulada]
+    build:
+      context: .
+      target: simulation
+    image: ares-radiation-mapper:simulation
+    init: true
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data/missions:/app/data/missions
+    entrypoint: ["ares-map", "run"]
+    command: ["--scenario", "config/scenarios/static_source.yaml", "--host", "0.0.0.0", "--port", "8000", "--no-open-browser"]
+
+  radiacode-usb:
+    profiles: [radiacode-usb]
+    build:
+      context: .
+      target: radiacode
+    image: ares-radiation-mapper:radiacode
+    init: true
+    healthcheck:
+      disable: true
+    volumes:
+      - ./resultados:/app/resultados
+      - /dev/bus/usb:/dev/bus/usb
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"
+    entrypoint: ["bash", "/app/tools/radiacode_usb/docker-entrypoint.sh", "record"]
+    command: ["--seconds", "60"]
+
+  radiacode-dashboard:
+    profiles: [radiacode-dashboard]
+    build:
+      context: .
+      target: radiacode
+    image: ares-radiation-mapper:radiacode
+    init: true
+    stop_grace_period: 30s
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./resultados:/app/resultados
+      - /dev/bus/usb:/dev/bus/usb
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"
+    entrypoint: ["bash", "/app/tools/radiacode_usb/docker-entrypoint.sh", "dashboard"]
+    command: []
