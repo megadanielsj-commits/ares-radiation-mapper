@@ -18,13 +18,15 @@ def test_config_defaults():
     assert cfg.latencia_leitura_s == 0.5
     assert cfg.lacuna_pose_max_s == 0.5
     assert cfg.lado_area_m == 20.0
-    assert cfg.resolucao_estimador_m == 0.25
+    assert cfg.resolucao_estimador_m == 0.5
     assert cfg.resolucao_mapa_m == 0.5
     assert cfg.altura_fonte_m == 0.25
     assert cfg.vx_max == 0.5
     assert cfg.vy_max == 0.3
     assert cfg.vyaw_max == 1.0
     assert cfg.watchdog_s == 0.5
+    assert cfg.cps_por_usvh == 2.6
+    assert cfg.exposicao_s == 1.0
 
 
 def test_config_de_ambiente_le_variaveis():
@@ -74,6 +76,10 @@ def test_config_modo_invalido_levanta_valueerror():
         ("lado_area_m", 0.0),
         ("resolucao_estimador_m", -0.1),
         ("resolucao_mapa_m", 0.0),
+        ("cps_por_usvh", 0.0),
+        ("cps_por_usvh", -2.6),
+        ("exposicao_s", 0.0),
+        ("exposicao_s", -1.0),
         ("vx_max", 0.0),
         ("vy_max", -0.5),
         ("vyaw_max", 0.0),

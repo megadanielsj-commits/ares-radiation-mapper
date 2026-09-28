@@ -378,3 +378,79 @@ def test_detector_dose_independe_do_periodo_amostragem(periodo_s):
         f"dose acumulada={dose_acumulada:.6f} µSv, "
         f"esperada={dose_esperada_usv:.6f} µSv"
     )
+
+
+# --- DetectorSimulado imitando o FS-5000 (CPS Poisson + DR média móvel) ------
+
+
+def _autocorr_passo1(valores):
+    import numpy as np
+
+    v = np.asarray(valores, dtype=float)
+    v = v - v.mean()
+    return float(np.sum(v[1:] * v[:-1]) / np.sum(v * v))
+
+
+@pytest.mark.parametrize("periodo_s", [0.01, 1.0])
+def test_detector_cps_e_contagem_poisson_de_1s(periodo_s):
+    """CPS é uma contagem Poisson de 1 s (média k·taxa), qualquer que seja o período."""
+    import numpy as np
+
+    fundo_usvh = 2.0
+    k = 2.6
+    campo = CampoRadiacao(fundo_usvh=fundo_usvh)
+    detector = _detector_fixo(campo, periodo_s=periodo_s, cps_por_usvh=k, semente=11)
+
+    cps = []
+    detector.assinar(lambda leitura: cps.append(leitura.cps))
+    for _ in range(20000):
+        detector._amostrar()
+
+    cps = np.asarray(cps, dtype=float)
+    media = cps.mean()
+    assert media == pytest.approx(k * fundo_usvh, rel=0.03)
+    assert cps.var() / media == pytest.approx(1.0, abs=0.05)
+    assert abs(_autocorr_passo1(cps)) < 0.05
+    assert all(isinstance(c, int) and c >= 0 for c in cps.astype(int).tolist())
+
+
+def test_detector_dr_e_media_movel_autocorrelacionada():
+    """DR é média móvel de 30 s (padrão) das contagens: suave e atrasado."""
+    import numpy as np
+
+    fundo_usvh = 0.17
+    k = 2.6
+    campo = CampoRadiacao(fundo_usvh=fundo_usvh)
+    detector = _detector_fixo(campo, cps_por_usvh=k, semente=12)
+
+    leituras = []
+    detector.assinar(leituras.append)
+    for _ in range(3000):
+        detector._amostrar()
+
+    dr = np.asarray([leitura.dr_usvh for leitura in leituras[30:]])
+    assert dr.mean() == pytest.approx(fundo_usvh, rel=0.1)
+    assert _autocorr_passo1(dr) > 0.9
+
+
+def test_detector_dr_e_cpm_consistentes_com_janela_de_cps():
+    campo = CampoRadiacao(fundo_usvh=0.5)
+    k = 2.6
+    detector = _detector_fixo(campo, cps_por_usvh=k, janela_s=4.0, semente=13)
+
+    leituras = []
+    detector.assinar(leituras.append)
+    for _ in range(50):
+        detector._amostrar()
+
+    for i in range(3, len(leituras)):
+        janela = [leitura.cps for leitura in leituras[i - 3 : i + 1]]
+        dr_esperado = sum(janela) / 4.0 / k
+        assert leituras[i].dr_usvh == pytest.approx(dr_esperado)
+        assert leituras[i].cpm == round(leituras[i].dr_usvh * k * 60.0)
+
+
+def test_detector_janela_padrao_e_30s():
+    campo = CampoRadiacao(fundo_usvh=0.2)
+    detector = _detector_fixo(campo, semente=14)
+    assert detector._janela.maxlen == 30

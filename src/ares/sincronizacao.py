@@ -139,6 +139,7 @@ class Sincronizador:
             y=y + ry,
             dr_usvh=leitura.dr_usvh,
             cpm=leitura.cpm,
+            cps=leitura.cps,
             lacuna_pose_s=lacuna,
         )
 

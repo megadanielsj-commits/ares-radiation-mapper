@@ -46,6 +46,7 @@ def test_amostra_campos_e_imutavel():
         y=3.4,
         dr_usvh=0.12,
         cpm=340,
+        cps=6,
         lacuna_pose_s=0.05,
     )
 
@@ -54,6 +55,7 @@ def test_amostra_campos_e_imutavel():
     assert amostra.y == 3.4
     assert amostra.dr_usvh == 0.12
     assert amostra.cpm == 340
+    assert amostra.cps == 6
     assert amostra.lacuna_pose_s == 0.05
 
     with pytest.raises(dataclasses.FrozenInstanceError):

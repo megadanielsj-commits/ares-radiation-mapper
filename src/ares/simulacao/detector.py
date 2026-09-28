@@ -14,15 +14,22 @@ logger = logging.getLogger(__name__)
 
 
 class DetectorSimulado:
-    """Detector simulado (implementa o Protocol `FonteRadiacao`).
+    """Detector simulado (implementa o Protocol `FonteRadiacao`) que imita o FS-5000.
 
-    A cada `periodo_s`, sorteia uma contagem Poisson com taxa esperada
-    `campo.taxa(x, y) * cps_por_usvh` para o período, usando a posição
-    corrente devolvida por `posicao_detector()` (ou pula o período se ela for
-    `None`, ex.: pose do robô ainda não chegou). Mantém uma janela móvel das
-    últimas contagens (tamanho `janela_s / periodo_s`) para estimar a taxa de
-    dose (`dr_usvh`) e as contagens por minuto (`cpm`), e acumula a dose
-    total (`dose_usv`).
+    A cada `periodo_s`, usando a posição corrente devolvida por
+    `posicao_detector()` (ou pulando o período se ela for `None`, ex.: pose do
+    robô ainda não chegou):
+
+    - `cps`: contagem Poisson independente de 1 s com média
+      `campo.taxa(x, y) * cps_por_usvh`. É sempre uma contagem de 1 s, mesmo
+      com `periodo_s` ≠ 1 (períodos curtos só aceleram os testes);
+    - `dr_usvh`: média móvel das últimas `janela_s / periodo_s` contagens
+      dividida por `cps_por_usvh` — suave e atrasada como o DR do aparelho
+      real (média de ~30 s, autocorrelação alta entre leituras seguidas);
+    - `cpm`: `round(dr_usvh * cps_por_usvh * 60)`, isto é, a mesma média
+      móvel expressa em contagens por minuto;
+    - `dose_usv`: acumulada com `cps * periodo_s / (cps_por_usvh * 3600)`,
+      cuja média é `taxa * periodo_s / 3600` (independe do período).
     """
 
     def __init__(
@@ -31,7 +38,7 @@ class DetectorSimulado:
         posicao_detector: Callable[[], Optional[Tuple[float, float]]],
         periodo_s: float = 1.0,
         cps_por_usvh: float = 2.6,
-        janela_s: float = 5.0,
+        janela_s: float = 30.0,
         semente: Optional[int] = None,
         detector_id: str = "sim-1",
     ) -> None:
@@ -89,15 +96,13 @@ class DetectorSimulado:
 
         x, y = posicao
         taxa_usvh = self._campo.taxa(x, y)
-        media_contagem = max(0.0, taxa_usvh * self._cps_por_usvh * self._periodo_s)
-        contagem = int(self._rng.poisson(media_contagem))
-        self._janela.append(contagem)
+        media_cps = max(0.0, taxa_usvh * self._cps_por_usvh)
+        cps = int(self._rng.poisson(media_cps))
+        self._janela.append(cps)
 
-        contagens_janela = sum(self._janela)
-        dr_usvh = contagens_janela / (self._janela_s * self._cps_por_usvh)
-        cps = round(dr_usvh * self._cps_por_usvh)
+        dr_usvh = sum(self._janela) / (len(self._janela) * self._cps_por_usvh)
         cpm = round(dr_usvh * self._cps_por_usvh * 60.0)
-        self._dose_usv += contagem / (self._cps_por_usvh * 3600.0)
+        self._dose_usv += cps * self._periodo_s / (self._cps_por_usvh * 3600.0)
 
         leitura = Leitura(
             ts=time.time(),

@@ -33,4 +33,5 @@ class Amostra:
     y: float
     dr_usvh: float
     cpm: int
+    cps: int
     lacuna_pose_s: float

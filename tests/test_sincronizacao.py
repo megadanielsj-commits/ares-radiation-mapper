@@ -17,7 +17,7 @@ def test_interpola_posicao_no_meio_de_duas_poses():
     sinc = Sincronizador(latencia_s=0.5, lacuna_max_s=1.0)
     sinc.adicionar_pose(Pose(ts=0.0, x=0.0, y=0.0, yaw=0.0))
     sinc.adicionar_pose(Pose(ts=2.0, x=2.0, y=0.0, yaw=0.0))
-    sinc.adicionar_leitura(_leitura(ts=1.5, dr_usvh=0.5, cpm=200))
+    sinc.adicionar_leitura(_leitura(ts=1.5, dr_usvh=0.5, cpm=200, cps=4))
 
     amostras = sinc.drenar()
 
@@ -27,6 +27,7 @@ def test_interpola_posicao_no_meio_de_duas_poses():
     assert amostra.y == pytest.approx(0.0)
     assert amostra.dr_usvh == 0.5
     assert amostra.cpm == 200
+    assert amostra.cps == 4
     assert amostra.lacuna_pose_s == pytest.approx(1.0)
     assert sinc.descartadas == 0
     assert sinc.pendentes == 0

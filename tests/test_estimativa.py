@@ -18,7 +18,7 @@ def _amostra(rng, campo, x, y, sigma0, fracao, ts):
     # leve que a Student-t usada na verossimilhança, o que é conservador)
     dr = mu + rng.normal(0.0, sigma)
     dr = max(0.0, dr)
-    return Amostra(ts=ts, x=x, y=y, dr_usvh=dr, cpm=0, lacuna_pose_s=0.0)
+    return Amostra(ts=ts, x=x, y=y, dr_usvh=dr, cpm=0, cps=0, lacuna_pose_s=0.0)
 
 
 def _zigzag(centro, lado, passo=1.0, linhas=None):

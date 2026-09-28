@@ -21,9 +21,11 @@ class Config:
     latencia_leitura_s: float = 0.5
     lacuna_pose_max_s: float = 0.5
     lado_area_m: float = 20.0
-    resolucao_estimador_m: float = 0.25
+    resolucao_estimador_m: float = 0.5
     resolucao_mapa_m: float = 0.5
     altura_fonte_m: float = 0.25
+    cps_por_usvh: float = 2.6
+    exposicao_s: float = 1.0
     vx_max: float = 0.5
     vy_max: float = 0.3
     vyaw_max: float = 1.0
@@ -42,6 +44,8 @@ class Config:
         self._validar_positivo("resolucao_estimador_m", self.resolucao_estimador_m)
         self._validar_positivo("resolucao_mapa_m", self.resolucao_mapa_m)
         self._validar_positivo("altura_fonte_m", self.altura_fonte_m)
+        self._validar_positivo("cps_por_usvh", self.cps_por_usvh)
+        self._validar_positivo("exposicao_s", self.exposicao_s)
         self._validar_positivo("vx_max", self.vx_max)
         self._validar_positivo("vy_max", self.vy_max)
         self._validar_positivo("vyaw_max", self.vyaw_max)
