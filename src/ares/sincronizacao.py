@@ -1,6 +1,8 @@
 """Sincronização de leituras do detector com a pose (odometria) do robô."""
+import bisect
 import math
-from typing import List, Optional, Tuple
+from collections import deque
+from typing import Deque, List, Optional, Tuple
 
 from .modelos import Amostra, Leitura, Pose
 
@@ -17,6 +19,13 @@ class Sincronizador:
     igual à última recebida são ignoradas). Leituras são enfileiradas e só
     viram `Amostra` quando existem poses antes e depois do instante efetivo
     da leitura (`ts - latencia_s`).
+
+    Leituras pendentes são limitadas para não crescer sem limite quando o
+    robô fica desconectado (sem poses chegando) enquanto o detector continua
+    enviando leituras: uma leitura pendente é descartada quando fica mais
+    velha que `historico_s` em relação à leitura mais nova já recebida, e a
+    fila também tem um teto rígido de `max_pendentes` (descartando as mais
+    antigas quando excedido).
     """
 
     def __init__(
@@ -25,25 +34,42 @@ class Sincronizador:
         latencia_s: float = 0.5,
         lacuna_max_s: float = 0.5,
         historico_s: float = 30.0,
+        max_pendentes: int = 600,
     ) -> None:
         self._offset = offset_detector
         self._latencia_s = latencia_s
         self._lacuna_max_s = lacuna_max_s
         self._historico_s = historico_s
+        self._max_pendentes = max_pendentes
         self._poses: List[Pose] = []
-        self._pendentes: List[Leitura] = []
+        self._poses_ts: List[float] = []
+        self._pendentes: Deque[Leitura] = deque()
+        self._newest_leitura_ts: Optional[float] = None
         self.descartadas = 0
 
     def adicionar_pose(self, pose: Pose) -> None:
         if self._poses and pose.ts <= self._poses[-1].ts:
             return
         self._poses.append(pose)
+        self._poses_ts.append(pose.ts)
         limite = pose.ts - self._historico_s
         while len(self._poses) > 1 and self._poses[0].ts < limite:
             self._poses.pop(0)
+            self._poses_ts.pop(0)
 
     def adicionar_leitura(self, leitura: Leitura) -> None:
         self._pendentes.append(leitura)
+        if self._newest_leitura_ts is None or leitura.ts > self._newest_leitura_ts:
+            self._newest_leitura_ts = leitura.ts
+
+        limite = self._newest_leitura_ts - self._historico_s
+        while self._pendentes and self._pendentes[0].ts < limite:
+            self._pendentes.popleft()
+            self.descartadas += 1
+
+        while len(self._pendentes) > self._max_pendentes:
+            self._pendentes.popleft()
+            self.descartadas += 1
 
     @property
     def pendentes(self) -> int:
@@ -51,7 +77,7 @@ class Sincronizador:
 
     def drenar(self) -> List[Amostra]:
         amostras: List[Amostra] = []
-        restantes: List[Leitura] = []
+        restantes: Deque[Leitura] = deque()
 
         for leitura in self._pendentes:
             t = leitura.ts - self._latencia_s
@@ -68,20 +94,21 @@ class Sincronizador:
 
     def _processar(self, leitura: Leitura, t: float):
         poses = self._poses
+        poses_ts = self._poses_ts
         if not poses:
             return _PENDENTE
 
-        if t > poses[-1].ts:
+        if t > poses_ts[-1]:
             return _PENDENTE
 
-        antes: Optional[Pose] = None
-        depois: Optional[Pose] = None
-        for pose in poses:
-            if pose.ts <= t:
-                antes = pose
-            if pose.ts >= t:
-                depois = pose
-                break
+        # idx_antes: índice da última pose com ts <= t (bisect_right conta
+        # também um empate exato, então -1 aponta pra ela mesma).
+        idx_antes = bisect.bisect_right(poses_ts, t) - 1
+        # idx_depois: índice da primeira pose com ts >= t.
+        idx_depois = bisect.bisect_left(poses_ts, t)
+
+        antes: Optional[Pose] = poses[idx_antes] if idx_antes >= 0 else None
+        depois: Optional[Pose] = poses[idx_depois] if idx_depois < len(poses) else None
 
         if antes is None or depois is None:
             # sem pose anterior a `t` (fora do histórico retido)

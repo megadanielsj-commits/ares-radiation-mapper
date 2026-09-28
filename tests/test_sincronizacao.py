@@ -122,3 +122,41 @@ def test_adicionar_pose_ignora_ts_nao_crescente():
 
     assert len(amostras) == 1
     assert amostras[0].x == pytest.approx(2.0)
+
+
+def test_pendentes_sao_limitadas_quando_robo_desconecta_sem_poses():
+    # detector a 1 Hz por ~1000s sem nenhuma pose chegando (robô desconectado):
+    # a fila de pendentes não pode crescer sem limite.
+    sinc = Sincronizador(latencia_s=0.0, historico_s=30.0)
+
+    for i in range(1000):
+        sinc.adicionar_leitura(_leitura(ts=float(i)))
+
+    assert sinc.pendentes <= 31
+    assert sinc.descartadas >= 969
+    assert sinc.pendentes + sinc.descartadas == 1000
+
+
+def test_max_pendentes_limita_fila_mesmo_dentro_do_historico():
+    sinc = Sincronizador(latencia_s=0.0, historico_s=1000.0, max_pendentes=5)
+
+    for i in range(10):
+        sinc.adicionar_leitura(_leitura(ts=float(i)))
+
+    assert sinc.pendentes == 5
+    assert sinc.descartadas == 5
+
+
+def test_empate_exato_no_timestamp_da_pose_usa_posicao_da_pose_sem_lacuna():
+    sinc = Sincronizador(latencia_s=0.0, lacuna_max_s=1.0)
+    sinc.adicionar_pose(Pose(ts=0.0, x=0.0, y=0.0, yaw=0.0))
+    sinc.adicionar_pose(Pose(ts=1.0, x=7.0, y=3.0, yaw=0.0))
+    sinc.adicionar_pose(Pose(ts=2.0, x=20.0, y=20.0, yaw=0.0))
+    sinc.adicionar_leitura(_leitura(ts=1.0))  # t efetivo == ts da pose do meio
+
+    amostras = sinc.drenar()
+
+    assert len(amostras) == 1
+    assert amostras[0].x == pytest.approx(7.0)
+    assert amostras[0].y == pytest.approx(3.0)
+    assert amostras[0].lacuna_pose_s == pytest.approx(0.0)
