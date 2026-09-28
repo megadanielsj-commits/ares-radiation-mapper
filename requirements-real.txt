@@ -1,0 +1,19 @@
+# Dependências do modo "real": robô Go2 via unitree_webrtc_connect.
+#
+# O pacote principal deve ser instalado com --no-deps (ver
+# go2_wifi_quickstart/requirements.txt e Dockerfile); as deps de núcleo
+# (WebRTC, handshake, estado) vêm listadas abaixo à mão.
+
+unitree_webrtc_connect   # instalar com --no-deps
+
+# --- deps de núcleo (WebRTC + handshake + estado) ---
+aiortc>=1.9.0
+pycryptodome
+requests
+curl_cffi
+wasmtime
+lz4
+packaging
+
+# --- câmera ---
+opencv-python-headless
