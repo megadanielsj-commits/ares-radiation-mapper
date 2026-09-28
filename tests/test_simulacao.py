@@ -337,3 +337,44 @@ def test_detector_encerrar_sem_tarefa_iniciada_nao_falha():
         await detector.encerrar()
 
     asyncio.run(cenario())
+
+
+@pytest.mark.parametrize("periodo_s", [0.1, 0.5, 1.0, 2.0])
+def test_detector_dose_independe_do_periodo_amostragem(periodo_s):
+    """Dose acumulada deve ser independente do período de amostragem.
+
+    Com campo de fundo puro a 0.36 µSv/h, após N períodos de duração periodo_s,
+    a dose total deve ser ≈ 0.36 * (N * periodo_s) / 3600, com tolerância ±10%.
+    """
+    fundo_usvh = 0.36
+    campo = CampoRadiacao(fundo_usvh=fundo_usvh)
+
+    # Suficiente para que o erro relativo Poisson seja pequeno
+    n_periodos = 20000
+    tempo_total_s = n_periodos * periodo_s
+    dose_esperada_usv = fundo_usvh * tempo_total_s / 3600.0
+
+    detector = _detector_fixo(
+        campo,
+        periodo_s=periodo_s,
+        janela_s=5.0,
+        cps_por_usvh=2.6,
+        semente=42,
+    )
+
+    leituras = []
+    detector.assinar(leituras.append)
+    for _ in range(n_periodos):
+        detector._amostrar()
+
+    dose_acumulada = leituras[-1].dose_usv if leituras else 0.0
+
+    # Tolerância ±10%
+    tolerancia = 0.1
+    assert dose_acumulada == pytest.approx(
+        dose_esperada_usv, rel=tolerancia
+    ), (
+        f"periodo_s={periodo_s}: "
+        f"dose acumulada={dose_acumulada:.6f} µSv, "
+        f"esperada={dose_esperada_usv:.6f} µSv"
+    )

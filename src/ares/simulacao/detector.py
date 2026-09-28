@@ -95,9 +95,9 @@ class DetectorSimulado:
 
         contagens_janela = sum(self._janela)
         dr_usvh = contagens_janela / (self._janela_s * self._cps_por_usvh)
-        cps = round(contagem / self._periodo_s)
+        cps = round(dr_usvh * self._cps_por_usvh)
         cpm = round(dr_usvh * self._cps_por_usvh * 60.0)
-        self._dose_usv += (contagem / self._cps_por_usvh) * (self._periodo_s / 3600.0)
+        self._dose_usv += contagem / (self._cps_por_usvh * 3600.0)
 
         leitura = Leitura(
             ts=time.time(),
