@@ -52,6 +52,7 @@ class DetectorSimulado:
         self._rng = np.random.default_rng(semente)
         n_janela = max(1, round(janela_s / periodo_s))
         self._janela: Deque[int] = deque(maxlen=n_janela)
+        self._soma_janela = 0  # soma móvel das contagens da janela
         self._dose_usv = 0.0
 
         self._assinantes: List[Callable[[Leitura], None]] = []
@@ -98,9 +99,12 @@ class DetectorSimulado:
         taxa_usvh = self._campo.taxa(x, y)
         media_cps = max(0.0, taxa_usvh * self._cps_por_usvh)
         cps = int(self._rng.poisson(media_cps))
+        if len(self._janela) == self._janela.maxlen:
+            self._soma_janela -= self._janela[0]
         self._janela.append(cps)
+        self._soma_janela += cps
 
-        dr_usvh = sum(self._janela) / (len(self._janela) * self._cps_por_usvh)
+        dr_usvh = self._soma_janela / (len(self._janela) * self._cps_por_usvh)
         cpm = round(dr_usvh * self._cps_por_usvh * 60.0)
         self._dose_usv += cps * self._periodo_s / (self._cps_por_usvh * 3600.0)
 
