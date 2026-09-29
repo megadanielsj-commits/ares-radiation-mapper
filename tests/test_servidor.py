@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 import time
@@ -141,6 +142,82 @@ def test_ws_snapshot_e_eventos(cliente):
         assert primeiro["tipo"] == "snapshot" and primeiro["dados"]["modo"] == "simulacao"
         tipos = {ws.receive_json()["tipo"] for _ in range(20)}
         assert {"pose", "leitura"} <= tipos
+
+
+def test_ws_nao_trava_o_encerramento_com_cliente_ocioso(tmp_path):
+    """O `/ws` só publica (nunca recebe); um cliente conectado mas ocioso (sem
+    mandar nada, sem desconectar) não pode impedir o servidor de encerrar.
+
+    Aciona o protocolo ASGI de `lifespan` e a rota `/ws` diretamente (sem
+    `TestClient`, cujo próprio suporte a WebSocket teria uma tarefa de fundo
+    que mascara esse bug), com uma função `receive` do `/ws` que nunca
+    devolve nada depois do "connect" inicial — como um cliente real que só
+    escuta e nunca fecha a conexão sozinho.
+    """
+
+    async def cenario():
+        cfg = Config(dados=str(tmp_path / "dados"), lado_area_m=6.0, latencia_leitura_s=0.01)
+        orq = criar_orquestrador(
+            cfg,
+            frequencia_robo_hz=50.0,
+            periodo_detector_s=0.05,
+            semente=1,
+            periodo_publicacao_s=0.1,
+            periodo_estado_s=0.05,
+        )
+        app = criar_app(orq, orq.teleop)
+
+        entrada_lifespan: asyncio.Queue = asyncio.Queue()
+        saida_lifespan: asyncio.Queue = asyncio.Queue()
+        tarefa_lifespan = asyncio.create_task(
+            app({"type": "lifespan"}, entrada_lifespan.get, saida_lifespan.put)
+        )
+        await entrada_lifespan.put({"type": "lifespan.startup"})
+        assert (await saida_lifespan.get())["type"] == "lifespan.startup.complete"
+
+        enviados = []
+        primeira = True
+
+        async def receber_ws():
+            nonlocal primeira
+            if primeira:
+                primeira = False
+                return {"type": "websocket.connect"}
+            await asyncio.Event().wait()  # cliente ocioso: nunca manda nada
+
+        async def mandar_ws(msg):
+            enviados.append(msg)
+
+        escopo_ws = {
+            "type": "websocket",
+            "path": "/ws",
+            "headers": [(b"host", b"testserver")],
+            "query_string": b"",
+            "client": ("127.0.0.1", 12345),
+            "server": ("testserver", 80),
+        }
+        tarefa_ws = asyncio.create_task(app(escopo_ws, receber_ws, mandar_ws))
+        await _esperar_async(lambda: any(m["type"] == "websocket.accept" for m in enviados))
+
+        inicio = time.monotonic()
+        await entrada_lifespan.put({"type": "lifespan.shutdown"})
+        assert (await saida_lifespan.get())["type"] == "lifespan.shutdown.complete"
+        await asyncio.wait_for(tarefa_lifespan, timeout=2.0)
+        # o `/ws` tem que se desligar sozinho (o cliente "ocioso" nunca ajuda)
+        await asyncio.wait_for(tarefa_ws, timeout=2.0)
+        return time.monotonic() - inicio, enviados
+
+    duracao, enviados = asyncio.run(cenario())
+    assert duracao < 2.0
+    assert enviados[-1]["type"] == "websocket.close"
+
+
+async def _esperar_async(cond, limite_s=5.0):
+    fim = time.monotonic() + limite_s
+    while not cond():
+        if time.monotonic() > fim:
+            raise AssertionError("condição não atingida")
+        await asyncio.sleep(0.01)
 
 
 def test_ws_comando_move_e_fechar_para(cliente):

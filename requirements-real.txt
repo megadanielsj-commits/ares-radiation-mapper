@@ -4,7 +4,7 @@
 # go2_wifi_quickstart/requirements.txt e Dockerfile); as deps de núcleo
 # (WebRTC, handshake, estado) vêm listadas abaixo à mão.
 
-unitree_webrtc_connect   # instalar com --no-deps
+unitree_webrtc_connect==2.2.0   # instalar com --no-deps
 
 # --- deps de núcleo (WebRTC + handshake + estado) ---
 aiortc>=1.9.0

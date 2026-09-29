@@ -100,6 +100,11 @@ sequenceDiagram
     Sync-->>Sync: Amostra(ts, x, y, cps, lacuna_pose_s)
 ```
 
+`Amostra.ts` é o instante de **chegada** da leitura (igual a `Leitura.ts`),
+não o corrigido — só `x, y` (a posição do detector) usam o instante
+efetivo `ts − latencia_leitura_s`, que é quando a contagem realmente
+aconteceu.
+
 ### Ideia do estimador
 
 Cada amostra (posição do detector + contagem daquele segundo) atualiza uma
@@ -237,7 +242,7 @@ O painel segue o modo escuro do sistema e funciona no celular:
 | POST | `/api/simulacao/fonte` | reposiciona a fonte simulada (`{"x","y","s"}`) |
 | POST | `/api/robo/{levantar\|deitar\|parar}` | ação imediata no robô |
 | GET | `/camera.mjpg` | stream MJPEG da câmera (se disponível) |
-| WS | `/ws` | snapshot inicial, depois eventos de estado/leitura/resultado |
+| WS | `/ws` | snapshot inicial, depois eventos `pose`/`leitura`/`amostra`/`estimativa`/`mapa`/`estado` |
 | WS | `/ws/comando` | heartbeat de teleop `{vx, vy, vyaw}` (≥ 5 Hz) |
 
 Só aceita conexões de `localhost`/`127.0.0.1` (`TrustedHostMiddleware` +
@@ -260,6 +265,12 @@ checagem de `Origin` em POST e WebSocket), igual ao `FS_5000_quickstart`.
 - Robô ou FS-5000 indisponíveis: o app sobe assim mesmo, mostra o
   componente como indisponível e tenta de novo com backoff (até 10 s); a
   missão só pode ser **iniciada** com os dois conectados.
+- **Ligar num endereço que não seja loopback é uma decisão explícita**: o
+  painel não tem autenticação nenhuma e inclui o teleop do robô, então
+  `python -m ares --host <endereço-de-rede>` (ex.: `0.0.0.0` ou o IP do
+  host na rede) é recusado por padrão — qualquer um alcançando esse
+  endereço poderia comandar o robô. Use `--permitir-rede` só se isso for
+  intencional (ex.: controlar de outro dispositivo numa rede confiável).
 
 ## 9. Limitações
 

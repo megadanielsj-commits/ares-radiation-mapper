@@ -26,6 +26,7 @@ _ORIGEM_LOCAL = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
 ACOES_ROBO = ("levantar", "deitar", "parar")
 LIMITE_BOUNDARY_MJPEG = "quadroares"
 PERIODO_CAMERA_S = 1.0 / 15.0
+PERIODO_ESPERA_EVENTO_S = 1.0
 
 
 def origem_permitida(origin: Optional[str]) -> bool:
@@ -70,6 +71,7 @@ def _velocidade(msg) -> Optional[tuple]:
 def criar_app(orquestrador, teleop) -> FastAPI:
     orq = orquestrador
     repo = orq.repositorio
+    encerrando = asyncio.Event()
 
     @contextlib.asynccontextmanager
     async def ciclo(_app):
@@ -78,6 +80,12 @@ def criar_app(orquestrador, teleop) -> FastAPI:
         try:
             yield
         finally:
+            # marcado ANTES de esperar teleop/robô/radiação encerrarem: o
+            # `/ws` (só publica, nunca recebe) precisa desse sinal para se
+            # desligar sozinho — sem ele, o servidor (uvicorn de verdade, ou
+            # o portal do TestClient) ficaria esperando para sempre por uma
+            # tarefa que só termina se o cliente desconectar
+            encerrando.set()
             await teleop.encerrar()
             await orq.encerrar()
 
@@ -184,12 +192,24 @@ def criar_app(orquestrador, teleop) -> FastAPI:
         fila = orq.assinar()
         try:
             await sock.send_json({"tipo": "snapshot", "dados": estado()})
-            while True:
-                await sock.send_json(await fila.get())
+            while not encerrando.is_set():
+                try:
+                    evento = await asyncio.wait_for(fila.get(), PERIODO_ESPERA_EVENTO_S)
+                except asyncio.TimeoutError:
+                    # nada para publicar agora: só um respiro para conferir
+                    # `encerrando` — este laço só recebe (nunca chama
+                    # `receive`), então sem isso o servidor (uvicorn de
+                    # verdade, ou o portal do TestClient) ficaria esperando
+                    # para sempre por uma tarefa que só termina sozinha se o
+                    # cliente desconectar
+                    continue
+                await sock.send_json(evento)
         except (WebSocketDisconnect, RuntimeError):
             pass
         finally:
             orq.cancelar(fila)
+            with contextlib.suppress(Exception):
+                await sock.close()
 
     @app.websocket("/ws/comando")
     async def ws_comando(sock: WebSocket):

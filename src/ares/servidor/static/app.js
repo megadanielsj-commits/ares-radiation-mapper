@@ -462,24 +462,59 @@ function renderizarMissoes(lista) {
   );
 }
 
+// ---------------------------------------------------------------------- erros de ação
+let temporizadorErroAcao = null;
+
+function mostrarErroAcao(mensagem) {
+  const alvo = el("erro-acao");
+  alvo.textContent = mensagem;
+  alvo.hidden = false;
+  if (temporizadorErroAcao) clearTimeout(temporizadorErroAcao);
+  temporizadorErroAcao = setTimeout(() => {
+    alvo.hidden = true;
+  }, 6000);
+}
+
+// Em erro (ex.: 409/400), mostra o `detail` do FastAPI (`{"detail": "..."}");
+// sem corpo em JSON, cai na mensagem genérica com o status.
+async function verificarResposta(resp) {
+  if (resp.ok) return true;
+  let detalhe = `erro ${resp.status}`;
+  try {
+    const corpo = await resp.json();
+    if (corpo && corpo.detail) detalhe = corpo.detail;
+  } catch (e) {
+    /* corpo sem JSON: mantém a mensagem genérica */
+  }
+  mostrarErroAcao(detalhe);
+  return false;
+}
+
 el("btn-iniciar-missao").addEventListener("click", async () => {
   const nome = el("missao-nome").value.trim();
-  await fetch("/api/missao/iniciar", {
+  const resp = await fetch("/api/missao/iniciar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nome: nome || null }),
   });
+  await verificarResposta(resp);
   carregarMissoes();
 });
 
 el("btn-encerrar-missao").addEventListener("click", async () => {
-  await fetch("/api/missao/encerrar", { method: "POST" });
+  const resp = await fetch("/api/missao/encerrar", { method: "POST" });
+  await verificarResposta(resp);
   carregarMissoes();
 });
 
 // ---------------------------------------------------------------------- robô: botões
 async function acaoRobo(acao) {
-  await fetch(`/api/robo/${acao}`, { method: "POST" }).catch(() => {});
+  try {
+    const resp = await fetch(`/api/robo/${acao}`, { method: "POST" });
+    await verificarResposta(resp);
+  } catch (e) {
+    mostrarErroAcao("falha de rede ao comandar o robô");
+  }
 }
 el("btn-levantar").addEventListener("click", () => acaoRobo("levantar"));
 el("btn-deitar").addEventListener("click", () => acaoRobo("deitar"));
@@ -494,8 +529,17 @@ function atualizarVisibilidadePorModo() {
   el("secao-camera").hidden = estado.modo !== "real";
 }
 
+// Em modo real, a câmera pode não estar disponível ainda (conexão do robô
+// em backoff) ou cair no meio do stream; em vez de esconder para sempre,
+// tenta de novo a cada 5 s (a seção só fica escondida por causa do modo,
+// em `atualizarVisibilidadePorModo`).
+const PERIODO_RETENTATIVA_CAMERA_MS = 5000;
+
 el("camera").addEventListener("error", () => {
-  el("secao-camera").hidden = true;
+  if (estado.modo !== "real") return;
+  setTimeout(() => {
+    el("camera").src = `/camera.mjpg?t=${Date.now()}`;
+  }, PERIODO_RETENTATIVA_CAMERA_MS);
 });
 
 // ---------------------------------------------------------------------- teleop
@@ -548,6 +592,7 @@ function ehTeclaTeleop(tecla) {
 }
 
 window.addEventListener("keydown", (evt) => {
+  if (evt.target && ["INPUT", "TEXTAREA"].includes(evt.target.tagName)) return;
   if (evt.code === "Space") {
     evt.preventDefault();
     pararTeleop();
@@ -555,7 +600,6 @@ window.addEventListener("keydown", (evt) => {
     return;
   }
   if (!ehTeclaTeleop(evt.key)) return;
-  if (evt.target && ["INPUT", "TEXTAREA"].includes(evt.target.tagName)) return;
   evt.preventDefault();
   teclasPressionadas.add(evt.key);
   enviarComando(velocidadeAtual());

@@ -12,7 +12,7 @@ COPY src ./src
 # instalado com --no-deps para não puxar áudio/microfone que o ARES não usa,
 # igual ao go2_wifi_quickstart. Câmera usa opencv headless (sem X11 no container).
 RUN pip install -r requirements.txt \
- && pip install --no-deps unitree_webrtc_connect \
+ && pip install --no-deps unitree_webrtc_connect==2.2.0 \
  && pip install \
         "aiortc>=1.9.0" pycryptodome requests curl_cffi wasmtime lz4 packaging \
         opencv-python-headless \
