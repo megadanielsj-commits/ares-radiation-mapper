@@ -401,17 +401,17 @@ def test_detector_cps_e_contagem_poisson_de_1s(periodo_s):
     campo = CampoRadiacao(fundo_usvh=fundo_usvh)
     detector = _detector_fixo(campo, periodo_s=periodo_s, cps_por_usvh=k, semente=11)
 
-    cps = []
-    detector.assinar(lambda leitura: cps.append(leitura.cps))
+    brutos = []
+    detector.assinar(lambda leitura: brutos.append(leitura.cps))
     for _ in range(20000):
         detector._amostrar()
 
-    cps = np.asarray(cps, dtype=float)
+    assert all(type(c) is int and c >= 0 for c in brutos)
+    cps = np.asarray(brutos, dtype=float)
     media = cps.mean()
     assert media == pytest.approx(k * fundo_usvh, rel=0.03)
     assert cps.var() / media == pytest.approx(1.0, abs=0.05)
     assert abs(_autocorr_passo1(cps)) < 0.05
-    assert all(isinstance(c, int) and c >= 0 for c in cps.astype(int).tolist())
 
 
 def test_detector_dr_e_media_movel_autocorrelacionada():
