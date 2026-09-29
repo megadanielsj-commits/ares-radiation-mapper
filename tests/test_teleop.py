@@ -229,6 +229,75 @@ def test_encerrar_com_robo_travado_termina_dentro_do_limite():
     assert robo.paradas == 1
 
 
+def test_parar_com_stopmove_lento_nao_perde_para_move_concorrente():
+    """StopMove lento (parar()) + Move concorrente (definir()) intercalado:
+    o último comando que o robô recebe tem que ser um StopMove, não o Move
+    que entrou no meio (regressão da corrida em `_tentar_parar`)."""
+
+    async def cenario():
+        robo = RoboFalso()
+        liberar = asyncio.Event()
+        parada_original = robo.parar_movimento
+        parar_chamado = asyncio.Event()
+
+        async def parar_lento():
+            parar_chamado.set()
+            await liberar.wait()
+            await parada_original()
+
+        robo.parar_movimento = parar_lento
+
+        teleop = Teleop(robo, vx_max=0.5, vy_max=0.3, vyaw_max=1.0, watchdog_s=WATCHDOG_S, hz=HZ)
+        await teleop.iniciar()
+        try:
+            teleop.definir(0.2, 0.0, 0.0)
+            assert await _esperar(lambda: len(robo.movimentos) >= 1)
+
+            tarefa_parar = asyncio.create_task(teleop.parar())
+            await parar_chamado.wait()  # StopMove lento em voo
+
+            # Move concorrente entra enquanto o StopMove ainda não respondeu
+            chamadas_antes = robo.chamadas_mover
+            teleop.definir(0.2, 0.0, 0.0)
+            assert await _esperar(lambda: robo.chamadas_mover > chamadas_antes)
+
+            liberar.set()
+            await tarefa_parar
+
+            # sem mais heartbeats, o watchdog vence e o laço manda outro
+            # StopMove: o Move concorrente não pode ser o último comando
+            assert await _esperar(lambda: robo.paradas >= 2, tentativas=100, intervalo=0.02)
+        finally:
+            await teleop.encerrar()
+        return robo
+
+    robo = asyncio.run(cenario())
+    assert robo.paradas >= 2
+    assert robo.instantes_paradas[-1] > robo.instantes_movimentos[-1]
+
+
+def test_laco_que_termina_sozinho_registra_erro(monkeypatch, caplog):
+    async def cenario():
+        robo = RoboFalso()
+        teleop = Teleop(robo, vx_max=0.5, vy_max=0.3, vyaw_max=1.0, watchdog_s=WATCHDOG_S, hz=HZ)
+        await teleop.iniciar()
+        assert await _esperar(lambda: teleop._tarefa is not None)
+
+        def heartbeat_com_falha(_agora):
+            raise RuntimeError("falha inesperada no laço")
+
+        # só o método interno do teleop quebra; o relógio do asyncio (usado
+        # para agendar o próprio laço) continua intacto
+        monkeypatch.setattr(teleop, "_heartbeat_expirado", heartbeat_com_falha)
+        assert await _esperar(lambda: teleop._tarefa.done())
+        return teleop
+
+    with caplog.at_level(logging.ERROR, logger="ares.teleop"):
+        teleop = asyncio.run(cenario())
+    assert teleop.ultimo_erro is not None
+    assert any("laço de teleop encerrou sozinho" in r.getMessage() for r in caplog.records)
+
+
 # --- enlace travado, StopMove com falha e relógio -------------------------
 
 
@@ -250,7 +319,9 @@ def test_mover_travado_nao_impede_o_watchdog():
         try:
             teleop.definir(0.3, 0.0, 0.0)
             inicio = time.monotonic()
-            limite = WATCHDOG_S + tempo_limite + 0.25
+            # o Move travado não atrasa mais o StopMove: o laço não espera a
+            # resposta dele, só cancela essa espera na transição para zero
+            limite = WATCHDOG_S + 0.15
             assert await _esperar(lambda: robo.tentativas_parada >= 1, tentativas=100, intervalo=0.01)
             latencia = robo.instantes_paradas[0] - inicio
             assert latencia < limite

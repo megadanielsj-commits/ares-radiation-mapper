@@ -9,12 +9,21 @@ mesmo sem ele instalado.
 Conexão: `iniciar()` sobe uma tarefa de fundo que conecta e, se cair ou
 falhar, tenta de novo com backoff exponencial (até `backoff_max`) — nunca
 levanta exceção por o robô estar inacessível; `estado()` reflete o erro
-atual. Queda: o `aiortc` só passa a `failed`/`closed` depois de ~30 s sem
-consentimento ICE (não existe estado `disconnected` no `RTCPeerConnection`),
-então a queda é detectada principalmente por estado parado: sem mensagem de
-`rt/lf/sportmodestate` há `estado_expira_s`, a conexão é dada como caída,
-fechada (com tempo limite) e refeita. Toda conexão que falha ou cai é
-fechada antes de tentar de novo, para não vazar peer connections.
+atual. O backoff só volta ao mínimo quando a conexão prova que está viva de
+verdade: na primeira mensagem de estado recebida, não no `connect()` (uma
+conexão que "sobe" mas nunca fala nunca reseta o backoff, então as
+tentativas de reconexão se afastam cada vez mais). Queda: o `aiortc` só
+passa a `failed`/`closed` depois de ~30 s sem consentimento ICE (não existe
+estado `disconnected` no `RTCPeerConnection`), então a queda é detectada
+principalmente por estado parado: sem mensagem de `rt/lf/sportmodestate` há
+`estado_expira_s`, a conexão é dada como caída. Antes de fechá-la, um último
+StopMove é tentado (tempo limite curto, `TEMPO_LIMITE_STOPMOVE_PARADA_S`) —
+o robô pode estar em movimento e essa é a única chance de pará-lo antes do
+enlace cair de vez; depois a conexão é fechada (com tempo limite) e refeita.
+Toda conexão que falha ou cai é fechada antes de tentar de novo, para não
+vazar peer connections. As mensagens de estado são associadas à conexão que
+as gerou; uma mensagem tardia de uma conexão antiga (já substituída) é
+ignorada, mesmo que a assinatura no `pub_sub` dela ainda exista.
 
 Comandos têm tempo limite (`tempo_limite_comando_s`): num enlace caído a
 resposta de `publish_request_new` pode nunca chegar, e quem chamou recebe
@@ -43,6 +52,7 @@ TEMPO_LIMITE_COMANDO_S = 1.0
 TEMPO_LIMITE_DESCONEXAO_S = 2.0
 ESTADO_EXPIRA_S = 2.0
 PAUSA_LEVANTAR_S = 0.1
+TEMPO_LIMITE_STOPMOVE_PARADA_S = 0.3
 
 # `connectionState` do `RTCPeerConnection` do aiortc 1.x: new, connecting,
 # connected, failed, closed (não há "disconnected").
@@ -121,6 +131,8 @@ class Go2WebRTC:
         self._body_height: Optional[float] = None
         self._mode: Optional[int] = None
         self._ultimo_estado = 0.0  # time.monotonic() da última mensagem de estado
+        self._primeiro_estado_recebido = False  # da conexão atual
+        self._espera = self._backoff_min  # backoff atual entre tentativas de conexão
 
         self._callbacks: List[Callable[[Pose], None]] = []
 
@@ -184,19 +196,22 @@ class Go2WebRTC:
 
     # ------------------------------------------------------------------ laço de conexão
     async def _laco(self) -> None:
-        espera = self._backoff_min
+        self._espera = self._backoff_min
         while True:
             conn = None
+            self._primeiro_estado_recebido = False
             try:
                 conn = await self._conectar()
                 self._conn = conn
                 self._ultimo_estado = time.monotonic()  # carência até o 1º estado
                 self._conectado = True
                 self._erro = None
-                espera = self._backoff_min
                 self._assinar_estado(conn)
-                self._erro = await self._aguardar_desconexao(conn)
-                log.warning("conexão com o robô caiu: %s", self._erro)
+                motivo, parado = await self._aguardar_desconexao(conn)
+                self._erro = motivo
+                log.warning("conexão com o robô caiu: %s", motivo)
+                if parado:
+                    await self._tentar_parar_antes_de_fechar(conn)
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -208,35 +223,60 @@ class Go2WebRTC:
                 # limpo depois, para que `encerrar()` a feche se cancelar no meio
                 await _fechar_conexao(conn, self._tempo_limite_desconexao_s)
                 self._conn = None
-            await asyncio.sleep(espera)
-            espera = min(espera * 2, self._backoff_max)
+            await asyncio.sleep(self._espera)
+            self._espera = min(self._espera * 2, self._backoff_max)
 
     def _assinar_estado(self, conn) -> None:
+        def _callback(msg, conn=conn) -> None:
+            # ignora mensagens de uma conexão antiga já substituída
+            if conn is self._conn:
+                self._ao_receber_estado(msg)
+
         try:
-            conn.datachannel.pub_sub.subscribe(TOPICO_ESTADO, self._ao_receber_estado)
+            conn.datachannel.pub_sub.subscribe(TOPICO_ESTADO, _callback)
         except Exception:
             log.exception("erro ao assinar o estado do robô")
 
-    async def _aguardar_desconexao(self, conn) -> str:
-        """Espera até a conexão cair; devolve o motivo.
+    async def _tentar_parar_antes_de_fechar(self, conn) -> None:
+        """Última tentativa de StopMove antes de abandonar uma conexão parada.
 
-        Dois sinais: `pc.connectionState` em failed/closed (lento no aiortc)
-        e estado parado — nenhuma mensagem de `TOPICO_ESTADO` há
-        `estado_expira_s` (o robô publica a dezenas de Hz).
+        Tempo limite curto e próprio (`TEMPO_LIMITE_STOPMOVE_PARADA_S`): o
+        robô já está sem estado há um tempo, então não vale a pena esperar
+        muito por uma resposta que pode nunca vir.
+        """
+        if conn is not self._conn:
+            return
+        try:
+            await asyncio.wait_for(
+                self._enviar_comando("StopMove"), timeout=TEMPO_LIMITE_STOPMOVE_PARADA_S
+            )
+        except Exception:
+            log.warning("StopMove antes de fechar conexão parada falhou ou sem resposta")
+
+    async def _aguardar_desconexao(self, conn) -> tuple:
+        """Espera até a conexão cair; devolve `(motivo, parado)`.
+
+        Dois sinais: `pc.connectionState` em failed/closed (lento no aiortc,
+        `parado=False`) e estado parado — nenhuma mensagem de `TOPICO_ESTADO`
+        há `estado_expira_s` (o robô publica a dezenas de Hz; `parado=True`).
         """
         while True:
             await asyncio.sleep(self._intervalo_verificacao_s)
             pc = getattr(conn, "pc", None)
             estado_pc = getattr(pc, "connectionState", None) if pc is not None else None
             if estado_pc in _ESTADOS_DESCONECTADOS:
-                return f"conexão WebRTC {estado_pc}"
+                return f"conexão WebRTC {estado_pc}", False
             parado_ha = time.monotonic() - self._ultimo_estado
             if parado_ha >= self._estado_expira_s:
-                return f"sem estado do robô há {parado_ha:.1f} s"
+                return f"sem estado do robô há {parado_ha:.1f} s", True
 
     # ------------------------------------------------------------------ estado/pose
     def _ao_receber_estado(self, msg) -> None:
         self._ultimo_estado = time.monotonic()
+        if not self._primeiro_estado_recebido:
+            # só agora a conexão provou que está viva: reseta o backoff
+            self._primeiro_estado_recebido = True
+            self._espera = self._backoff_min
         try:
             dados = msg.get("data", msg) if isinstance(msg, dict) else msg
             if not isinstance(dados, dict):
