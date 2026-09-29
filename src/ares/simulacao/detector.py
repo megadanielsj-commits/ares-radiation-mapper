@@ -30,6 +30,16 @@ class DetectorSimulado:
       móvel expressa em contagens por minuto;
     - `dose_usv`: acumulada com `cps * periodo_s / (cps_por_usvh * 3600)`,
       cuja média é `taxa * periodo_s / 3600` (independe do período).
+
+    A contagem usa a posição corrente (instante da contagem), mas o
+    sincronizador (`Sincronizador`) trata `Leitura.ts` como o instante de
+    *chegada* e volta `latencia_leitura_s` para achar o instante efetivo —
+    igual ao FS-5000 real, cujo `ts` é a hora de chegada no serviço, não a da
+    contagem. Por isso `ts` aqui é `tempo_da_contagem + latencia_leitura_s`:
+    descontar a latência no sincronizador recupera o instante em que a
+    contagem realmente aconteceu, e a posição interpolada da pose casa com o
+    lugar onde o detector estava ao contar (não com onde o robô estará
+    `latencia_leitura_s` depois).
     """
 
     def __init__(
@@ -41,6 +51,7 @@ class DetectorSimulado:
         janela_s: float = 30.0,
         semente: Optional[int] = None,
         detector_id: str = "sim-1",
+        latencia_leitura_s: float = 0.5,
     ) -> None:
         self._campo = campo
         self._posicao_detector = posicao_detector
@@ -48,6 +59,7 @@ class DetectorSimulado:
         self._cps_por_usvh = cps_por_usvh
         self._janela_s = janela_s
         self._detector_id = detector_id
+        self._latencia_leitura_s = latencia_leitura_s
 
         self._rng = np.random.default_rng(semente)
         n_janela = max(1, round(janela_s / periodo_s))
@@ -109,7 +121,7 @@ class DetectorSimulado:
         self._dose_usv += cps * self._periodo_s / (self._cps_por_usvh * 3600.0)
 
         leitura = Leitura(
-            ts=time.time(),
+            ts=time.time() + self._latencia_leitura_s,
             dr_usvh=dr_usvh,
             cpm=cpm,
             cps=cps,

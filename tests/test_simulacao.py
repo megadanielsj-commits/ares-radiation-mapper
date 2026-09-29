@@ -1,6 +1,7 @@
 """Testes da camada de simulação: campo, robô e detector."""
 import asyncio
 import math
+import time
 
 import pytest
 
@@ -454,3 +455,37 @@ def test_detector_janela_padrao_e_30s():
     campo = CampoRadiacao(fundo_usvh=0.2)
     detector = _detector_fixo(campo, semente=14)
     assert detector._janela.maxlen == 30
+
+
+def test_detector_ts_inclui_latencia_de_leitura_padrao():
+    """`Leitura.ts` deve ser a hora da contagem + a latência (padrão 0,5 s).
+
+    O sincronizador trata `ts` como instante de chegada e subtrai a latência
+    para achar o instante efetivo (de contagem); sem essa compensação o
+    sincronizador buscaria a pose de meio segundo no passado, associando a
+    contagem feita AGORA à posição de onde o robô estava antes.
+    """
+    campo = CampoRadiacao(fundo_usvh=0.2)
+    detector = _detector_fixo(campo, periodo_s=0.01, semente=20)
+
+    antes = time.time()
+    detector.assinar(lambda leitura: None)
+    leituras = []
+    detector.assinar(leituras.append)
+    detector._amostrar()
+    depois = time.time()
+
+    assert leituras[0].ts == pytest.approx((antes + depois) / 2 + 0.5, abs=0.05)
+
+
+def test_detector_ts_usa_latencia_configurada():
+    campo = CampoRadiacao(fundo_usvh=0.2)
+    detector = _detector_fixo(campo, periodo_s=0.01, semente=21, latencia_leitura_s=1.2)
+
+    leituras = []
+    detector.assinar(leituras.append)
+    antes = time.time()
+    detector._amostrar()
+    depois = time.time()
+
+    assert leituras[0].ts == pytest.approx((antes + depois) / 2 + 1.2, abs=0.05)

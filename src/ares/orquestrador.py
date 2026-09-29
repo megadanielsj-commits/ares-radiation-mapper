@@ -380,6 +380,7 @@ def criar_orquestrador(
             periodo_s=periodo_detector_s,
             cps_por_usvh=config.cps_por_usvh,
             semente=semente,
+            latencia_leitura_s=config.latencia_leitura_s,
         )
     else:
         from .radiacao.fs5000 import ClienteFS5000
