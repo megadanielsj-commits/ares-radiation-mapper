@@ -6,10 +6,11 @@ e `await conn.datachannel.pub_sub.publish_request_new(topico, payload)`, mais
 """
 import asyncio
 import math
+import time
 
 import pytest
 
-from ares.robo.go2 import Go2WebRTC
+from ares.robo.go2 import Go2WebRTC, _abrir_conexao
 
 SPORT_CMD = {
     "Damp": 1001,
@@ -29,16 +30,25 @@ class PubSubFalso:
     def __init__(self):
         self.assinantes = {}
         self.publicacoes = []
+        self.instantes = []
         self.falhar_proximas = 0
+        self.travar = False
+        self.eventos = None  # lista compartilhada com a conexão (ordem dos eventos)
 
     def subscribe(self, topico, cb):
         self.assinantes.setdefault(topico, []).append(cb)
 
     async def publish_request_new(self, topico, payload):
+        if self.eventos is not None:
+            self.eventos.append(("publish", payload.get("api_id")))
+        if self.travar:
+            # enlace caído: a resposta nunca chega e o future nunca resolve
+            await asyncio.Event().wait()
         if self.falhar_proximas > 0:
             self.falhar_proximas -= 1
             raise RuntimeError("publish falhou")
         self.publicacoes.append((topico, payload))
+        self.instantes.append(time.monotonic())
         return {"ok": True}
 
     def emitir_estado(self, dados):
@@ -55,9 +65,17 @@ class ConexaoFalsa:
     def __init__(self):
         self.datachannel = DataChannelFalso()
         self.desconectada = False
+        self.eventos = []
+        self.datachannel.pub_sub.eventos = self.eventos
 
     async def disconnect(self):
+        self.eventos.append(("disconnect", None))
         self.desconectada = True
+
+
+class PeerFalso:
+    def __init__(self, estado="connected"):
+        self.connectionState = estado
 
 
 def _conectar_ok(conexoes):
@@ -218,9 +236,10 @@ def test_comandos_publicam_api_id_certo():
             await robo.deitar()
         finally:
             await robo.encerrar()
-        return conexoes[0].datachannel.pub_sub.publicacoes
+        pub_sub = conexoes[0].datachannel.pub_sub
+        return pub_sub.publicacoes, pub_sub.instantes
 
-    publicacoes = asyncio.run(cenario())
+    publicacoes, instantes = asyncio.run(cenario())
     topico, payload = publicacoes[0]
     assert topico == "rt/api/sport/request"
     assert payload == {"api_id": 1008, "parameter": {"x": 0.3, "y": 0.0, "z": 0.1}}
@@ -228,6 +247,8 @@ def test_comandos_publicam_api_id_certo():
     assert publicacoes[1][1] == {"api_id": 1003}
     assert publicacoes[2][1] == {"api_id": 1004}
     assert publicacoes[3][1] == {"api_id": 1002}
+    # levantar(): StandUp, espera 0,1 s, BalanceStand (como o servidor validado)
+    assert instantes[3] - instantes[2] >= 0.09
     assert publicacoes[4][1] == {"api_id": 1005}
     # StopMove no encerrar() (a conexão continuava ativa)
     assert publicacoes[-1][1] == {"api_id": 1003}
@@ -240,6 +261,41 @@ def test_comando_sem_conexao_levanta_runtime_error():
             await robo.mover(0.1, 0.0, 0.0)
 
     asyncio.run(cenario())
+
+
+def test_parar_movimento_sem_conexao_levanta_runtime_error():
+    async def cenario():
+        robo = Go2WebRTC(sport_cmd=SPORT_CMD)
+        with pytest.raises(RuntimeError, match="robô não conectado"):
+            await robo.parar_movimento()
+
+    asyncio.run(cenario())
+
+
+def test_comando_sem_resposta_levanta_timeout_dentro_do_limite():
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_ok(conexoes),
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+            tempo_limite_comando_s=0.1,
+            tempo_limite_desconexao_s=0.1,
+        )
+        await robo.iniciar()
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            conexoes[0].datachannel.pub_sub.travar = True
+            inicio = time.monotonic()
+            with pytest.raises(TimeoutError):
+                await robo.mover(0.2, 0.0, 0.0)
+            return time.monotonic() - inicio
+        finally:
+            await robo.encerrar()
+
+    duracao = asyncio.run(cenario())
+    assert duracao < 0.5
 
 
 # --- conexão: retry/backoff --------------------------------------------------
@@ -285,6 +341,158 @@ def test_iniciar_nunca_levanta_se_robo_inacancavel():
     asyncio.run(cenario())  # não deve levantar
 
 
+def test_estado_parado_marca_desconectado_fecha_e_reconecta():
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_ok(conexoes),
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+            intervalo_verificacao_s=POLL,
+            estado_expira_s=0.15,
+            tempo_limite_comando_s=0.1,
+            tempo_limite_desconexao_s=0.1,
+        )
+        await robo.iniciar()
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            # a conexão falsa nunca manda estado -> deve expirar
+            assert await _esperar(lambda: robo.estado()["conectado"] is False)
+            erro = robo.estado()["erro"]
+            assert await _esperar(lambda: len(conexoes) >= 2)
+        finally:
+            await robo.encerrar()
+        return conexoes, erro
+
+    conexoes, erro = asyncio.run(cenario())
+    assert "sem estado do robô há" in erro
+    assert conexoes[0].desconectada is True  # conexão antiga fechada antes de reconectar
+
+
+def test_estado_chegando_mantem_a_conexao():
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_ok(conexoes),
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+            intervalo_verificacao_s=POLL,
+            estado_expira_s=0.15,
+        )
+        await robo.iniciar()
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            for _ in range(20):
+                conexoes[0].datachannel.pub_sub.emitir_estado({"data": {"mode": 1}})
+                await asyncio.sleep(0.02)
+            conectado = robo.estado()["conectado"]
+        finally:
+            await robo.encerrar()
+        return conexoes, conectado
+
+    conexoes, conectado = asyncio.run(cenario())
+    assert conectado is True
+    assert len(conexoes) == 1
+
+
+def test_peer_connection_failed_fecha_e_reconecta():
+    async def cenario():
+        conexoes = []
+        conectar_base = _conectar_ok(conexoes)
+
+        async def conectar():
+            conn = await conectar_base()
+            conn.pc = PeerFalso()
+            return conn
+
+        robo = Go2WebRTC(
+            conectar=conectar,
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+            intervalo_verificacao_s=POLL,
+            tempo_limite_desconexao_s=0.1,
+        )
+        await robo.iniciar()
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            conexoes[0].pc.connectionState = "failed"
+            assert await _esperar(lambda: len(conexoes) >= 2)
+        finally:
+            await robo.encerrar()
+        return conexoes
+
+    conexoes = asyncio.run(cenario())
+    assert conexoes[0].desconectada is True
+
+
+# --- conexão padrão: limpeza de conexões meio montadas ----------------------
+
+
+class ConexaoQueFalha:
+    def __init__(self, travar=False):
+        self.desconectada = False
+        self._travar = travar
+
+    async def connect(self):
+        # simula setup parcial (peer connection criada) e depois falha/trava
+        self.pc = object()
+        if self._travar:
+            await asyncio.Event().wait()
+        raise RuntimeError("falha no meio do handshake")
+
+    async def disconnect(self):
+        self.desconectada = True
+
+
+def test_connect_que_falha_desconecta_a_conexao_parcial():
+    async def cenario():
+        conn = ConexaoQueFalha()
+        with pytest.raises(RuntimeError, match="handshake"):
+            await _abrir_conexao(conn, tempo_limite_desconexao_s=0.1)
+        return conn
+
+    conn = asyncio.run(cenario())
+    assert conn.desconectada is True
+
+
+def test_cancelar_durante_connect_fecha_a_conexao_parcial():
+    async def cenario():
+        conn = ConexaoQueFalha(travar=True)
+        tarefa = asyncio.create_task(_abrir_conexao(conn, tempo_limite_desconexao_s=0.1))
+        await asyncio.sleep(0.05)
+        tarefa.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await tarefa
+        return conn
+
+    conn = asyncio.run(cenario())
+    assert conn.desconectada is True
+
+
+def test_encerrar_durante_tentativa_de_conexao_nao_trava():
+    async def cenario():
+        conns = []
+
+        async def conectar():
+            conn = ConexaoQueFalha(travar=True)
+            conns.append(conn)
+            return await _abrir_conexao(conn, tempo_limite_desconexao_s=0.1)
+
+        robo = Go2WebRTC(conectar=conectar, sport_cmd=SPORT_CMD)
+        await robo.iniciar()
+        assert await _esperar(lambda: len(conns) == 1)
+        inicio = time.monotonic()
+        await robo.encerrar()
+        return conns, time.monotonic() - inicio
+
+    conns, duracao = asyncio.run(cenario())
+    assert conns[0].desconectada is True
+    assert duracao < 0.5
+
+
 # --- encerrar / ciclo de vida -------------------------------------------------
 
 
@@ -305,6 +513,65 @@ def test_encerrar_manda_stopmove_e_desconecta():
     conn = asyncio.run(cenario())
     assert conn.desconectada is True
     assert ("rt/api/sport/request", {"api_id": 1003}) in conn.datachannel.pub_sub.publicacoes
+
+
+def test_encerrar_com_publish_que_nunca_resolve_termina_e_desconecta():
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_ok(conexoes),
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+            tempo_limite_comando_s=0.1,
+            tempo_limite_desconexao_s=0.1,
+        )
+        await robo.iniciar()
+        assert await _esperar(lambda: len(conexoes) == 1)
+        conexoes[0].datachannel.pub_sub.travar = True
+        inicio = time.monotonic()
+        await robo.encerrar()
+        return conexoes[0], time.monotonic() - inicio
+
+    conn, duracao = asyncio.run(cenario())
+    assert duracao < 0.5
+    assert conn.desconectada is True
+    # StopMove tentado ANTES de desconectar
+    assert conn.eventos == [("publish", 1003), ("disconnect", None)]
+
+
+def test_encerrar_com_disconnect_que_trava_termina_dentro_do_limite():
+    async def cenario():
+        conexoes = []
+        conectar_base = _conectar_ok(conexoes)
+
+        async def conectar():
+            conn = await conectar_base()
+
+            async def disconnect_travado():
+                conn.eventos.append(("disconnect", None))
+                await asyncio.Event().wait()
+
+            conn.disconnect = disconnect_travado
+            return conn
+
+        robo = Go2WebRTC(
+            conectar=conectar,
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+            tempo_limite_comando_s=0.1,
+            tempo_limite_desconexao_s=0.1,
+        )
+        await robo.iniciar()
+        assert await _esperar(lambda: len(conexoes) == 1)
+        inicio = time.monotonic()
+        await robo.encerrar()
+        return conexoes[0], time.monotonic() - inicio
+
+    conn, duracao = asyncio.run(cenario())
+    assert duracao < 0.5
+    assert conn.eventos == [("publish", 1003), ("disconnect", None)]
 
 
 def test_encerrar_sem_nunca_ter_conectado_nao_levanta():

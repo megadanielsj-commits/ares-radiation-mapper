@@ -9,7 +9,16 @@ mesmo sem ele instalado.
 Conexão: `iniciar()` sobe uma tarefa de fundo que conecta e, se cair ou
 falhar, tenta de novo com backoff exponencial (até `backoff_max`) — nunca
 levanta exceção por o robô estar inacessível; `estado()` reflete o erro
-atual. Pose: cada mensagem de `rt/lf/sportmodestate` vira uma `Pose` a partir
+atual. Queda: o `aiortc` só passa a `failed`/`closed` depois de ~30 s sem
+consentimento ICE (não existe estado `disconnected` no `RTCPeerConnection`),
+então a queda é detectada principalmente por estado parado: sem mensagem de
+`rt/lf/sportmodestate` há `estado_expira_s`, a conexão é dada como caída,
+fechada (com tempo limite) e refeita. Toda conexão que falha ou cai é
+fechada antes de tentar de novo, para não vazar peer connections.
+
+Comandos têm tempo limite (`tempo_limite_comando_s`): num enlace caído a
+resposta de `publish_request_new` pode nunca chegar, e quem chamou recebe
+`TimeoutError` em vez de ficar preso. Pose: cada mensagem de `rt/lf/sportmodestate` vira uma `Pose` a partir
 de `position` (x, y) e do yaw de `imu_state.rpy[2]` (ou, na falta dele, do
 quaternion `imu_state.quaternion` [w, x, y, z]). Comandos: publicados em
 `rt/api/sport/request` com o `api_id` de `SPORT_CMD`.
@@ -30,8 +39,14 @@ TOPICO_COMANDO = "rt/api/sport/request"
 BACKOFF_MIN_S = 1.0
 BACKOFF_MAX_S = 10.0
 INTERVALO_VERIFICACAO_S = 0.2
+TEMPO_LIMITE_COMANDO_S = 1.0
+TEMPO_LIMITE_DESCONEXAO_S = 2.0
+ESTADO_EXPIRA_S = 2.0
+PAUSA_LEVANTAR_S = 0.1
 
-_ESTADOS_DESCONECTADOS = ("disconnected", "failed", "closed")
+# `connectionState` do `RTCPeerConnection` do aiortc 1.x: new, connecting,
+# connected, failed, closed (não há "disconnected").
+_ESTADOS_DESCONECTADOS = ("failed", "closed")
 
 
 def _sport_cmd_padrao() -> dict:
@@ -42,14 +57,33 @@ def _sport_cmd_padrao() -> dict:
     return SPORT_CMD
 
 
-async def _conectar_padrao(aes_128_key: Optional[str]):
+async def _fechar_conexao(conn, tempo_limite_s: float) -> None:
+    """`conn.disconnect()` com tempo limite; erros só vão para o log."""
+    try:
+        await asyncio.wait_for(conn.disconnect(), timeout=tempo_limite_s)
+    except asyncio.TimeoutError:
+        log.warning("desconexão do robô passou de %.1f s; conexão abandonada", tempo_limite_s)
+    except Exception:
+        log.exception("erro ao desconectar do robô")
+
+
+async def _abrir_conexao(conn, tempo_limite_desconexao_s: float = TEMPO_LIMITE_DESCONEXAO_S):
+    """`conn.connect()`; se falhar ou for cancelado no meio, fecha o que já foi montado."""
+    try:
+        await conn.connect()
+    except BaseException:
+        await _fechar_conexao(conn, tempo_limite_desconexao_s)
+        raise
+    return conn
+
+
+async def _conectar_padrao(aes_128_key: Optional[str], tempo_limite_desconexao_s: float):
     """Conecta no robô em modo AP, como `conectar_ap` do `go2_wifi_quickstart`."""
     from . import _compat  # noqa: F401
     from unitree_webrtc_connect import UnitreeWebRTCConnection, WebRTCConnectionMethod
 
     conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalAP, aes_128_key=aes_128_key)
-    await conn.connect()
-    return conn
+    return await _abrir_conexao(conn, tempo_limite_desconexao_s)
 
 
 class Go2WebRTC:
@@ -63,13 +97,21 @@ class Go2WebRTC:
         backoff_min: float = BACKOFF_MIN_S,
         backoff_max: float = BACKOFF_MAX_S,
         intervalo_verificacao_s: float = INTERVALO_VERIFICACAO_S,
+        tempo_limite_comando_s: float = TEMPO_LIMITE_COMANDO_S,
+        tempo_limite_desconexao_s: float = TEMPO_LIMITE_DESCONEXAO_S,
+        estado_expira_s: float = ESTADO_EXPIRA_S,
     ) -> None:
         self._aes_128_key = aes_128_key
-        self._conectar = conectar or (lambda: _conectar_padrao(self._aes_128_key))
+        self._conectar = conectar or (
+            lambda: _conectar_padrao(self._aes_128_key, self._tempo_limite_desconexao_s)
+        )
         self._sport_cmd = sport_cmd
         self._backoff_min = backoff_min
         self._backoff_max = backoff_max
         self._intervalo_verificacao_s = intervalo_verificacao_s
+        self._tempo_limite_comando_s = tempo_limite_comando_s
+        self._tempo_limite_desconexao_s = tempo_limite_desconexao_s
+        self._estado_expira_s = estado_expira_s
 
         self._conn = None
         self._tarefa: Optional[asyncio.Task] = None
@@ -78,6 +120,7 @@ class Go2WebRTC:
         self._erro: Optional[str] = None
         self._body_height: Optional[float] = None
         self._mode: Optional[int] = None
+        self._ultimo_estado = 0.0  # time.monotonic() da última mensagem de estado
 
         self._callbacks: List[Callable[[Pose], None]] = []
 
@@ -89,7 +132,12 @@ class Go2WebRTC:
         self._tarefa = asyncio.create_task(self._laco())
 
     async def encerrar(self) -> None:
-        """Cancela a tarefa de fundo, manda StopMove (se conectado) e desconecta."""
+        """Cancela a tarefa de fundo, manda StopMove (se conectado) e desconecta.
+
+        Cada passo tem tempo limite (StopMove: `tempo_limite_comando_s`;
+        desconexão: `tempo_limite_desconexao_s`) e a desconexão é sempre
+        tentada, mesmo se o StopMove falhar ou não tiver resposta.
+        """
         if self._tarefa is not None:
             self._tarefa.cancel()
             try:
@@ -104,14 +152,10 @@ class Go2WebRTC:
             except Exception:
                 log.exception("erro ao mandar StopMove no encerramento do robô")
 
+        self._conectado = False
         conn, self._conn = self._conn, None
         if conn is not None:
-            try:
-                await conn.disconnect()
-            except Exception:
-                log.exception("erro ao desconectar do robô")
-
-        self._conectado = False
+            await _fechar_conexao(conn, self._tempo_limite_desconexao_s)
 
     def assinar_pose(self, cb: Callable[[Pose], None]) -> None:
         self._callbacks.append(cb)
@@ -124,6 +168,7 @@ class Go2WebRTC:
 
     async def levantar(self) -> None:
         await self._enviar_comando("StandUp")
+        await asyncio.sleep(PAUSA_LEVANTAR_S)
         await self._enviar_comando("BalanceStand")
 
     async def deitar(self) -> None:
@@ -141,21 +186,28 @@ class Go2WebRTC:
     async def _laco(self) -> None:
         espera = self._backoff_min
         while True:
+            conn = None
             try:
                 conn = await self._conectar()
                 self._conn = conn
+                self._ultimo_estado = time.monotonic()  # carência até o 1º estado
                 self._conectado = True
                 self._erro = None
                 espera = self._backoff_min
                 self._assinar_estado(conn)
-                await self._aguardar_desconexao(conn)
+                self._erro = await self._aguardar_desconexao(conn)
+                log.warning("conexão com o robô caiu: %s", self._erro)
             except asyncio.CancelledError:
                 raise
             except Exception as e:
                 self._erro = str(e)
                 log.warning("conexão com o robô falhou/caiu: %s", e)
             self._conectado = False
-            self._conn = None
+            if conn is not None:
+                # fecha a conexão antiga antes de reconectar; `self._conn` só é
+                # limpo depois, para que `encerrar()` a feche se cancelar no meio
+                await _fechar_conexao(conn, self._tempo_limite_desconexao_s)
+                self._conn = None
             await asyncio.sleep(espera)
             espera = min(espera * 2, self._backoff_max)
 
@@ -165,17 +217,26 @@ class Go2WebRTC:
         except Exception:
             log.exception("erro ao assinar o estado do robô")
 
-    async def _aguardar_desconexao(self, conn) -> None:
-        """Espera até a conexão cair (sinal do driver, se disponível)."""
+    async def _aguardar_desconexao(self, conn) -> str:
+        """Espera até a conexão cair; devolve o motivo.
+
+        Dois sinais: `pc.connectionState` em failed/closed (lento no aiortc)
+        e estado parado — nenhuma mensagem de `TOPICO_ESTADO` há
+        `estado_expira_s` (o robô publica a dezenas de Hz).
+        """
         while True:
             await asyncio.sleep(self._intervalo_verificacao_s)
             pc = getattr(conn, "pc", None)
             estado_pc = getattr(pc, "connectionState", None) if pc is not None else None
             if estado_pc in _ESTADOS_DESCONECTADOS:
-                return
+                return f"conexão WebRTC {estado_pc}"
+            parado_ha = time.monotonic() - self._ultimo_estado
+            if parado_ha >= self._estado_expira_s:
+                return f"sem estado do robô há {parado_ha:.1f} s"
 
     # ------------------------------------------------------------------ estado/pose
     def _ao_receber_estado(self, msg) -> None:
+        self._ultimo_estado = time.monotonic()
         try:
             dados = msg.get("data", msg) if isinstance(msg, dict) else msg
             if not isinstance(dados, dict):
@@ -229,10 +290,25 @@ class Go2WebRTC:
         return self._sport_cmd
 
     async def _enviar_comando(self, nome: str, parametro: Optional[dict] = None):
+        """Publica o comando e espera a resposta por até `tempo_limite_comando_s`.
+
+        Levanta `RuntimeError` se não houver conexão e `TimeoutError` se a
+        resposta não chegar no prazo (enlace caído: o future do driver nunca
+        resolve).
+        """
         if not self._conectado or self._conn is None:
             raise RuntimeError("robô não conectado")
         sport_cmd = self._obter_sport_cmd()
         opts = {"api_id": sport_cmd[nome]}
         if parametro is not None:
             opts["parameter"] = parametro
-        return await self._conn.datachannel.pub_sub.publish_request_new(TOPICO_COMANDO, opts)
+        pub_sub = self._conn.datachannel.pub_sub
+        try:
+            return await asyncio.wait_for(
+                pub_sub.publish_request_new(TOPICO_COMANDO, opts),
+                timeout=self._tempo_limite_comando_s,
+            )
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"comando {nome} sem resposta em {self._tempo_limite_comando_s:.1f} s"
+            ) from None
