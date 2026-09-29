@@ -6,8 +6,11 @@ e `await conn.datachannel.pub_sub.publish_request_new(topico, payload)`, mais
 """
 import asyncio
 import math
+import sys
 import time
+import types
 
+import numpy as np
 import pytest
 
 from ares.robo.go2 import Go2WebRTC, _abrir_conexao
@@ -76,6 +79,47 @@ class ConexaoFalsa:
 class PeerFalso:
     def __init__(self, estado="connected"):
         self.connectionState = estado
+
+
+class VideoFalso:
+    """Imita `conn.video` do driver real (`add_track_callback`/`switchVideoChannel`)."""
+
+    def __init__(self):
+        self.callback = None
+        self.ligado = False
+
+    def add_track_callback(self, cb):
+        self.callback = cb
+
+    def switchVideoChannel(self, ligar):
+        self.ligado = ligar
+
+
+class TrackFalso:
+    """Imita um `track` do aiortc: `recv()` devolve frames até `n_frames`, depois trava."""
+
+    def __init__(self, n_frames=3):
+        self._n_frames = n_frames
+        self.entregues = 0
+
+    async def recv(self):
+        if self.entregues >= self._n_frames:
+            await asyncio.Event().wait()
+        self.entregues += 1
+        img = np.zeros((4, 4, 3), dtype=np.uint8)
+        frame = types.SimpleNamespace(to_ndarray=lambda format="bgr24": img)
+        return frame
+
+
+def _conectar_com_video(conexoes):
+    base = _conectar_ok(conexoes)
+
+    async def conectar():
+        conn = await base()
+        conn.video = VideoFalso()
+        return conn
+
+    return conectar
 
 
 def _conectar_ok(conexoes):
@@ -683,6 +727,81 @@ def test_encerrar_sem_nunca_ter_conectado_nao_levanta():
         await robo.encerrar()  # não deve levantar nem publicar nada
 
     asyncio.run(cenario())  # não deve levantar
+
+
+# --- câmera --------------------------------------------------------------
+
+
+def test_camera_liga_e_publica_frames_jpeg():
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_com_video(conexoes),
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+        )
+        await robo.iniciar()
+        tarefa_track = None
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            video = conexoes[0].video
+            assert await _esperar(lambda: video.ligado is True)
+            assert video.callback is not None
+            track = TrackFalso()
+            tarefa_track = asyncio.ensure_future(video.callback(track))
+            assert await _esperar(lambda: robo.frame_jpeg() is not None)
+        finally:
+            if tarefa_track is not None:
+                tarefa_track.cancel()
+            await robo.encerrar()
+        return robo.frame_jpeg()
+
+    jpeg = asyncio.run(cenario())
+    assert jpeg[:2] == b"\xff\xd8"  # marcador de início de um JPEG
+
+
+def test_camera_sem_video_na_conexao_fica_indisponivel():
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_ok(conexoes),  # sem `.video`
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+        )
+        await robo.iniciar()
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            await asyncio.sleep(0.05)
+            assert robo.frame_jpeg() is None
+        finally:
+            await robo.encerrar()
+
+    asyncio.run(cenario())  # não deve levantar
+
+
+def test_camera_sem_cv2_fica_indisponivel(monkeypatch):
+    monkeypatch.setitem(sys.modules, "cv2", None)  # simula cv2 não instalado
+
+    async def cenario():
+        conexoes = []
+        robo = Go2WebRTC(
+            conectar=_conectar_com_video(conexoes),
+            sport_cmd=SPORT_CMD,
+            backoff_min=BACKOFF_MIN,
+            backoff_max=BACKOFF_MAX,
+        )
+        await robo.iniciar()
+        try:
+            assert await _esperar(lambda: len(conexoes) == 1)
+            await asyncio.sleep(0.05)
+            assert conexoes[0].video.ligado is False
+            assert robo.frame_jpeg() is None
+        finally:
+            await robo.encerrar()
+
+    asyncio.run(cenario())
 
 
 def test_iniciar_duas_vezes_nao_vaza_tarefas():

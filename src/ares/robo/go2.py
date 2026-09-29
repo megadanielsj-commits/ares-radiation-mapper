@@ -31,6 +31,15 @@ resposta de `publish_request_new` pode nunca chegar, e quem chamou recebe
 de `position` (x, y) e do yaw de `imu_state.rpy[2]` (ou, na falta dele, do
 quaternion `imu_state.quaternion` [w, x, y, z]). Comandos: publicados em
 `rt/api/sport/request` com o `api_id` de `SPORT_CMD`.
+
+Câmera (recurso opcional, porta do padrão validado em `go2_wifi_quickstart`):
+ao conectar, se `cv2` estiver instalado e a conexão tiver `video`, liga o
+canal (`video.add_track_callback` + `video.switchVideoChannel(True)`) e cada
+frame recebido (`track.recv()` → `to_ndarray(format="bgr24")`) é codificado
+em JPEG e guardado como o último quadro (`frame_jpeg()`); sem `cv2` ou sem
+vídeo, a câmera fica indisponível e o robô segue funcionando normalmente (só
+estado/movimento). O import de `cv2` é preguiçoso para não quebrar quando a
+lib não está instalada.
 """
 import asyncio
 import logging
@@ -135,6 +144,7 @@ class Go2WebRTC:
         self._espera = self._backoff_min  # backoff atual entre tentativas de conexão
 
         self._callbacks: List[Callable[[Pose], None]] = []
+        self._jpeg: Optional[bytes] = None
 
     # ------------------------------------------------------------------ API pública
     async def iniciar(self) -> None:
@@ -194,12 +204,17 @@ class Go2WebRTC:
             "mode": self._mode,
         }
 
+    def frame_jpeg(self) -> Optional[bytes]:
+        """Último quadro da câmera em JPEG, ou `None` se indisponível."""
+        return self._jpeg
+
     # ------------------------------------------------------------------ laço de conexão
     async def _laco(self) -> None:
         self._espera = self._backoff_min
         while True:
             conn = None
             self._primeiro_estado_recebido = False
+            self._jpeg = None
             try:
                 conn = await self._conectar()
                 self._conn = conn
@@ -207,6 +222,7 @@ class Go2WebRTC:
                 self._conectado = True
                 self._erro = None
                 self._assinar_estado(conn)
+                self._ligar_camera(conn)
                 motivo, parado = await self._aguardar_desconexao(conn)
                 self._erro = motivo
                 log.warning("conexão com o robô caiu: %s", motivo)
@@ -236,6 +252,49 @@ class Go2WebRTC:
             conn.datachannel.pub_sub.subscribe(TOPICO_ESTADO, _callback)
         except Exception:
             log.exception("erro ao assinar o estado do robô")
+
+    def _ligar_camera(self, conn) -> None:
+        """Liga a câmera nesta conexão, se `cv2` e vídeo estiverem disponíveis.
+
+        Best-effort e silencioso: sem `cv2` instalado, sem `conn.video` ou se
+        `add_track_callback`/`switchVideoChannel` levantarem, a câmera fica
+        indisponível e o robô segue funcionando normalmente.
+        """
+        try:
+            import cv2  # noqa: F401 -- só para checar disponibilidade
+        except ImportError:
+            return
+        video = getattr(conn, "video", None)
+        if video is None:
+            return
+        try:
+            video.add_track_callback(lambda track, conn=conn: self._ao_receber_track(track, conn))
+            video.switchVideoChannel(True)
+        except Exception:
+            log.exception("erro ao ligar a câmera do robô")
+
+    async def _ao_receber_track(self, track, conn) -> None:
+        """Recebe frames da câmera e guarda o último já em JPEG.
+
+        Porta do padrão validado em `go2_wifi_quickstart` (`on_frame`):
+        `track.recv()` → `to_ndarray(format="bgr24")` → `cv2.imencode`.
+        Ignora mensagens de uma conexão antiga já substituída (mesmo critério
+        do estado/pose) e nunca deixa uma exceção (câmera indisponível a
+        meio do stream, por exemplo) subir e derrubar a conexão.
+        """
+        import cv2
+
+        try:
+            while conn is self._conn:
+                frame = await track.recv()
+                img = frame.to_ndarray(format="bgr24")
+                ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                if ok:
+                    self._jpeg = buf.tobytes()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("erro ao processar quadro da câmera")
 
     async def _tentar_parar_antes_de_fechar(self, conn) -> None:
         """Última tentativa de StopMove antes de abandonar uma conexão parada.

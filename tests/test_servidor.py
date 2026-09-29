@@ -100,6 +100,34 @@ def test_fonte_simulada(cliente):
     assert cliente.post("/api/simulacao/fonte", json={"x": 1}).status_code == 422
 
 
+def test_camera_gerador_mjpeg_produz_quadros_ate_desconectar():
+    """`_gerador_mjpeg` só para quando o cliente desconecta (stream contínuo)."""
+    import asyncio
+
+    from ares.servidor.app import _gerador_mjpeg
+
+    async def cenario():
+        quadros = iter([b"\xff\xd8um", None, b"\xff\xd8dois"])
+        voltas = {"n": 0}
+
+        def obter_quadro():
+            return next(quadros, None)
+
+        async def desconectado():
+            voltas["n"] += 1
+            return voltas["n"] > 3  # desconecta depois da 3ª volta do laço
+
+        saida = b"".join(
+            [pedaco async for pedaco in _gerador_mjpeg(obter_quadro, desconectado, 0.0)]
+        )
+        return saida
+
+    saida = asyncio.run(cenario())
+    assert saida.count(b"Content-Type: image/jpeg") == 2  # o quadro None foi pulado
+    assert b"\xff\xd8um" in saida and b"\xff\xd8dois" in saida
+    assert saida.startswith(b"--quadroares")
+
+
 def test_acoes_do_robo(cliente):
     robo = cliente.orq.robo
     assert cliente.post("/api/robo/deitar").status_code == 200 and not robo.em_pe

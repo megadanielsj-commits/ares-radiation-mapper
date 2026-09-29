@@ -7,14 +7,15 @@ POST com outra origem → 403 e WebSocket → fechamento 1008.
 Teleop: `WS /ws/comando` recebe `{vx, vy, vyaw}` (heartbeat ≥ 5 Hz) e repassa
 a `teleop.definir`; ao fechar ou cair a conexão, `teleop.parar()`.
 """
+import asyncio
 import contextlib
 import math
 import pathlib
 import re
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -23,6 +24,8 @@ ESTATICO = pathlib.Path(__file__).parent / "static"
 HOSTS_CONFIAVEIS = ["localhost", "127.0.0.1", "testserver"]  # "testserver": TestClient
 _ORIGEM_LOCAL = re.compile(r"^http://(localhost|127\.0\.0\.1)(:\d+)?$")
 ACOES_ROBO = ("levantar", "deitar", "parar")
+LIMITE_BOUNDARY_MJPEG = "quadroares"
+PERIODO_CAMERA_S = 1.0 / 15.0
 
 
 def origem_permitida(origin: Optional[str]) -> bool:
@@ -38,6 +41,22 @@ class FonteSimulada(BaseModel):
     x: float
     y: float
     s: float
+
+
+async def _gerador_mjpeg(obter_quadro, desconectado, periodo_s: float):
+    """Corpo multipart MJPEG: um quadro JPEG por vez enquanto houver quadro e
+    o cliente não tiver desconectado (evita vazar a tarefa de fundo com um
+    stream que, de outro modo, nunca termina sozinho)."""
+    while not await desconectado():
+        quadro = obter_quadro()
+        if quadro is not None:
+            yield (
+                b"--" + LIMITE_BOUNDARY_MJPEG.encode()
+                + b"\r\nContent-Type: image/jpeg\r\n\r\n"
+                + quadro
+                + b"\r\n"
+            )
+        await asyncio.sleep(periodo_s)
 
 
 def _velocidade(msg) -> Optional[tuple]:
@@ -146,9 +165,14 @@ def criar_app(orquestrador, teleop) -> FastAPI:
         return {"ok": True}
 
     @app.get("/camera.mjpg")
-    def camera():
-        # o driver atual do Go2 não expõe o vídeo; sem câmera → 404
-        raise HTTPException(404, "câmera indisponível")
+    def camera(request: Request):
+        obter_quadro = getattr(orq.robo, "frame_jpeg", None)
+        if obter_quadro is None or obter_quadro() is None:
+            raise HTTPException(404, "câmera indisponível")
+        return StreamingResponse(
+            _gerador_mjpeg(obter_quadro, request.is_disconnected, PERIODO_CAMERA_S),
+            media_type=f"multipart/x-mixed-replace; boundary={LIMITE_BOUNDARY_MJPEG}",
+        )
 
     # ------------------------------------------------------------------ WebSockets
     @app.websocket("/ws")
