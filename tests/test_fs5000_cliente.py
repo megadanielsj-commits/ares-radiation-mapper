@@ -280,6 +280,128 @@ def test_eventos_malformados_sao_ignorados_e_contados():
     assert cliente.eventos_invalidos >= 1
 
 
+def test_backoff_nao_reseta_sem_mensagem_valida():
+    """Servidor que aceita e fecha na hora (sem mandar nada) não pode causar
+    reconexões em rajada: o backoff só reseta se a sessão recebeu algo válido."""
+
+    async def cenario():
+        conexoes = []
+
+        async def handler(ws):
+            conexoes.append(ws)
+            # fecha na hora, sem mandar snapshot nem nada
+
+        server = await serve(handler, "127.0.0.1", 0)
+        porta = server.sockets[0].getsockname()[1]
+        url = f"ws://127.0.0.1:{porta}/ws"
+
+        cliente = ClienteFS5000(url=url, backoff_min=0.05, backoff_max=0.4)
+        await cliente.iniciar()
+        try:
+            await asyncio.sleep(1.0)
+        finally:
+            await cliente.encerrar()
+            server.close()
+            await server.wait_closed()
+        return len(conexoes)
+
+    tentativas = asyncio.run(cenario())
+    assert tentativas <= 8
+
+
+def test_snapshot_malformado_com_entradas_invalidas_nao_derruba_sessao():
+    async def cenario():
+        srv = ServidorFalso([_aparelho("1-4")])
+        url = await srv.iniciar()
+        recebidas = []
+        cliente = ClienteFS5000(url=url, backoff_min=BACKOFF_MIN, backoff_max=BACKOFF_MAX)
+        cliente.assinar(recebidas.append)
+        await cliente.iniciar()
+        try:
+            for _ in range(50):
+                if srv.filas:
+                    break
+                await asyncio.sleep(0.02)
+            # entrada de snapshot que não é um dict (causaria AttributeError em .get)
+            srv.enviar({"tipo": "snapshot", "dados": [123]})
+            # a sessão deve seguir viva: leitura válida chega depois
+            srv.enviar(_leitura_evento("1-4", ts=7.0))
+            for _ in range(50):
+                if recebidas:
+                    break
+                await asyncio.sleep(0.02)
+            estado = cliente.estado()
+        finally:
+            await cliente.encerrar()
+            await srv.encerrar()
+        return cliente, recebidas, estado
+
+    cliente, recebidas, estado = asyncio.run(cenario())
+    assert estado["conectado"] is True
+    assert len(recebidas) == 1
+    assert recebidas[0].ts == 7.0
+    assert cliente.eventos_invalidos >= 1
+
+
+def test_evento_estado_com_id_nao_hasheavel_nao_derruba_sessao():
+    async def cenario():
+        srv = ServidorFalso([_aparelho("1-4")])
+        url = await srv.iniciar()
+        recebidas = []
+        cliente = ClienteFS5000(url=url, backoff_min=BACKOFF_MIN, backoff_max=BACKOFF_MAX)
+        cliente.assinar(recebidas.append)
+        await cliente.iniciar()
+        try:
+            for _ in range(50):
+                if srv.filas:
+                    break
+                await asyncio.sleep(0.02)
+            # id não-hasheável (lista): TypeError ao usar como chave de dict
+            srv.enviar({
+                "tipo": "estado", "aparelho_id": "1-4", "ts": 0.0,
+                "dados": {"id": ["a", "b"], "estado": "conectado"},
+            })
+            srv.enviar(_leitura_evento("1-4", ts=8.0))
+            for _ in range(50):
+                if recebidas:
+                    break
+                await asyncio.sleep(0.02)
+            estado = cliente.estado()
+        finally:
+            await cliente.encerrar()
+            await srv.encerrar()
+        return cliente, recebidas, estado
+
+    cliente, recebidas, estado = asyncio.run(cenario())
+    assert estado["conectado"] is True
+    assert len(recebidas) == 1
+    assert recebidas[0].ts == 8.0
+    assert cliente.eventos_invalidos >= 1
+
+
+def test_iniciar_duas_vezes_nao_cria_tarefa_extra():
+    async def cenario():
+        srv = ServidorFalso([_aparelho("1-4")])
+        url = await srv.iniciar()
+        cliente = ClienteFS5000(url=url, backoff_min=BACKOFF_MIN, backoff_max=BACKOFF_MAX)
+        await cliente.iniciar()
+        tarefa1 = cliente._tarefa
+        await cliente.iniciar()
+        tarefa2 = cliente._tarefa
+        try:
+            for _ in range(50):
+                if srv.filas:
+                    break
+                await asyncio.sleep(0.02)
+        finally:
+            await cliente.encerrar()
+            await srv.encerrar()
+        return tarefa1, tarefa2
+
+    tarefa1, tarefa2 = asyncio.run(cenario())
+    assert tarefa1 is tarefa2
+
+
 def test_callback_com_excecao_nao_derruba_o_laco():
     async def cenario():
         srv = ServidorFalso([_aparelho("1-4")])

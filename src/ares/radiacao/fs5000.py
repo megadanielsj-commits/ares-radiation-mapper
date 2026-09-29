@@ -68,7 +68,13 @@ class ClienteFS5000:
         }
 
     async def iniciar(self) -> None:
-        """Inicia a tarefa de fundo que conecta e reconecta ao serviço."""
+        """Inicia a tarefa de fundo que conecta e reconecta ao serviço.
+
+        Chamar de novo enquanto a tarefa já está rodando não faz nada (evita
+        vazar tarefas órfãs).
+        """
+        if self._tarefa is not None and not self._tarefa.done():
+            return
         self._tarefa = asyncio.create_task(self._laco())
 
     async def encerrar(self) -> None:
@@ -86,12 +92,12 @@ class ClienteFS5000:
     async def _laco(self) -> None:
         espera = self._backoff_min
         while True:
+            recebeu_mensagem_valida = False
             try:
                 async with connect(self._url) as ws:
                     self._conectado = True
                     self._erro = None
-                    espera = self._backoff_min
-                    await self._sessao(ws)
+                    recebeu_mensagem_valida = await self._sessao(ws)
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -99,9 +105,17 @@ class ClienteFS5000:
                 log.warning("conexão com o FS-5000 caiu: %s", e)
             self._conectado = False
             await asyncio.sleep(espera)
-            espera = min(espera * 2, self._backoff_max)
+            # só reseta o backoff se a sessão chegou a receber algo válido do
+            # servidor (snapshot ou evento); senão um servidor que aceita e
+            # fecha na hora causaria um loop de reconexão sem espera real.
+            if recebeu_mensagem_valida:
+                espera = self._backoff_min
+            else:
+                espera = min(espera * 2, self._backoff_max)
 
-    async def _sessao(self, ws) -> None:
+    async def _sessao(self, ws) -> bool:
+        """Processa mensagens da sessão. Retorna se alguma foi válida (snapshot/evento)."""
+        recebeu_mensagem_valida = False
         async for mensagem in ws:
             try:
                 evento = json.loads(mensagem)
@@ -110,7 +124,15 @@ class ClienteFS5000:
             except (ValueError, TypeError):
                 self.eventos_invalidos += 1
                 continue
-            self._processar_evento(evento)
+            recebeu_mensagem_valida = True
+            try:
+                self._processar_evento(evento)
+            except Exception:
+                self.eventos_invalidos += 1
+                log.exception(
+                    "erro ao processar evento do FS-5000; sessão mantida"
+                )
+        return recebeu_mensagem_valida
 
     # ------------------------------------------------------------------ processamento
     def _processar_evento(self, evento: dict) -> None:
