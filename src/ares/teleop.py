@@ -1,12 +1,26 @@
 """Controlador de teleoperação: velocidade com heartbeat, watchdog e limites.
 
 O navegador manda a velocidade desejada continuamente (heartbeat ≥ 5 Hz);
-`definir` só guarda o valor (já saturado) e marca a hora do último heartbeat.
-Um laço interno, a `hz`, publica `mover` enquanto a velocidade for diferente
-de zero e chama `parar_movimento` uma única vez na transição para zero (seja
-por `definir(0, 0, 0)`, por `parar()` ou pelo watchdog ao vencer `watchdog_s`
-sem heartbeat). Erros do robô ficam em `ultimo_erro` e não derrubam o laço —
+`definir` só guarda o valor (já saturado) e marca a hora do último heartbeat
+(`time.monotonic()`, imune a ajustes do relógio de parede).
+
+Um laço interno confere o watchdog a `verificacao_hz` (20 Hz por padrão),
+independente da taxa de `mover` (`hz`, 5 Hz por padrão). Enquanto a
+velocidade for diferente de zero ele publica `mover` a `hz`; na transição
+para zero (por `definir(0, 0, 0)`, por `parar()` ou pelo watchdog ao vencer
+`watchdog_s` sem heartbeat) chama `parar_movimento`. O robô só é dado como
+parado depois de um StopMove bem-sucedido: enquanto a parada estiver
+pendente ela é repetida a cada ciclo.
+
+Cada chamada ao robô tem tempo limite (`tempo_limite_s`), então o laço nunca
+fica preso num enlace caído. Erros do robô ficam em `ultimo_erro` (limpo no
+próximo sucesso), vão para o log com vazão limitada e não derrubam o laço —
 segurança física: sem heartbeat fresco o robô para, sempre.
+
+Latência de parada no pior caso, a partir do último heartbeat:
+`watchdog_s + tempo_limite_s + 1/verificacao_hz` (uma chamada `mover` em
+voo no instante em que o watchdog vence precisa terminar ou estourar o
+prazo antes do StopMove sair).
 """
 import asyncio
 import logging
@@ -14,6 +28,8 @@ import time
 from typing import Optional
 
 log = logging.getLogger(__name__)
+
+INTERVALO_LOG_ERRO_S = 5.0
 
 
 def _limitar(valor: float, maximo: float) -> float:
@@ -31,21 +47,28 @@ class Teleop:
         vyaw_max: float,
         watchdog_s: float = 0.5,
         hz: float = 5.0,
+        tempo_limite_s: float = 1.0,
+        verificacao_hz: float = 20.0,
     ) -> None:
         self.robo = robo
         self._vx_max = vx_max
         self._vy_max = vy_max
         self._vyaw_max = vyaw_max
         self._watchdog_s = watchdog_s
-        self._hz = hz
+        self._periodo_mover = 1.0 / hz
+        self._tempo_limite_s = tempo_limite_s
+        self._periodo_verificacao = 1.0 / max(verificacao_hz, hz)
 
         self._vx = 0.0
         self._vy = 0.0
         self._vyaw = 0.0
-        self._ultimo_heartbeat = 0.0
+        self._ultimo_heartbeat: Optional[float] = None  # time.monotonic()
+        self._proximo_mover = 0.0
+        # True desde o primeiro Move até um StopMove bem-sucedido
         self._movendo = False
 
         self.ultimo_erro: Optional[str] = None
+        self._ultimo_log_erro: Optional[float] = None
         self._tarefa: Optional[asyncio.Task] = None
 
     def definir(self, vx: float, vy: float, vyaw: float) -> None:
@@ -53,14 +76,15 @@ class Teleop:
         self._vx = _limitar(vx, self._vx_max)
         self._vy = _limitar(vy, self._vy_max)
         self._vyaw = _limitar(vyaw, self._vyaw_max)
-        self._ultimo_heartbeat = time.time()
+        self._ultimo_heartbeat = time.monotonic()
 
     async def parar(self) -> None:
-        """PARAR imediato: zera a velocidade e manda `parar_movimento` na hora."""
-        self._vx = 0.0
-        self._vy = 0.0
-        self._vyaw = 0.0
-        await self._parar_movimento_uma_vez()
+        """PARAR imediato: zera a velocidade e manda `parar_movimento` na hora.
+
+        Se o StopMove falhar, a parada fica pendente e o laço a repete.
+        """
+        self._zerar()
+        await self._tentar_parar()
 
     async def iniciar(self) -> None:
         """Sobe o laço de teleop (chamar de novo enquanto roda não faz nada)."""
@@ -69,7 +93,7 @@ class Teleop:
         self._tarefa = asyncio.create_task(self._laco())
 
     async def encerrar(self) -> None:
-        """Cancela o laço e garante que o robô fique parado."""
+        """Cancela o laço e manda StopMove (com tempo limite)."""
         if self._tarefa is not None:
             self._tarefa.cancel()
             try:
@@ -80,32 +104,64 @@ class Teleop:
         await self.parar()
 
     # ------------------------------------------------------------------ laço
+    def _zerar(self) -> None:
+        self._vx = 0.0
+        self._vy = 0.0
+        self._vyaw = 0.0
+
+    def _heartbeat_expirado(self, agora: float) -> bool:
+        return (
+            self._ultimo_heartbeat is None
+            or (agora - self._ultimo_heartbeat) >= self._watchdog_s
+        )
+
     async def _laco(self) -> None:
-        try:
-            while True:
-                await asyncio.sleep(1.0 / self._hz)
-                if (time.time() - self._ultimo_heartbeat) >= self._watchdog_s:
-                    self._vx = 0.0
-                    self._vy = 0.0
-                    self._vyaw = 0.0
+        while True:
+            await asyncio.sleep(self._periodo_verificacao)
+            agora = time.monotonic()
+            if self._heartbeat_expirado(agora):
+                self._zerar()
 
-                ativo = bool(self._vx or self._vy or self._vyaw)
-                if ativo:
-                    try:
-                        await self.robo.mover(self._vx, self._vy, self._vyaw)
-                    except Exception as e:
-                        self.ultimo_erro = str(e)
-                        log.exception("erro ao mover o robô")
-                    self._movendo = True
-                elif self._movendo:
-                    await self._parar_movimento_uma_vez()
-        except asyncio.CancelledError:
-            raise
+            if self._vx or self._vy or self._vyaw:
+                if agora >= self._proximo_mover:
+                    self._proximo_mover = agora + self._periodo_mover
+                    await self._mover()
+            elif self._movendo:
+                await self._tentar_parar()
 
-    async def _parar_movimento_uma_vez(self) -> None:
+    async def _mover(self) -> None:
+        # marcado antes do envio: um Move sem resposta pode ter chegado ao robô
+        self._movendo = True
         try:
-            await self.robo.parar_movimento()
+            await asyncio.wait_for(
+                self.robo.mover(self._vx, self._vy, self._vyaw), timeout=self._tempo_limite_s
+            )
         except Exception as e:
-            self.ultimo_erro = str(e)
-            log.exception("erro ao parar o robô")
+            self._registrar_erro("erro ao mover o robô", e)
+        else:
+            self.ultimo_erro = None
+
+    async def _tentar_parar(self) -> bool:
+        try:
+            await asyncio.wait_for(self.robo.parar_movimento(), timeout=self._tempo_limite_s)
+        except Exception as e:
+            self._movendo = True  # parada pendente: o laço tenta de novo
+            self._registrar_erro("erro ao parar o robô", e)
+            return False
         self._movendo = False
+        self.ultimo_erro = None
+        self._ultimo_log_erro = None
+        return True
+
+    def _registrar_erro(self, contexto: str, e: Exception) -> None:
+        detalhe = str(e)
+        if not detalhe:
+            if isinstance(e, asyncio.TimeoutError):
+                detalhe = f"sem resposta do robô em {self._tempo_limite_s:.1f} s"
+            else:
+                detalhe = type(e).__name__
+        self.ultimo_erro = detalhe
+        agora = time.monotonic()
+        if self._ultimo_log_erro is None or agora - self._ultimo_log_erro >= INTERVALO_LOG_ERRO_S:
+            self._ultimo_log_erro = agora
+            log.warning("%s: %s", contexto, detalhe)
