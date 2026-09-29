@@ -2,10 +2,160 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ARES</title>
+<style>
+:root{
+  --cor-fundo:#f2f4f7;
+  --cor-texto:#1b1f24;
+  --cor-texto-fraco:#5b6472;
+  --cor-painel:#ffffff;
+  --cor-borda:#d7dbe0;
+  --cor-ok:#1f9d55;
+  --cor-alerta:#c9861a;
+  --cor-erro:#d64545;
+  --cor-destaque:#2563eb;
+  --cor-desligado:#8a94a6;
+  --cor-mapa-fundo:#0b1020;
+  --cor-trajeto:#38bdf8;
+  --cor-robo:#f4f4f5;
+  --cor-map-cross:#facc15;
+  --cor-regiao95:#ffffff;
+  --cor-fonte-real:#fb7185;
+  --fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --cor-fundo:#12151a;
+    --cor-texto:#e8eaed;
+    --cor-texto-fraco:#9aa3b0;
+    --cor-painel:#1a1e25;
+    --cor-borda:#2c313a;
+    --cor-desligado:#6b7280;
+  }
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--cor-fundo);color:var(--cor-texto);font-family:var(--fonte);}
+body{padding:.5rem;}
+h1{font-size:1.1rem;margin:0;}
+button{font:inherit;cursor:pointer;border:1px solid var(--cor-borda);border-radius:.4rem;background:var(--cor-painel);color:var(--cor-texto);padding:.4rem .7rem;}
+button:hover{border-color:var(--cor-destaque);}
+button:disabled{opacity:.5;cursor:not-allowed;}
+button.perigo{border-color:var(--cor-erro);color:var(--cor-erro);}
+input[type=text],input[type=number]{font:inherit;padding:.3rem .4rem;border:1px solid var(--cor-borda);border-radius:.4rem;background:var(--cor-painel);color:var(--cor-texto);width:100%;}
+a{color:var(--cor-destaque);}
+section{background:var(--cor-painel);border:1px solid var(--cor-borda);border-radius:.5rem;padding:.6rem;margin-bottom:.5rem;}
+section h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.03em;color:var(--cor-texto-fraco);margin:0 0 .4rem 0;}
+.linha{display:flex;justify-content:space-between;gap:.5rem;padding:.15rem 0;font-size:.92rem;}
+.linha .rotulo{color:var(--cor-texto-fraco);}
+.pilulas{display:flex;gap:.4rem;flex-wrap:wrap;}
+.pilula{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;padding:.15rem .55rem;border-radius:1rem;border:1px solid var(--cor-borda);white-space:nowrap;}
+.pilula .ponto{width:.5rem;height:.5rem;border-radius:50%;background:var(--cor-desligado);display:inline-block;}
+.pilula.ok .ponto{background:var(--cor-ok);}
+.pilula.erro .ponto{background:var(--cor-erro);}
+.avisos{display:flex;flex-direction:column;gap:.25rem;}
+.aviso{font-size:.85rem;color:var(--cor-alerta);border:1px solid var(--cor-alerta);border-radius:.4rem;padding:.25rem .5rem;}
+#cabecalho{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem;}
+#app{display:grid;grid-template-columns:1fr;gap:.5rem;}
+@media (min-width:900px){
+  #app{grid-template-columns:minmax(0,2fr) minmax(280px,1fr);align-items:start;}
+}
+#mapa-wrap{position:relative;background:var(--cor-mapa-fundo);border-radius:.5rem;overflow:hidden;border:1px solid var(--cor-borda);}
+#mapa{display:block;width:100%;height:auto;aspect-ratio:1/1;touch-action:none;cursor:grab;}
+#mapa:active{cursor:grabbing;}
+#legenda{position:absolute;left:.5rem;bottom:.5rem;display:flex;flex-direction:column;gap:.15rem;font-size:.7rem;color:#fff;background:rgba(0,0,0,.45);padding:.35rem .5rem;border-radius:.4rem;}
+#legenda canvas{width:120px;height:12px;border-radius:.2rem;}
+#legenda .faixa{display:flex;justify-content:space-between;width:120px;}
+.botoes{display:flex;gap:.4rem;flex-wrap:wrap;}
+.botoes button{flex:1 1 auto;}
+#lista-missoes{list-style:none;margin:.3rem 0 0 0;padding:0;max-height:11rem;overflow:auto;}
+#lista-missoes li{display:flex;justify-content:space-between;gap:.4rem;align-items:baseline;padding:.25rem 0;border-top:1px solid var(--cor-borda);font-size:.82rem;}
+#lista-missoes li:first-child{border-top:none;}
+#lista-missoes .exportar{display:flex;gap:.4rem;}
+#camera{width:100%;border-radius:.4rem;border:1px solid var(--cor-borda);display:block;}
+#teleop-ajuda{font-size:.78rem;color:var(--cor-texto-fraco);}
+#fonte-sim-campo{display:flex;gap:.4rem;align-items:center;font-size:.85rem;}
+#fonte-sim-campo input{width:5.5rem;}
+</style>
 </head>
 <body>
-<h1>ARES</h1>
-<p>Painel em construção. Estado atual: <a href="/api/estado">/api/estado</a>.</p>
+<div id="cabecalho">
+  <h1>ARES</h1>
+  <div class="pilulas">
+    <span id="pill-modo" class="pilula"><span class="ponto"></span><span class="txt">modo</span></span>
+    <span id="pill-go2" class="pilula"><span class="ponto"></span><span class="txt">Go2</span></span>
+    <span id="pill-fs5000" class="pilula"><span class="ponto"></span><span class="txt">FS-5000</span></span>
+    <span id="pill-ws" class="pilula"><span class="ponto"></span><span class="txt">WS</span></span>
+  </div>
+</div>
+
+<div id="app">
+  <div>
+    <div id="mapa-wrap">
+      <canvas id="mapa" width="800" height="800"></canvas>
+      <div id="legenda">
+        <span id="legenda-titulo">µSv/h</span>
+        <canvas id="legenda-gradiente" width="120" height="12"></canvas>
+        <div class="faixa"><span id="legenda-min">0</span><span id="legenda-max">0</span></div>
+      </div>
+    </div>
+    <section id="secao-fonte-sim" hidden>
+      <h2>Fonte simulada</h2>
+      <div id="fonte-sim-campo">
+        <label for="fonte-s">Shift+clique no mapa posiciona a fonte. S (µSv/h @ 1 m):</label>
+        <input id="fonte-s" type="number" value="2.0" min="0.01" step="0.1">
+      </div>
+    </section>
+    <section id="secao-camera" hidden>
+      <h2>Câmera</h2>
+      <img id="camera" src="/camera.mjpg" alt="câmera do robô">
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>Leitura agora</h2>
+      <div class="linha"><span class="rotulo">Taxa (dr)</span><span id="v-dr">—</span></div>
+      <div class="linha"><span class="rotulo">CPS</span><span id="v-cps">—</span></div>
+      <div class="linha"><span class="rotulo">Dose</span><span id="v-dose">—</span></div>
+    </section>
+
+    <section>
+      <h2>Estimativa</h2>
+      <div class="linha"><span class="rotulo">P(fonte)</span><span id="v-pfonte">—</span></div>
+      <div class="linha"><span class="rotulo">Posição estimada</span><span id="v-posicao">—</span></div>
+      <div class="linha"><span class="rotulo">S estimado</span><span id="v-s">—</span></div>
+      <div class="linha"><span class="rotulo">Amostras</span><span id="v-n">—</span></div>
+      <div id="avisos" class="avisos"></div>
+    </section>
+
+    <section>
+      <h2>Missão</h2>
+      <div class="botoes">
+        <input id="missao-nome" type="text" placeholder="nome (opcional)">
+      </div>
+      <div class="botoes" style="margin-top:.4rem;">
+        <button id="btn-iniciar-missao">Iniciar missão</button>
+        <button id="btn-encerrar-missao">Encerrar missão</button>
+      </div>
+      <ul id="lista-missoes"></ul>
+    </section>
+
+    <section>
+      <h2>Robô</h2>
+      <div class="botoes">
+        <button id="btn-levantar">Levantar</button>
+        <button id="btn-deitar">Deitar</button>
+        <button id="btn-parar" class="perigo">PARAR</button>
+      </div>
+      <p id="teleop-ajuda">
+        Setas/WASD: andar e girar · Q/E: strafe lateral · Espaço: PARAR.
+        Sem tecla pressionada, o robô para sozinho.
+      </p>
+    </section>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
 </body>
 </html>
