@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import math
 import time
 import warnings
@@ -169,6 +170,42 @@ def test_iniciar_missao_sem_radiacao_levanta(tmp_path):
     assert estados and estados[0]["radiacao"]["conectado"] is False
     assert estados[0]["robo"]["conectado"] is True
     assert rad.encerrada
+
+
+def test_encerrar_missao_para_o_robo(tmp_path):
+    """`encerrar_missao` deve parar o robô (via teleop) antes de terminar."""
+
+    async def cenario():
+        orq = _rapido(_config(tmp_path))
+        robo, teleop = orq.robo, orq.teleop
+        await orq.iniciar()
+        try:
+            await _esperar(lambda: orq.ultima_pose is not None)
+            await orq.iniciar_missao()
+
+            async def _manter_heartbeat():
+                while True:
+                    teleop.definir(5.0, 0.0, 0.0)
+                    await asyncio.sleep(0.02)
+
+            heartbeat = asyncio.create_task(_manter_heartbeat())
+            try:
+                await _esperar(lambda: robo._vx != 0.0)
+                heartbeat.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await heartbeat
+                # sem watchdog (0,5 s por padrão) ainda por vir: se o robô
+                # já estiver parado aqui, foi por causa do `encerrar_missao`.
+                await orq.encerrar_missao()
+                assert robo._vx == 0.0 and robo._vy == 0.0 and robo._vyaw == 0.0
+            finally:
+                heartbeat.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await heartbeat
+        finally:
+            await orq.encerrar()
+
+    asyncio.run(cenario())
 
 
 def test_fonte_simulada_e_modo_real(tmp_path):

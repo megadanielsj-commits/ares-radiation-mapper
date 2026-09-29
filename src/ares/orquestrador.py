@@ -320,6 +320,8 @@ class Orquestrador:
         m = self._missao
         if m is None:
             raise RuntimeError("nenhuma missão ativa")
+        if self.teleop is not None:
+            await self.teleop.parar()
         self._missao = None  # novas amostras não entram mais nesta missão
         if self._fila_estimador is not None and self._tarefas:
             await self._fila_estimador.join()

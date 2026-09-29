@@ -42,6 +42,7 @@ estado/movimento). O import de `cv2` é preguiçoso para não quebrar quando a
 lib não está instalada.
 """
 import asyncio
+import json
 import logging
 import math
 import time
@@ -59,6 +60,7 @@ BACKOFF_MAX_S = 10.0
 INTERVALO_VERIFICACAO_S = 0.2
 TEMPO_LIMITE_COMANDO_S = 1.0
 TEMPO_LIMITE_DESCONEXAO_S = 2.0
+TEMPO_LIMITE_CONEXAO_S = 15.0
 ESTADO_EXPIRA_S = 2.0
 PAUSA_LEVANTAR_S = 0.1
 TEMPO_LIMITE_STOPMOVE_PARADA_S = 0.3
@@ -76,6 +78,23 @@ def _sport_cmd_padrao() -> dict:
     return SPORT_CMD
 
 
+def _cv2_disponivel() -> bool:
+    """True só se `cv2` estiver de fato instalado.
+
+    `_compat` injeta um módulo `cv2` falso em `sys.modules` quando a lib não
+    está instalada (só para o driver importar sem quebrar); um `import cv2`
+    simples enxergaria esse stub como se fosse a lib real. Aqui distinguimos
+    os dois casos comparando com o tipo do stub.
+    """
+    from . import _compat
+
+    try:
+        import cv2
+    except ImportError:
+        return False
+    return not isinstance(cv2, _compat._Stub)
+
+
 async def _fechar_conexao(conn, tempo_limite_s: float) -> None:
     """`conn.disconnect()` com tempo limite; erros só vão para o log."""
     try:
@@ -86,14 +105,59 @@ async def _fechar_conexao(conn, tempo_limite_s: float) -> None:
         log.exception("erro ao desconectar do robô")
 
 
-async def _abrir_conexao(conn, tempo_limite_desconexao_s: float = TEMPO_LIMITE_DESCONEXAO_S):
-    """`conn.connect()`; se falhar ou for cancelado no meio, fecha o que já foi montado."""
+async def _abrir_conexao(
+    conn,
+    tempo_limite_desconexao_s: float = TEMPO_LIMITE_DESCONEXAO_S,
+    tempo_limite_conexao_s: float = TEMPO_LIMITE_CONEXAO_S,
+):
+    """`conn.connect()`, com tempo limite (`tempo_limite_conexao_s`).
+
+    `connect()` do driver, no modo LAN, faz um probe de socket síncrono e um
+    `requests.post` sem tempo limite (ver `_instalar_resposta_local_em_thread`,
+    que tira essa parte do event loop) — mas o `connect()` inteiro ainda pode
+    nunca terminar (robô fora do ar, handshake que trava). Por isso o tempo
+    limite aqui: sem ele uma rede que nunca responde travaria esta tentativa
+    de conexão para sempre. Se falhar, for cancelado ou estourar o tempo no
+    meio, fecha o que já foi montado.
+    """
     try:
-        await conn.connect()
+        await asyncio.wait_for(conn.connect(), timeout=tempo_limite_conexao_s)
     except BaseException:
         await _fechar_conexao(conn, tempo_limite_desconexao_s)
         raise
     return conn
+
+
+def _instalar_resposta_local_em_thread(conn) -> None:
+    """Troca `conn.get_answer_from_local_peer` por uma versão que não bloqueia.
+
+    O driver (`unitree_webrtc_connect.webrtc_driver`) implementa esse método
+    como uma corrotina cujo corpo inteiro é síncrono e bloqueante:
+    `send_sdp_to_local_peer` faz um probe de porta TCP (`socket.create_connection`)
+    e um `requests.post` sem tempo limite. Chamado direto, isso trava o event
+    loop inteiro (nenhuma outra tarefa roda) pelo tempo do handshake. Aqui a
+    mesma lógica (mesmos argumentos que o driver monta) roda via
+    `asyncio.to_thread`, então o loop segue livre enquanto se conecta.
+    """
+    from unitree_webrtc_connect.constants import WebRTCConnectionMethod
+    from unitree_webrtc_connect.unitree_auth import send_sdp_to_local_peer
+
+    async def _get_answer_from_local_peer(pc, ip):
+        sdp_offer = pc.localDescription
+        sdp_offer_json = {
+            "id": "STA_localNetwork" if conn.connectionMethod == WebRTCConnectionMethod.LocalSTA else "",
+            "sdp": sdp_offer.sdp,
+            "type": sdp_offer.type,
+            "token": conn.token,
+        }
+        return await asyncio.to_thread(
+            send_sdp_to_local_peer,
+            ip,
+            json.dumps(sdp_offer_json),
+            aes_128_key=conn.aes_128_key,
+        )
+
+    conn.get_answer_from_local_peer = _get_answer_from_local_peer
 
 
 async def _conectar_padrao(aes_128_key: Optional[str], tempo_limite_desconexao_s: float):
@@ -102,6 +166,7 @@ async def _conectar_padrao(aes_128_key: Optional[str], tempo_limite_desconexao_s
     from unitree_webrtc_connect import UnitreeWebRTCConnection, WebRTCConnectionMethod
 
     conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalAP, aes_128_key=aes_128_key)
+    _instalar_resposta_local_em_thread(conn)
     return await _abrir_conexao(conn, tempo_limite_desconexao_s)
 
 
@@ -254,15 +319,14 @@ class Go2WebRTC:
             log.exception("erro ao assinar o estado do robô")
 
     def _ligar_camera(self, conn) -> None:
-        """Liga a câmera nesta conexão, se `cv2` e vídeo estiverem disponíveis.
+        """Liga a câmera nesta conexão, se `cv2` (de verdade) e vídeo estiverem
+        disponíveis.
 
         Best-effort e silencioso: sem `cv2` instalado, sem `conn.video` ou se
         `add_track_callback`/`switchVideoChannel` levantarem, a câmera fica
         indisponível e o robô segue funcionando normalmente.
         """
-        try:
-            import cv2  # noqa: F401 -- só para checar disponibilidade
-        except ImportError:
+        if not _cv2_disponivel():
             return
         video = getattr(conn, "video", None)
         if video is None:

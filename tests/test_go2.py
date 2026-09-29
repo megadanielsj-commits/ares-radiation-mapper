@@ -5,6 +5,7 @@ e `await conn.datachannel.pub_sub.publish_request_new(topico, payload)`, mais
 `connect()`/`disconnect()`.
 """
 import asyncio
+import contextlib
 import math
 import sys
 import time
@@ -13,7 +14,7 @@ import types
 import numpy as np
 import pytest
 
-from ares.robo.go2 import Go2WebRTC, _abrir_conexao
+from ares.robo.go2 import Go2WebRTC, _abrir_conexao, _instalar_resposta_local_em_thread
 
 SPORT_CMD = {
     "Damp": 1001,
@@ -597,6 +598,64 @@ def test_connect_que_falha_desconecta_a_conexao_parcial():
 
     conn = asyncio.run(cenario())
     assert conn.desconectada is True
+
+
+def test_connect_com_tempo_limite_desconecta_e_levanta():
+    """`connect()` que nunca termina (rede fora do ar) não trava para sempre."""
+
+    async def cenario():
+        conn = ConexaoQueFalha(travar=True)
+        with pytest.raises(asyncio.TimeoutError):
+            await _abrir_conexao(conn, tempo_limite_desconexao_s=0.1, tempo_limite_conexao_s=0.1)
+        return conn
+
+    conn = asyncio.run(cenario())
+    assert conn.desconectada is True
+
+
+def test_get_answer_local_roda_em_thread_sem_travar_o_loop(monkeypatch):
+    """A resposta local instalada roda em thread: uma chamada bloqueante
+    (imitando o probe TCP + `requests.post` sem tempo limite do driver) não
+    impede o event loop de seguir tiquetando enquanto ela roda."""
+
+    def _send_sdp_bloqueante(ip, sdp, aes_128_key=None):
+        time.sleep(0.3)  # bloqueio síncrono, como o driver real faria
+        return "sdp-resposta"
+
+    monkeypatch.setattr(
+        "unitree_webrtc_connect.unitree_auth.send_sdp_to_local_peer", _send_sdp_bloqueante
+    )
+    from unitree_webrtc_connect.constants import WebRTCConnectionMethod
+
+    conn = types.SimpleNamespace(
+        connectionMethod=WebRTCConnectionMethod.LocalAP,
+        token="tok",
+        aes_128_key=None,
+    )
+    _instalar_resposta_local_em_thread(conn)
+    pc = types.SimpleNamespace(localDescription=types.SimpleNamespace(sdp="sdp", type="offer"))
+
+    async def cenario():
+        tiques = 0
+
+        async def contador():
+            nonlocal tiques
+            while True:
+                await asyncio.sleep(0.02)
+                tiques += 1
+
+        tarefa_contador = asyncio.create_task(contador())
+        resposta = await conn.get_answer_from_local_peer(pc, "192.168.12.1")
+        tarefa_contador.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await tarefa_contador
+        return resposta, tiques
+
+    resposta, tiques = asyncio.run(cenario())
+    assert resposta == "sdp-resposta"
+    # com o loop livre, ~0,3 s a cada 0,02 s dão ~15 tiques; poucos tiques
+    # significaria que o `time.sleep` bloqueou o loop inteiro
+    assert tiques >= 8
 
 
 def test_cancelar_durante_connect_fecha_a_conexao_parcial():
