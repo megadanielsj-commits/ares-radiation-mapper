@@ -1,0 +1,43 @@
+# docker compose do ARES.
+#
+#   docker compose --profile sim up -d ares-sim     # simulação em http://127.0.0.1:8000
+#   docker compose --profile real up -d ares-real    # robô real (Go2 + FS-5000)
+#   docker compose down
+
+x-ares: &ares
+  build: .
+  image: ares_radiation_mapper
+  # CRÍTICO: WebRTC (ICE/UDP) com o Go2 precisa alcançar 192.168.12.1 direto;
+  # bridge + NAT quebra a mídia. host = usa a wifi do host (o painel fica só
+  # em 127.0.0.1:8000 porque ARES_HOST amarra nisso, não pela rede do compose).
+  network_mode: host
+  volumes:
+    - ./dados:/app/dados
+    - /etc/localtime:/etc/localtime:ro
+    - /etc/timezone:/etc/timezone:ro
+  # Roda como o usuário do host: arquivos em ./dados nascem com o dono certo.
+  user: "${UID_HOST:-1000}:${GID_HOST:-1000}"
+  environment:
+    - ARES_HOST=127.0.0.1
+    - ARES_PORTA=8000
+    - ARES_DADOS=/app/dados
+
+services:
+  ares-sim:
+    <<: *ares
+    profiles: ["sim"]
+    environment:
+      - ARES_HOST=127.0.0.1
+      - ARES_PORTA=8000
+      - ARES_DADOS=/app/dados
+      - ARES_MODO=simulacao
+
+  ares-real:
+    <<: *ares
+    profiles: ["real"]
+    environment:
+      - ARES_HOST=127.0.0.1
+      - ARES_PORTA=8000
+      - ARES_DADOS=/app/dados
+      - ARES_MODO=real
+      - FS5000_URL=${FS5000_URL:-ws://127.0.0.1:1096/ws}
