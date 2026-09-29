@@ -98,16 +98,26 @@ function inicializarVisaoSeNecessario(grade) {
 }
 
 // ---------------------------------------------------------------------- desenho
+function percentil95(valores) {
+  if (valores.length === 0) return 0.3;
+  const ordenados = valores.slice().sort((a, b) => a - b);
+  const idx = Math.min(ordenados.length - 1, Math.ceil(0.95 * ordenados.length) - 1);
+  return Math.max(ordenados[Math.max(0, idx)], 0.3);
+}
+
 function desenharGradeMedida(grade) {
   if (!grade) return null;
-  let vmax = 0;
+  const valores = [];
   for (let ix = 0; ix < grade.nx; ix++) {
     for (let iy = 0; iy < grade.ny; iy++) {
       const v = grade.valores[ix][iy];
-      if (v !== null && v > vmax) vmax = v;
+      if (v !== null) valores.push(v);
     }
   }
-  vmax = Math.max(vmax * 1.05, 0.3);
+  // Escala de cor: máximo = percentil 95 das células medidas (mín. 0); valores
+  // acima do topo saturam na cor mais intensa, sem esticar a escala por causa
+  // de poucas células muito acima do resto (ex.: perto de uma fonte).
+  const vmax = percentil95(valores);
   for (let ix = 0; ix < grade.nx; ix++) {
     for (let iy = 0; iy < grade.ny; iy++) {
       const v = grade.valores[ix][iy];
@@ -117,7 +127,7 @@ function desenharGradeMedida(grade) {
         grade.x0 + (ix + 1) * grade.res,
         grade.y0 + (iy + 1) * grade.res
       );
-      ctx.fillStyle = corViridis(v / vmax);
+      ctx.fillStyle = corViridis(Math.min(1, v / vmax));
       ctx.fillRect(Math.min(sx0, sx1), Math.min(sy0, sy1), Math.abs(sx1 - sx0), Math.abs(sy1 - sy0));
     }
   }
@@ -274,7 +284,7 @@ function atualizarLegenda(vmax) {
   gCtx.fillStyle = grad;
   gCtx.fillRect(0, 0, largura, altura);
   definirTexto("legenda-min", "0");
-  definirTexto("legenda-max", vmax === null ? "—" : fmt(vmax, 2));
+  definirTexto("legenda-max", vmax === null ? "—" : `≥ ${fmt(vmax, 2)}`);
 }
 
 function desenharMapa() {
