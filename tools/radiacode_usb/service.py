@@ -81,7 +81,7 @@ class Bridge:
             self.session, self.last_sequence = session, seq
             new_id = f"radiacode:{row['serial_number']}:{session}"
             if self.device["id"] != new_id:
-                # Tell the existing CEIA client that the old connection is gone.
+                # Tell the existing ARES client that the old connection is gone.
                 self.state(False, "Nova sessão USB")
                 self.device["id"] = new_id
                 self.device.update(session_id=session, serial_number=row["serial_number"])
@@ -256,7 +256,7 @@ def create_app(bridge, *, manage_reader=True):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", default="resultados/ceia/usb")
+    parser.add_argument("--output", default="resultados/integracao/usb")
     parser.add_argument("--serial")
     parser.add_argument("--port", type=int, default=1098)
     args = parser.parse_args()

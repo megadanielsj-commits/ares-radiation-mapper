@@ -213,7 +213,7 @@ def run(args, device_factory=None):
                 json_line(counts_file, row)
                 last_count = time.monotonic()
             if getattr(args, "require_counts", False) and time.monotonic() - last_count > args.no_data_timeout:
-                raise TimeoutError("Sem contagens RawData novas; integração CEIA não usa CPS suavizado")
+                raise TimeoutError("Sem contagens RawData novas; integração ARES não usa CPS suavizado")
             if time.monotonic() - last_sample > args.no_data_timeout:
                 raise TimeoutError(f"Sem RealTimeData nova por {args.no_data_timeout:g} s; consulte raw_records.jsonl")
             if args.spectrum_interval > 0 and time.monotonic() >= next_spectrum:
@@ -277,7 +277,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, help="Nova pasta exclusiva desta sessão")
     parser.add_argument("--serial", default=None)
-    parser.add_argument("--require-counts", action="store_true", help="Falha se não houver RawData para o CEIA")
+    parser.add_argument("--require-counts", action="store_true", help="Falha se não houver RawData para a aplicação ARES")
     parser.add_argument("--seconds", type=float, default=60, help="0 = contínuo")
     parser.add_argument("--poll", type=float, default=0.25)
     parser.add_argument("--no-data-timeout", type=float, default=20)

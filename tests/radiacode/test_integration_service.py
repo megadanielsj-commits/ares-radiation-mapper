@@ -151,7 +151,7 @@ async def test_follower_waits_for_complete_line_and_handles_new_session(tmp_path
         await asyncio.gather(task, return_exceptions=True)
 
 
-def test_ws_matches_ceia_contract_without_cached_reading(tmp_path):
+def test_ws_matches_ws_contract_without_cached_reading(tmp_path):
     bridge = service.Bridge(tmp_path)
     bridge.accept(row())
     app = service.create_app(bridge, manage_reader=False)

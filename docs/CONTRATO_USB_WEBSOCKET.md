@@ -1,8 +1,8 @@
-# Contrato entre o módulo USB e a estrutura CEIA
+# Contrato entre o módulo USB e a estrutura ARES
 
 O detector é acessado por libusb e `radiacode==0.4.0`, em um processo exclusivo.
 O serviço lê somente `counts_1s.jsonl` e publica no WebSocket local
-`ws://127.0.0.1:1098/ws`. A aplicação CEIA não recebe acesso ao USB.
+`ws://127.0.0.1:1098/ws`. A aplicação ARES não recebe acesso ao USB.
 
 | Evento | Campo | Semântica |
 |---|---|---|
@@ -36,7 +36,7 @@ A publicação não espera consumidores: filas têm quatro eventos e descartam
 os mais antigos quando cheias. Leituras mais antigas que 3 s, repetidas ou
 marcadas `batched_uncertain` não chegam ao posicionamento. Um snapshot antes
 da leitura informa a sessão atual mesmo se um evento de estado foi perdido.
-O cliente CEIA também confere a idade e a sequência.
+O cliente ARES também confere a idade e a sequência.
 
 Ao perder os dados atuais, o estado vira desconectado. O supervisor USB abre
 uma sessão nova ao reconectar, com espera progressiva de 1–10 s. Todos os

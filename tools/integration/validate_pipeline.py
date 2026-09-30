@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Software-only replay through JSONL, WS, CEIA API, simulated teleop and export."""
+"""Software-only replay through JSONL, WS, ARES API, simulated teleop and export."""
 import argparse
 import asyncio
 import importlib.util
@@ -40,8 +40,12 @@ async def wait_until(cond, seconds=5):
         await asyncio.sleep(.02)
 
 
-async def validate(ceia_root):
-    sys.path.insert(0, str(Path(ceia_root).resolve()/'src'))
+async def validate(robot_root, installed=False):
+    package_root = Path(robot_root).resolve() if installed else Path(robot_root).resolve()/'src'
+    sys.path.insert(0, str(package_root))
+    import ares
+    if installed:
+        assert Path(ares.__file__).resolve().is_relative_to(package_root)
     from ares.config import Config
     from ares.orquestrador import criar_orquestrador
     from ares.servidor.app import criar_app
@@ -52,14 +56,14 @@ async def validate(ceia_root):
         bridge = service.Bridge(base/'usb')
         bridge.identity = base/'usb'/'REPLAY-NOT-HARDWARE'
         bridge.identity.mkdir(parents=True)
-        sock_usb, sock_ceia = listener(), listener()
-        usb_port, ceia_port = sock_usb.getsockname()[1], sock_ceia.getsockname()[1]
+        sock_usb, sock_app = listener(), listener()
+        usb_port, app_port = sock_usb.getsockname()[1], sock_app.getsockname()[1]
         usb = uvicorn.Server(uvicorn.Config(service.create_app(bridge, manage_reader=False), log_level='error'))
         config = Config(fonte_radiacao='radiacode', modo='simulacao', dados=str(base/'simulacao'),
                         radiacode_url=f'ws://127.0.0.1:{usb_port}/ws')
         orq = criar_orquestrador(config, periodo_publicacao_s=.1, periodo_estado_s=.05)
         app = uvicorn.Server(uvicorn.Config(criar_app(orq, orq.teleop), log_level='error'))
-        running = [asyncio.create_task(usb.serve(sockets=[sock_usb])), asyncio.create_task(app.serve(sockets=[sock_ceia]))]
+        running = [asyncio.create_task(usb.serve(sockets=[sock_usb])), asyncio.create_task(app.serve(sockets=[sock_app]))]
         follower = asyncio.create_task(bridge.follow())
         producer = None
         try:
@@ -77,11 +81,11 @@ async def validate(ceia_root):
             producer = asyncio.create_task(produce('first-replay'))
             await wait_until(lambda: orq.radiacao.estado()['conectado'])
             await asyncio.sleep(.5)  # allow pose history for the unchanged 0.5 s correction
-            async with httpx.AsyncClient(base_url=f'http://127.0.0.1:{ceia_port}', trust_env=False) as client:
+            async with httpx.AsyncClient(base_url=f'http://127.0.0.1:{app_port}', trust_env=False) as client:
                 response = await client.post('/api/missao/iniciar', json={'nome':'Replay software; USB e pose física NÃO testados'})
                 response.raise_for_status()
                 mission_id = response.json()['id']
-                async with connect(f'ws://127.0.0.1:{ceia_port}/ws/comando') as ws:
+                async with connect(f'ws://127.0.0.1:{app_port}/ws/comando') as ws:
                     for _ in range(15):
                         await ws.send(json.dumps({'vx':.3, 'vy':0, 'vyaw':0}))
                         await asyncio.sleep(.15)
@@ -106,7 +110,7 @@ async def validate(ceia_root):
                 assert all(row['dose_usv'] is None for row in data['leituras'])
                 assert len({row['detector_id'] for row in data['leituras']})==2
                 assert 'ts,x,y,dr_usvh,cpm,cps,lacuna_pose_s' in csv
-                spec = importlib.util.spec_from_file_location('exporter', ROOT/'tools/ceia/export_sessions.py')
+                spec = importlib.util.spec_from_file_location('exporter', ROOT/'tools/integration/export_sessions.py')
                 exporter = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(exporter)
                 paths = exporter.export(base)
@@ -116,7 +120,7 @@ async def validate(ceia_root):
                 assert len(saved_json['amostras']) == len(data['amostras'])
                 saved_csv = next(Path(p) for p in paths if p.endswith('.csv')).read_text()
                 assert saved_csv.startswith('ts,x,y,dr_usvh,cpm,cps,lacuna_pose_s')
-                report = {'hardware_test':False, 'robot_physical_test':False,
+                report = {'hardware_test':False, 'robot_physical_test':False, 'installed_package_test':installed,
                           'input':'accelerated replay of recorded RawData, with new host timestamps',
                           'positioned_samples':len(data['amostras']), 'saved_poses':len(data['poses']),
                           'saved_readings':len(data['leituras']), 'usb_session_recovery':True,
@@ -131,11 +135,13 @@ async def validate(ceia_root):
             usb.should_exit = app.should_exit = True
             await asyncio.gather(*running)
             sock_usb.close()
-            sock_ceia.close()
+            sock_app.close()
         return report
 
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--ceia-root', required=True)
-    print(json.dumps(asyncio.run(validate(parser.parse_args().ceia_root)), indent=2, ensure_ascii=False))
+    parser.add_argument('--robot-root', required=True)
+    parser.add_argument('--installed', action='store_true')
+    args=parser.parse_args()
+    print(json.dumps(asyncio.run(validate(args.robot_root, args.installed)), indent=2, ensure_ascii=False))

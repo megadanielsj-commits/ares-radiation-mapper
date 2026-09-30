@@ -7,7 +7,7 @@ Ordem prevista:
 
 1. `UnitreeSdk2PoseSource`: `rt/sportmodestate`, inicialmente em `odom`;
 2. o mesmo adaptador com Unitree MuJoCo: interface `lo`, domínio DDS `1`;
-3. Go2 real: interface do computador do CEIA, domínio DDS `0`;
+3. Go2 real: interface de rede conectada ao Go2, domínio DDS `0`;
 4. `UnitreeRos2SportModePoseSource`;
 5. `Ros2TfPoseSource` para a transformação corrigida `map -> base`.
 

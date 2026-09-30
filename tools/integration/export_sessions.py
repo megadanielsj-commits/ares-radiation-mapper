@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export saved CEIA missions without installing the robot or detector SDK."""
+"""Export saved ARES missions without installing the robot or detector SDK."""
 import argparse
 import csv
 import json
@@ -47,6 +47,6 @@ def export(root):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("root", nargs="?", default="resultados/ceia")
+    parser.add_argument("root", nargs="?", default="resultados/integracao")
     for path in export(parser.parse_args().root):
         print(path)

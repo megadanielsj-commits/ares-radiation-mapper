@@ -5,13 +5,13 @@ tempo real, o percurso do robô, o gradiente radiológico do ambiente e a regiã
 provável da fonte. A interface é acessada pelo navegador em
 `http://127.0.0.1:8000`.
 
-## Radiacode na estrutura do CEIA
+## Radiacode na estrutura da integração Go2
 
 O ensaio com USB independente e entrada WebSocket compatível com o sistema
-`ares-wifi` está preparado em [LEIA_PRIMEIRO_ENSAIO_CEIA.md](LEIA_PRIMEIRO_ENSAIO_CEIA.md).
+`ares-wifi` está preparado em [LEIA_PRIMEIRO_INTEGRACAO.md](LEIA_PRIMEIRO_INTEGRACAO.md).
 Use `bash ensaio preparar`, depois `bash ensaio usb-simulado` para verificar USB
 real com posição simulada. O painel anterior continua no comando abaixo.
-A adaptação CEIA está na branch `feat/radiacode-ceia-test`, incluída no pacote
+A adaptação Go2/WebRTC está na branch `feat/radiacode-go2-wifi`, incluída no pacote
 de ensaio e no bundle; o código original do Werik está em `ares-wifi`.
 
 ## Modos de execução
@@ -212,7 +212,7 @@ git push -u origin feat/radiacode-independent
 ```
 
 Abra um pull request com base em `feat/go2-real-teleop` e comparação com
-`feat/radiacode-independent`. Essa branch conserva a teleop do CEIA; os
+`feat/radiacode-independent`. Essa branch conserva a teleop da integração Go2; os
 scripts Radiacode não iniciam a odometria do robô físico. Arquivos de
 `resultados/` e o ambiente `.venv-radiacode/` ficam fora do Git.
 

@@ -43,7 +43,7 @@ Biblioteca do detector: `radiacode==0.4.0`.
 
 O equipamento não esteve conectado ao ambiente de desenvolvimento. A comunicação
 com o seu 110, seu firmware e as unidades exibidas precisam ser confirmadas no teste
-abaixo. Não houve alteração no repositório remoto nem na branch do CEIA.
+abaixo. Não houve alteração no repositório remoto nem na branch da integração Go2.
 
 ## Preparação
 
@@ -53,7 +53,7 @@ de internet e permissão sudo para pacotes do sistema/udev. Os testes seguintes
 rodam como usuário normal e não precisam de internet.
 
 1. Extraia o ZIP em uma **nova pasta**. Não copie por cima do seu ARES atual.
-2. Abra a pasta `ARES_Radiacode_USB` no gerenciador de arquivos e escolha **Abrir no terminal**.
+2. Abra a pasta extraída do pacote no gerenciador de arquivos e escolha **Abrir no terminal**.
 3. Ligue o Radiacode, conecte por USB direto ao computador e feche outros programas
    que possam estar lendo o detector, inclusive a conexão do aplicativo no celular.
 

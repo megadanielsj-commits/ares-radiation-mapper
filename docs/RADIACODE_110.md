@@ -73,7 +73,7 @@ de tempo e incerteza validado em outra etapa, mantendo a aquisição isolada.
 - O CI instala o extra e executa testes Python e um teste JavaScript para o
   painel USB; os testes usam detector artificial e não alegam validação de
   firmware nem hardware em CI.
-- A branch do Go2 do CEIA é a base para a integração. O leitor Radiacode não
+- A branch `ares-wifi` é a base para a integração Go2/WebRTC. O leitor Radiacode não
   é ligado ao processo da odometria nem à teleop do Go2.
 
 Para validação local do código, com as dependências de desenvolvimento:
@@ -86,23 +86,20 @@ node --test tests/radiacode/dashboard_usb.test.cjs
 
 ## Transferir a branch com o pacote Git
 
-O arquivo `ARES_Radiacode_GITHUB.bundle` contém a branch
-`feat/radiacode-independent` com histórico completo, baseada na branch
-`feat/go2-real-teleop` do CEIA. Em um clone Git do seu repositório, após baixar
-o bundle para `~/Downloads`:
+O ZIP atual inclui `ARES_Radiacode_GO2_USB_GITHUB.bundle` com histórico
+completo das branches `feat/radiacode-independent` e
+`feat/radiacode-go2-wifi`. Dentro da pasta do pacote, publique com:
 
 ```bash
-git fetch ~/Downloads/ARES_Radiacode_GITHUB.bundle \
-  feat/radiacode-independent:feat/radiacode-independent
-git switch feat/radiacode-independent
-git push -u origin feat/radiacode-independent
+bash publicar_no_github.sh
 ```
 
-No GitHub, abra o pull request com base em `feat/go2-real-teleop`. Os arquivos
-do ZIP de execução não incluem `.git`; use o bundle para preservar commits e
-autorizar a publicação pelo seu próprio clone.
+O script imprime os links das duas branches para revisão, sem alterar
+`main` ou `ares-wifi`. Os arquivos do ZIP de execução não incluem `.git`;
+o bundle preserva os commits. A publicação usa o acesso GitHub do computador
+onde o comando é executado.
 
-## Entrada independente para a estrutura CEIA
+## Entrada independente para a estrutura ARES
 
 O serviço `tools/radiacode_usb/service.py` expõe WebSocket local na porta 1098
 com os eventos `snapshot`, `estado` e `leitura` do contrato usado pelo serviço
@@ -112,4 +109,4 @@ publicação. O serviço não importa nem controla o robô.
 `counts_1s.jsonl` registra contagens inteiras de dois RawData consecutivos.
 `readings.jsonl` e o painel anterior conservam os campos do teste aprovado.
 O roteiro e os limites estão em
-[LEIA_PRIMEIRO_ENSAIO_CEIA.md](../LEIA_PRIMEIRO_ENSAIO_CEIA.md).
+[LEIA_PRIMEIRO_INTEGRACAO.md](../LEIA_PRIMEIRO_INTEGRACAO.md).

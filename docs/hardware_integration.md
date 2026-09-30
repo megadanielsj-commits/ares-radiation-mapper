@@ -30,7 +30,7 @@ como odometria local até que origem, reset e deriva sejam medidos. Quaternion e
 devem ser validados contra uma orientação conhecida.
 
 No MuJoCo, a configuração esperada é interface `lo` e domínio DDS `1`. No robô
-real, domínio `0` e a interface de rede do computador do CEIA.
+real, domínio `0` e a interface de rede conectada ao Go2.
 
 Quando o SLAM estiver disponível, a fonte preferida passa a ser `map -> base`, para
 que o mapa radiológico não herde a deriva da odometria.
