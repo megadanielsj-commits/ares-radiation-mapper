@@ -22,6 +22,11 @@ jobs:
         run: python tools/check_installed_app.py --robot-imports
       - name: Test robot integration defaults and Radiacode acquisition
         run: PYTHONPATH=src python -m pytest -q tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify approved dashboard and WebRTC command adapter
+        run: node --test tests/approved_dashboard.test.cjs
       - name: Build test image
         run: docker build -f Dockerfile.go2-wifi -t ares-radiacode-go2:ci .
       - name: Smoke-test imports used by the physical robot

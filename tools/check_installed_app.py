@@ -17,7 +17,7 @@ import urllib.request
 def check(*, check_http=True, check_robot_imports=False):
     import ares
     from ares.servidor.app import ESTATICO
-    for name in ("index.html", "app.js"):
+    for name in ("index.html", "app.js", "approved/index.html", "approved/renderer.js", "approved/integration.js", "approved/styles.css"):
         path = ESTATICO / name
         if not path.is_file() or path.stat().st_size == 0:
             raise RuntimeError(f"Arquivo do painel ausente da instalação: {path}")
@@ -54,9 +54,12 @@ def check(*, check_http=True, check_robot_imports=False):
                     try:
                         with opener.open(f"http://127.0.0.1:{port}/", timeout=1) as r:
                             page = r.read().decode()
-                            assert r.status == 200 and 'id="mapa"' in page
-                        with opener.open(f"http://127.0.0.1:{port}/static/app.js", timeout=1) as r:
-                            assert r.status == 200 and "desenharRobo" in r.read().decode()
+                            assert r.status == 200 and 'id="radiation-map"' in page
+                        with opener.open(f"http://127.0.0.1:{port}/static/approved/renderer.js", timeout=1) as r:
+                            assert r.status == 200 and "drawRobot" in r.read().decode()
+                        for asset in ("integration.js", "styles.css"):
+                            with opener.open(f"http://127.0.0.1:{port}/static/approved/{asset}", timeout=1) as r:
+                                assert r.status == 200 and len(r.read()) > 1000
                         with opener.open(f"http://127.0.0.1:{port}/api/estado", timeout=1) as r:
                             state = json.load(r)
                             assert state["modo"] == "simulacao" and state["robo"]["conectado"]

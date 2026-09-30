@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07101a">
+  <title>ARES Radiation Mapper</title>
+  <link rel="stylesheet" href="/static/approved/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <p>PROJETO ARES</p>
+        <h1>Mapa radiológico</h1>
+      </div>
+    </div>
+    <div class="connection" aria-live="polite">
+      <i id="connection-dot" aria-hidden="true"></i>
+      <span id="connection-label">Conectando</span>
+      <span class="version">v0.1.0</span>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar">
+      <section class="panel setup-panel" aria-labelledby="setup-title">
+        <div class="section-heading">
+          <p class="kicker">RADIACODE USB · GO2 / WEBRTC</p>
+          <h2 id="setup-title">Aquisição independente</h2>
+          <p id="integration-mode" class="section-description">Conectando ao backend...</p>
+        </div>
+        <p id="device-status" class="section-description">Aguardando detector e posição.</p>
+        <p class="section-description">Contagens por segundo: <strong id="usb-cps">—</strong> CPS<br><span id="usb-age">Aguardando USB</span></p>
+        <button id="start-button" class="start-button" type="button" disabled>Iniciar missão</button>
+        <button id="end-button" class="start-button" type="button" disabled>Encerrar missão e salvar</button>
+        <p id="action-message" class="status-message" aria-live="polite">Nenhum movimento automático.</p>
+        <p><a id="export-csv" hidden download>Baixar CSV</a> <a id="export-json" hidden download>Baixar JSON</a></p>
+      </section>
+
+      <section class="panel telemetry-panel" aria-labelledby="telemetry-title">
+        <div class="section-heading compact-heading">
+          <p class="kicker">MISSÃO</p>
+          <h2 id="telemetry-title">Medições em tempo real</h2>
+        </div>
+
+        <article class="primary-reading">
+          <span>Taxa atual</span>
+          <div>
+            <strong id="dose-rate">—</strong>
+            <small id="dose-rate-unit">mSv/h</small>
+          </div>
+        </article>
+
+        <div class="secondary-readings">
+          <article>
+            <span>Dose acumulada</span>
+            <strong id="dose-total">—</strong>
+            <small id="dose-total-unit">µSv</small>
+          </article>
+          <article>
+            <span>Medições</span>
+            <strong id="sample-count">0</strong>
+            <small>1 por segundo</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel control-panel" aria-label="Controle do robô">
+        <div>
+          <p class="kicker">CONTROLE DO GO2</p>
+          <h2>Use as setas do teclado</h2>
+        </div>
+        <div class="keyboard" aria-hidden="true">
+          <kbd>↑</kbd>
+          <span></span><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>
+        </div>
+        <p><b>↑ ↓</b> mover &nbsp;&nbsp; <b>← →</b> girar</p>
+        <div class="control-actions">
+          <button id="robot-stand" type="button">Levantar</button>
+          <button id="robot-lie" type="button">Deitar</button>
+          <button id="robot-stop" type="button">Parar</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="panel map-panel" aria-labelledby="map-title">
+      <header class="map-heading">
+        <div>
+          <p class="kicker">CONTAGENS MEDIDAS · ESCALA LOGARÍTMICA</p>
+          <h2 id="map-title">Mapa construído pelas medições</h2>
+        </div>
+        <span id="map-mode" class="map-mode">Aguardando medições</span>
+      </header>
+
+      <div class="map-stage">
+        <canvas
+          id="radiation-map"
+          role="img"
+          aria-label="Mapa do gradiente radiológico, trajeto do Go2 e fonte configurada"
+        >
+          Seu navegador não oferece suporte ao mapa.
+        </canvas>
+        <div id="map-tooltip" class="map-tooltip" hidden></div>
+      </div>
+
+      <footer class="map-foot">
+        <span><i class="legend robot"></i>Go2</span>
+        <span><i class="legend path"></i>Caminho medido</span>
+        
+        <span class="public-reference">Cores: CPS em cada posição · taxa de dose provisória</span>
+        <span id="map-coordinate">x — &nbsp; y —</span>
+      </footer>
+    </section>
+  </main>
+
+  <script src="/static/approved/renderer.js"></script>
+  <script src="/static/approved/integration.js"></script>
+</body>
+</html>

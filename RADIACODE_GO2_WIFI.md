@@ -11,7 +11,9 @@ O leitor USB está fora desta aplicação, na branch
 No ZIP de ensaio, o iniciador na pasta principal prepara as duas imagens e
 oferece `bash ensaio usb-simulado` e `bash ensaio usb-robo`. O painel ARES
 usa a porta 8001 e a entrada Radiacode usa `ws://127.0.0.1:1098/ws`.
-O painel anterior do usuário continua separado, sem substituição.
+No modo Radiacode, esta aplicação serve o visual antigo aprovado do painel,
+com o mesmo desenho do Go2 e um adaptador para as rotas REST/WebSocket
+existentes. No modo padrão FS-5000, a interface original permanece.
 
 Para executar esta aplicação diretamente com o serviço USB já ligado:
 
@@ -44,7 +46,7 @@ no tempo do detector não são usados como relógio UTC absoluto.
 
 ## Validação desta preparação
 
-Os 207 testes Python passaram, incluindo os testes originais e seis testes do
+Os 208 testes Python passaram, incluindo os testes originais e seis testes do
 Radiacode. A aplicação instalada a partir do wheel também serviu o HTML,
 o JavaScript e a API, com o robô simulado ativo. O fluxo externo JSONL/WS/API
 com posição e teleop simulados passou usando essa instalação. O ensaio Go2
@@ -58,3 +60,16 @@ executa `tools/check_installed_app.py` para conferir a instalação efetivamente
 usada em runtime, sem conectar um robô ou detector físico. O iniciador do
 pacote espera a página, o JavaScript e a API responderem antes de anunciar
 o endereço como disponível. O estado USB é verificado separadamente.
+
+A interface Radiacode mostra cores por CPS dos pontos já sincronizados,
+sem usar a taxa de dose média para atribuir a posição. As rotas e o backend
+de missão/exportação são os da estrutura original. A taxa de dose é
+provisória e a dose acumulada ausente aparece como “—”. A estimativa
+calibrada continua disponível no backend quando configurada; a interface
+apresenta os pontos medidos, sem criar um campo interpolado próprio.
+
+Os arquivos visuais foram derivados de `ares_mapper/web` na revisão
+`d567f9bc001a7bf4a0614c9aa3e2de0b5a9518a1`; `approved/integration.js`
+é somente o adaptador de apresentação. Quatro testes JavaScript cobrem
+contrato, desenho, teclas, reconexão e frescor. Nenhum desses arquivos
+abre a conexão USB ou calcula a sincronização espacial.

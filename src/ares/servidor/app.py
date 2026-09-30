@@ -235,6 +235,7 @@ def criar_app(orquestrador, teleop) -> FastAPI:
 
     @app.get("/")
     def painel():
-        return FileResponse(ESTATICO / "index.html")
+        page = "approved/index.html" if orq.config.fonte_radiacao == "radiacode" else "index.html"
+        return FileResponse(ESTATICO / page)
 
     return app

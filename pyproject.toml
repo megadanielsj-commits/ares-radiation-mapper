@@ -21,4 +21,4 @@ ares = "ares.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"ares.servidor" = ["static/*.html", "static/*.js"]
+"ares.servidor" = ["static/*.html", "static/*.js", "static/approved/*.html", "static/approved/*.js", "static/approved/*.css"]
