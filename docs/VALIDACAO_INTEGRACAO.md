@@ -109,3 +109,11 @@ visual, parada ao perder foco, reconexão sem repetir teclas e leituras antigas.
 O teste HTTP do modo Radiacode verifica o painel e todos os seus arquivos.
 Dois testes de porta distinguem TIME_WAIT de um processo em LISTEN.
 A aquisição USB e a gravação permanecem independentes da interface.
+
+## Revisão v4
+
+A revisão após os e-mails do GitHub identificou as falhas de importação e
+de agendamento do teste concorrente, além de uma falha real de seleção de
+sessão após reconexão. Foram corrigidas sem alterar os arquivos centrais do
+Werik. Veja [REVISAO_INTEGRACAO_20260930.md](REVISAO_INTEGRACAO_20260930.md)
+para a comparação, os erros exatos e os limites da validação física.

@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-30",
+  "baseline_ares_wifi": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+  "reviewed_public_heads": {
+    "feat/radiacode-independent": "30f01ee449f44b58b5f7e7367deda0605a353b39",
+    "feat/radiacode-go2-wifi": "a37288cd38911d61a3625c0579c9bfc02f379d51"
+  },
+  "fixes": [
+    "standalone_reader_import_context",
+    "deterministic_concurrency_test_coordination",
+    "authoritative_usb_snapshot_after_ws_reconnect"
+  ],
+  "original_core_files_unchanged": [
+    "src/ares/sincronizacao.py",
+    "src/ares/teleop.py",
+    "src/ares/robo/go2.py",
+    "src/ares/radiacao/fs5000.py",
+    "src/ares/estimativa.py"
+  ],
+  "approved_dashboard_unchanged": true,
+  "independent_python_tests": 102,
+  "go2_python_tests": 209,
+  "go2_fresh_install_tests": 209,
+  "javascript_tests": 5,
+  "hardware_test_here": false,
+  "docker_engine_here": false,
+  "github_new_checks": "pending_publication",
+  "usb_real_with_simulated_pose_v3": "confirmed_by_user",
+  "physical_go2_with_usb": "pending_lab_test"
+}

@@ -4,7 +4,7 @@ x-app: &app
   build:
     context: ${ARES_ROBOT_ROOT:?Defina ARES_ROBOT_ROOT ou use ./ensaio}
     dockerfile: Dockerfile.go2-wifi
-  image: ares-radiacode-go2:20260930-r3
+  image: ares-radiacode-go2:20260930-r4
   init: true
   network_mode: host
   user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"
@@ -31,7 +31,7 @@ services:
     build:
       context: ${ARES_DETECTOR_ROOT:?Use ./ensaio}
       dockerfile: tools/radiacode_usb/Dockerfile.service
-    image: ares-radiacode-service:20260930-r3
+    image: ares-radiacode-service:20260930-r4
     init: true
     network_mode: host
     user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"

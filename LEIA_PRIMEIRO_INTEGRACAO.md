@@ -7,12 +7,12 @@ são simulados. O Go2 físico será usado no segundo modo, no laboratório.
 
 ## Executar agora
 
-Baixe `ARES_Radiacode_GO2_USB_v3.zip` na pasta Downloads. Com o Radiacode
+Baixe `ARES_Radiacode_GO2_USB_v4.zip` na pasta Downloads. Com o Radiacode
 conectado por USB e internet disponível, copie este bloco completo:
 
 ```bash
-python3 -m zipfile -e "$HOME/Downloads/ARES_Radiacode_GO2_USB_v3.zip" "$HOME" &&
-cd "$HOME/ARES_Radiacode_GO2_USB_v3" &&
+python3 -m zipfile -e "$HOME/Downloads/ARES_Radiacode_GO2_USB_v4.zip" "$HOME" &&
+cd "$HOME/ARES_Radiacode_GO2_USB_v4" &&
 bash ensaio preparar &&
 bash ensaio usb-simulado
 ```
@@ -40,7 +40,7 @@ responderem. Abra **http://127.0.0.1:8001** no mesmo computador.
 5. Para finalizar os serviços e exportar automaticamente as missões, execute:
 
 ```bash
-cd "$HOME/ARES_Radiacode_GO2_USB_v3" && bash ensaio parar
+cd "$HOME/ARES_Radiacode_GO2_USB_v4" && bash ensaio parar
 ```
 
 Os serviços permanecem em segundo plano e não param sozinhos após uma hora.
@@ -61,7 +61,7 @@ Radiacode, encerrem a missão e o controlador anterior do Go2. Conectem o
 computador ao Wi-Fi do robô e o Radiacode por USB. Na mesma pasta, executem:
 
 ```bash
-cd "$HOME/ARES_Radiacode_GO2_USB_v3" && bash ensaio usb-robo
+cd "$HOME/ARES_Radiacode_GO2_USB_v4" && bash ensaio usb-robo
 ```
 
 O script troca o modo simulado pelo real. Abra **http://127.0.0.1:8001**,

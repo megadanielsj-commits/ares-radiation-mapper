@@ -66,15 +66,15 @@ case "$mode" in
     ensure_sources
     "${compose[@]}" --profile simulado build usb ares-usb-simulado
     echo 'Validando a aplicação instalada na imagem...'
-    docker run --rm --network none --entrypoint python ares-radiacode-go2:20260930-r3 /app/tools/check_installed_app.py --robot-imports
-    docker run --rm --network none --entrypoint python ares-radiacode-service:20260930-r3 \
+    docker run --rm --network none --entrypoint python ares-radiacode-go2:20260930-r4 /app/tools/check_installed_app.py --robot-imports
+    docker run --rm --network none --entrypoint python ares-radiacode-service:20260930-r4 \
       -c 'import usb.backend.libusb1, radiacode; assert usb.backend.libusb1.get_backend() is not None; print("Backend USB disponível")'
     echo 'Imagens construídas e painel verificado. O preparo não exige Radiacode nem Go2 conectado.'
     echo 'Primeiro teste: bash ensaio usb-simulado | No Wi-Fi do Go2, no laboratório: bash ensaio usb-robo'
     ;;
   usb-simulado|usb-robo)
     ensure_sources
-    if ! docker image inspect ares-radiacode-service:20260930-r3 ares-radiacode-go2:20260930-r3 >/dev/null 2>&1; then
+    if ! docker image inspect ares-radiacode-service:20260930-r4 ares-radiacode-go2:20260930-r4 >/dev/null 2>&1; then
       echo 'Execute primeiro: bash ensaio preparar (com internet).'
       exit 2
     fi

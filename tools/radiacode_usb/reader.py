@@ -7,6 +7,7 @@ import csv
 import dataclasses
 import fcntl
 import importlib.metadata
+import importlib.util
 import json
 import math
 import os
@@ -19,10 +20,14 @@ import traceback
 from datetime import datetime, timezone
 from enum import Enum
 
-try:
-    from tools.radiacode_usb.counts import PairRawData
-except ModuleNotFoundError:
-    from counts import PairRawData
+# This script also gets loaded by file path (tests/diagnostics), outside a
+# package import context. Resolve its sibling explicitly in every entry mode.
+_counts_spec = importlib.util.spec_from_file_location(
+    "ares_radiacode_counts", Path(__file__).with_name("counts.py")
+)
+_counts_module = importlib.util.module_from_spec(_counts_spec)
+_counts_spec.loader.exec_module(_counts_module)
+PairRawData = _counts_module.PairRawData
 
 
 def serializable(value):
