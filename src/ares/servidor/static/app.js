@@ -370,7 +370,7 @@ function atualizarPilula(id, ok, texto, tituloErro) {
 function atualizarCabecalho() {
   atualizarPilula("pill-modo", null, estado.modo || "—", "modo da aplicação");
   const robo = estado.robo || {};
-  atualizarPilula("pill-go2", !!robo.conectado, robo.conectado ? "Go2 ok" : "Go2 offline", robo.erro);
+  atualizarPilula("pill-go2", !!robo.conectado, `${estado.modo === "simulacao" ? "Robô simulado" : "Go2"} ${robo.conectado ? "ok" : "offline"}`, robo.erro);
   const rad = estado.radiacao || {};
   atualizarPilula(
     "pill-fs5000",

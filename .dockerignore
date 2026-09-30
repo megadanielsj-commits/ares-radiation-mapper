@@ -7,3 +7,6 @@ dados
 docs/design
 docs/img
 tests
+build
+dist
+*.egg-info

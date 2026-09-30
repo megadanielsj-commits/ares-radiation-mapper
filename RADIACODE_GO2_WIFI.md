@@ -9,7 +9,7 @@ O leitor USB está fora desta aplicação, na branch
 ## Executar
 
 No ZIP de ensaio, o iniciador na pasta principal prepara as duas imagens e
-oferece `bash ensaio usb-simulado` e `bash ensaio usb-robo`. O painel CEIA
+oferece `bash ensaio usb-simulado` e `bash ensaio usb-robo`. O painel ARES
 usa a porta 8001 e a entrada Radiacode usa `ws://127.0.0.1:1098/ws`.
 O painel anterior do usuário continua separado, sem substituição.
 
@@ -35,7 +35,7 @@ A contagem vem de RawData em exposições nominais de um segundo. CPM é
 `60 * cps`. A dose acumulada em µSv é ausente e a conversão da taxa de dose
 é identificada como provisória. Os metadados ficam salvos desde a criação
 da missão e são incluídos no JSON. O JSON da missão Radiacode inclui também
-as poses e leituras individuais; o CSV posicionado mantém o formato CEIA.
+as poses e leituras individuais; o CSV posicionado mantém o formato ARES.
 
 O timestamp de leitura é o recebimento no computador. O sincronizador conserva
 a interpolação em `ts - latencia_leitura_s`, com 0,5 s inicialmente. Valide o
@@ -44,9 +44,17 @@ no tempo do detector não são usados como relógio UTC absoluto.
 
 ## Validação desta preparação
 
-Os 206 testes Python passaram, incluindo os testes originais do CEIA e os
-cinco novos. O fluxo externo JSONL/WS/API com posição e teleop simulados também
-passou. O ensaio Go2 físico + Radiacode e a construção Docker no computador
-do laboratório ainda precisam ser feitos. `Dockerfile.radiacode-ceia` usa as
+Os 207 testes Python passaram, incluindo os testes originais e seis testes do
+Radiacode. A aplicação instalada a partir do wheel também serviu o HTML,
+o JavaScript e a API, com o robô simulado ativo. O fluxo externo JSONL/WS/API
+com posição e teleop simulados passou usando essa instalação. O ensaio Go2
+físico + Radiacode e a construção Docker no computador do laboratório ainda
+precisam ser feitos. `Dockerfile.go2-wifi` usa as
 versões diretas de dependências dos testes; `Dockerfile` e os perfis Docker
 originais continuam disponíveis para o FS-5000.
+
+O wheel inclui os arquivos de `ares/servidor/static`. A construção da imagem
+executa `tools/check_installed_app.py` para conferir a instalação efetivamente
+usada em runtime, sem conectar um robô ou detector físico. O iniciador do
+pacote espera a página, o JavaScript e a API responderem antes de anunciar
+o endereço como disponível. O estado USB é verificado separadamente.

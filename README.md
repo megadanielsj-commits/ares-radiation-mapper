@@ -1,7 +1,7 @@
 # ARES — mapeamento de radiação com o Go2
 
-> Esta branch adiciona o Radiacode 110 à estrutura do CEIA. Veja
-> [RADIACODE_CEIA.md](RADIACODE_CEIA.md) para a entrada USB independente,
+> Esta branch adiciona o Radiacode 110 à estrutura da integração Go2. Veja
+> [RADIACODE_GO2_WIFI.md](RADIACODE_GO2_WIFI.md) para a entrada USB independente,
 > aquisição sem calibração e limites da validação. Os defaults do FS-5000
 > e a documentação original abaixo permanecem disponíveis.
 

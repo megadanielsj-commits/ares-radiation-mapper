@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ares"
 version = "0.1.0"
-description = "ARES — mapeamento de radiação combinando pose do Go2 e leituras do FS-5000"
+description = "ARES — aquisição radiológica independente e sincronização com odometria do Go2"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.110",
@@ -19,3 +19,6 @@ ares = "ares.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"ares.servidor" = ["static/*.html", "static/*.js"]

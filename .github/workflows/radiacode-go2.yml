@@ -1,0 +1,30 @@
+name: Radiacode ARES tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the same direct dependencies as the test image
+        run: |
+          python -m pip install -r requirements-go2-wifi.txt
+          python -m pip install --no-deps unitree_webrtc_connect==2.2.0
+          python -m pip install --no-deps .
+          python -m pip install pytest httpx pytest-asyncio
+      - name: Validate the installed web application
+        run: python tools/check_installed_app.py --robot-imports
+      - name: Test robot integration defaults and Radiacode acquisition
+        run: PYTHONPATH=src python -m pytest -q tests
+      - name: Build test image
+        run: docker build -f Dockerfile.go2-wifi -t ares-radiacode-go2:ci .
+      - name: Smoke-test imports used by the physical robot
+        run: docker run --rm --entrypoint python ares-radiacode-go2:ci -c 'from ares.robo import _compat; import ares, unitree_webrtc_connect, cv2; print("Imports OK; physical robot not tested")'
+      - name: Verify HTTP startup in the image
+        run: docker run --rm --network none --entrypoint python ares-radiacode-go2:ci /app/tools/check_installed_app.py --robot-imports

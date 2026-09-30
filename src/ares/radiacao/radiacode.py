@@ -1,4 +1,4 @@
-"""Radiacode through the independent USB service, using CEIA's WS contract."""
+"""Radiacode through the independent USB service, using ARES's WS contract."""
 import math
 import time
 

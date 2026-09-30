@@ -111,3 +111,16 @@ def test_optional_calibration_never_uses_the_fs5000_coefficient(tmp_path):
         await orq.encerrar_missao()
         orq.repositorio.fechar()
     asyncio.run(run())
+
+
+def test_real_mode_keeps_web_rtc_driver_and_independent_usb_source(tmp_path):
+    from ares.robo.go2 import Go2WebRTC
+    config = Config(modo="real", fonte_radiacao="radiacode", dados=str(tmp_path))
+    orq = criar_orquestrador(config)
+    try:
+        assert isinstance(orq.robo, Go2WebRTC)
+        assert isinstance(orq.radiacao, ClienteRadiacode)
+        assert orq.campo is None
+        assert not orq.robo.estado()["conectado"]
+    finally:
+        orq.repositorio.fechar()

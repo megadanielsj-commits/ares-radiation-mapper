@@ -5,3 +5,5 @@ __pycache__/
 dados/*
 !dados/.gitkeep
 *.egg-info/
+build/
+dist/
