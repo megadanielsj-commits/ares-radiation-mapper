@@ -1,0 +1,4 @@
+radiacode==0.4.0
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+websockets==16.1.1

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
-from radiacode import RareData, RealTimeData
+from radiacode import RareData, RawData, RealTimeData
 from radiacode.types import Spectrum
 
 from ares_mapper.config import ScenarioConfig
@@ -205,3 +205,32 @@ def test_missing_accumulated_dose_does_not_become_zero_or_gap_evidence():
     last = RadiationSample(**common, sequence=10, timeline_time_ns=10_000_000_000,
                            effective_measurement_time_ns=10_000_000_000)
     assert recover_cumulative_gap(first, last, .01) is None
+
+
+def test_recorder_keeps_smoothed_cps_separate_from_raw_counts(tmp_path):
+    class WithRaw(FakeDevice):
+        def __init__(self, serial_number=None):
+            super().__init__(serial_number)
+            self.origin = datetime.now()
+
+        def data_buf(self):
+            records = super().data_buf()
+            dt = self.origin + timedelta(seconds=self.n)
+            return records + [
+                RawData(dt, 10, 0.000012),
+                RawData(dt + timedelta(seconds=0.5), 14, 0.000012),
+            ]
+
+    settings = options(tmp_path / "raw-counts")
+    settings.require_counts = True
+    assert reader.run(settings, WithRaw) == 0
+    rows = [
+        json.loads(line)
+        for line in (tmp_path / "raw-counts/counts_1s.jsonl").read_text().splitlines()
+    ]
+    assert len(rows) >= 2
+    assert rows[0]["cps"] == 12 and rows[0]["exposure_s"] == 1
+    assert rows[0]["timing_quality"] == "live_receipt"
+    assert rows[0]["received_utc_ns"] > 0 and rows[0]["received_monotonic_ns"] > 0
+    summary = json.loads((tmp_path / "raw-counts/summary.json").read_text())
+    assert summary["one_second_counts"] == len(rows) and not summary["hardware_test"]

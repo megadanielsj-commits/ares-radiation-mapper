@@ -32,9 +32,11 @@ case "$mode" in
             exit 2
         fi
         mkdir -p resultados
-        export ARES_DOCKER_UID ARES_DOCKER_GID
+        export ARES_DOCKER_UID ARES_DOCKER_GID ARES_USB_LOCK_DIR
         ARES_DOCKER_UID="$(id -u)"
         ARES_DOCKER_GID="$(id -g)"
+        ARES_USB_LOCK_DIR="/tmp/ares-radiacode-lock-$ARES_DOCKER_UID"
+        mkdir -p "$ARES_USB_LOCK_DIR"
         exec docker compose --profile "$mode" up --build --remove-orphans "$mode"
         ;;
     hardware)

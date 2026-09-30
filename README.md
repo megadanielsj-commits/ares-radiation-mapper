@@ -1,9 +1,18 @@
-# ARES Radiation Mapper V0.4.10
+# ARES Radiation Mapper V0.4.10 — FS-5000 e Radiacode 110
 
 O ARES combina a posição do Unitree Go2 com as leituras do FS-5000 e gera, em
 tempo real, o percurso do robô, o gradiente radiológico do ambiente e a região
 provável da fonte. A interface é acessada pelo navegador em
 `http://127.0.0.1:8000`.
+
+## Radiacode na estrutura do CEIA
+
+O ensaio com USB independente e entrada WebSocket compatível com o sistema
+`ares-wifi` está preparado em [LEIA_PRIMEIRO_ENSAIO_CEIA.md](LEIA_PRIMEIRO_ENSAIO_CEIA.md).
+Use `bash ensaio preparar`, depois `bash ensaio usb-simulado` para verificar USB
+real com posição simulada. O painel anterior continua no comando abaixo.
+A adaptação CEIA está na branch `feat/radiacode-ceia-test`, incluída no pacote
+de ensaio e no bundle; o código original do Werik está em `ares-wifi`.
 
 ## Modos de execução
 

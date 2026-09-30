@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+export ARES_DETECTOR_ROOT ARES_CEIA_ROOT ARES_DOCKER_UID ARES_DOCKER_GID ARES_USB_LOCK_DIR
+ARES_DETECTOR_ROOT="$PWD"
+ARES_DOCKER_UID="$(id -u)"
+ARES_DOCKER_GID="$(id -g)"
+ARES_USB_LOCK_DIR="/tmp/ares-radiacode-lock-$ARES_DOCKER_UID"
+if [[ -z "${ARES_CEIA_ROOT:-}" ]]; then
+  if [[ -f integracao-ceia/src/ares/config.py ]]; then
+    ARES_CEIA_ROOT="$PWD/integracao-ceia"
+  else
+    ARES_CEIA_ROOT="$(dirname "$PWD")/ares-ceia-test"
+  fi
+fi
+compose=(docker compose -f "$PWD/tools/ceia/compose.yaml")
+mode="${1:-}"
+if [[ "$mode" == exportar ]]; then
+  exec python3 tools/ceia/export_sessions.py resultados/ceia
+fi
+command -v docker >/dev/null || { echo 'Falta Docker. Use o mesmo computador em que você testou ./ares.' >&2; exit 2; }
+docker compose version >/dev/null
+docker info >/dev/null
+case "$mode" in
+  preparar|usb-simulado|usb-robo)
+    if [[ ! -f "$ARES_CEIA_ROOT/src/ares/radiacao/radiacode.py" ]]; then
+      if git show-ref --verify --quiet refs/heads/feat/radiacode-ceia-test; then
+        git worktree add --detach "$ARES_CEIA_ROOT" feat/radiacode-ceia-test
+      else
+        echo 'Falta a integração CEIA. Use o ZIP completo ou importe as duas branches do bundle.' >&2
+        exit 2
+      fi
+    fi
+    mkdir -p resultados/ceia/{usb,simulacao,real} "$ARES_USB_LOCK_DIR"
+    if [[ "$mode" == preparar ]]; then
+      "${compose[@]}" --profile simulado build usb ares-usb-simulado
+      echo 'Imagens preparadas. Agora é possível trocar para o Wi-Fi do Go2 sem baixar dependências.'
+      exit 0
+    fi
+    if ! docker image inspect ares-radiacode-service:20260930-r1 ares-radiacode-ceia:20260930-r1 >/dev/null 2>&1; then
+      echo 'Faltam imagens locais. Execute primeiro: bash ensaio preparar (com internet).'
+      exit 2
+    fi
+    [[ -d /dev/bus/usb ]] || { echo 'USB não encontrado neste Linux.' >&2; exit 2; }
+    # The host lock also excludes ./ares radiacode-dashboard and radiacode-usb.
+    if command -v flock >/dev/null && ! flock -n "$ARES_USB_LOCK_DIR/ares-radiacode-usb-$ARES_DOCKER_UID.lock" true; then
+      echo 'Já existe um leitor USB ativo. Use bash ensaio parar, ou Ctrl+C no teste antigo, antes de iniciar este.' >&2
+      exit 2
+    fi
+    # The CEIA port must be free; do not stop Werik's other Docker projects.
+    if ! python3 - <<'PY'
+import socket
+for port in (8001, 1098):
+    with socket.socket() as s:
+        try:
+            s.bind(('127.0.0.1', port))
+        except OSError:
+            raise SystemExit(f'Porta {port} ocupada. Execute bash ensaio parar e tente novamente.')
+PY
+    then exit 2; fi
+    "${compose[@]}" --profile simulado --profile real down
+    if [[ "$mode" == usb-robo ]]; then
+      "${compose[@]}" --profile real up -d --no-build usb ares-usb-real
+      echo 'USB real + Go2 real. Conecte este computador ao Wi-Fi do Go2 e aguarde os estados conectados.'
+    else
+      "${compose[@]}" --profile simulado up -d --no-build usb ares-usb-simulado
+      echo 'USB real + robô simulado. O detector NÃO foi simulado.'
+    fi
+    echo 'Painel do CEIA: http://127.0.0.1:8001'
+    echo 'Quando robô e detector estiverem conectados, clique em Iniciar missão para gravar posição e contagens.'
+    echo 'Diagnóstico: bash ensaio verificar | Parar e exportar: bash ensaio parar'
+    ;;
+  verificar)
+    python3 - <<'PY'
+import json, urllib.request
+for name, url in [('USB', 'http://127.0.0.1:1098/health'), ('CEIA', 'http://127.0.0.1:8001/api/estado')]:
+    try:
+        with urllib.request.urlopen(url, timeout=3) as r:
+            print(name + ':\n' + json.dumps(json.load(r), ensure_ascii=False, indent=2))
+    except Exception as e:
+        print(f'{name}: {e}')
+PY
+    ;;
+  parar)
+    "${compose[@]}" --profile simulado --profile real down
+    python3 tools/ceia/export_sessions.py resultados/ceia
+    echo "Dados preservados em $PWD/resultados/ceia"
+    ;;
+  logs)
+    exec "${compose[@]}" --profile simulado --profile real logs --tail 100 -f
+    ;;
+  *)
+    echo 'Uso: bash ensaio preparar | usb-simulado | usb-robo | verificar | logs | parar | exportar' >&2
+    exit 2
+    ;;
+esac

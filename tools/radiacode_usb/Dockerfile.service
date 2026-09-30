@@ -1,0 +1,10 @@
+FROM python:3.12-slim-bookworm
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+WORKDIR /app
+COPY tools/radiacode_usb/requirements-service.txt /app/requirements-service.txt
+RUN apt-get update && apt-get install --yes --no-install-recommends libusb-1.0-0 \
+ && rm -rf /var/lib/apt/lists/* \
+ && python -m pip install --no-cache-dir -r /app/requirements-service.txt
+COPY tools/radiacode_usb /app/tools/radiacode_usb
+ENTRYPOINT ["python", "-u", "/app/tools/radiacode_usb/service.py"]
+CMD ["--output", "/app/resultados"]

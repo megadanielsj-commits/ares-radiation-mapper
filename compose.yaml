@@ -55,11 +55,14 @@ services:
       target: radiacode
     image: ares-radiation-mapper:radiacode
     init: true
+    environment:
+      ARES_RADIACODE_LOCK_DIR: /app/usb-lock
     healthcheck:
       disable: true
     volumes:
       - ./resultados:/app/resultados
       - /dev/bus/usb:/dev/bus/usb
+      - ${ARES_USB_LOCK_DIR:-/tmp/ares-radiacode-lock-1000}:/app/usb-lock
     device_cgroup_rules:
       - 'c 189:* rwm'
     user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"
@@ -67,6 +70,8 @@ services:
     command: ["--seconds", "60"]
 
   radiacode-dashboard:
+    environment:
+      ARES_RADIACODE_LOCK_DIR: /app/usb-lock
     profiles: [radiacode-dashboard]
     build:
       context: .
@@ -79,6 +84,7 @@ services:
     volumes:
       - ./resultados:/app/resultados
       - /dev/bus/usb:/dev/bus/usb
+      - ${ARES_USB_LOCK_DIR:-/tmp/ares-radiacode-lock-1000}:/app/usb-lock
     device_cgroup_rules:
       - 'c 189:* rwm'
     user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"

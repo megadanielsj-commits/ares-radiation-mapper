@@ -101,3 +101,15 @@ git push -u origin feat/radiacode-independent
 No GitHub, abra o pull request com base em `feat/go2-real-teleop`. Os arquivos
 do ZIP de execução não incluem `.git`; use o bundle para preservar commits e
 autorizar a publicação pelo seu próprio clone.
+
+## Entrada independente para a estrutura CEIA
+
+O serviço `tools/radiacode_usb/service.py` expõe WebSocket local na porta 1098
+com os eventos `snapshot`, `estado` e `leitura` do contrato usado pelo serviço
+FS-5000 do Werik. O leitor USB roda em processo separado e grava antes da
+publicação. O serviço não importa nem controla o robô.
+
+`counts_1s.jsonl` registra contagens inteiras de dois RawData consecutivos.
+`readings.jsonl` e o painel anterior conservam os campos do teste aprovado.
+O roteiro e os limites estão em
+[LEIA_PRIMEIRO_ENSAIO_CEIA.md](../LEIA_PRIMEIRO_ENSAIO_CEIA.md).

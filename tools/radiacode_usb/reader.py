@@ -19,6 +19,11 @@ import traceback
 from datetime import datetime, timezone
 from enum import Enum
 
+try:
+    from tools.radiacode_usb.counts import PairRawData
+except ModuleNotFoundError:
+    from counts import PairRawData
+
 
 def serializable(value):
     if dataclasses.is_dataclass(value):
@@ -92,7 +97,7 @@ CSV_FIELDS = ["timestamp_utc", "received_utc_ns", "received_monotonic_ns",
 
 
 def run(args, device_factory=None):
-    from radiacode import RadiaCode, RealTimeData, RareData
+    from radiacode import RadiaCode, RealTimeData, RareData, RawData
     out = Path(args.output).resolve()
     # Each run must have its own folder: never append a different connection to old data.
     out.mkdir(parents=True, exist_ok=False)
@@ -110,6 +115,9 @@ def run(args, device_factory=None):
     deadline = started + args.seconds if args.seconds > 0 else float("inf")
     count = 0
     fresh_count = 0
+    pairs = PairRawData()
+    last_count = started
+    latest_measurement = None
     result = "starting"
     device = None
     serial = None
@@ -126,16 +134,18 @@ def run(args, device_factory=None):
     save_json(out / "session.json", metadata)
     print(f"Dados: {out}", flush=True)
     print("USB REAL | taxa convertida provisoriamente; comparar com visor em µSv/h", flush=True)
-    lock = open(f"/tmp/ares-radiacode-usb-{os.getuid()}.lock", "a")
+    lock_dir = Path(os.environ.get("ARES_RADIACODE_LOCK_DIR", f"/tmp/ares-radiacode-lock-{os.getuid()}"))
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    lock = (lock_dir / f"ares-radiacode-usb-{os.getuid()}.lock").open("a")
     files = []
     try:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise RuntimeError("Outro leitor deste pacote já está usando o detector. Encerre-o primeiro.") from exc
-        for name in ("raw_records.jsonl", "readings.jsonl", "spectra.jsonl", "events.jsonl"):
+        for name in ("raw_records.jsonl", "readings.jsonl", "spectra.jsonl", "events.jsonl", "counts_1s.jsonl"):
             files.append((out / name).open("w", encoding="utf-8", buffering=1))
-        raw, readings, spectra, events = files
+        raw, readings, spectra, events, counts_file = files
         csvfile = (out / "readings.csv").open("w", encoding="utf-8", newline="", buffering=1)
         files.append(csvfile)
         writer = csv.DictWriter(csvfile, CSV_FIELDS, extrasaction="ignore")
@@ -161,6 +171,7 @@ def run(args, device_factory=None):
             request_start_ns = time.monotonic_ns()
             records = device.data_buf()
             mono_ns, utc_ns = time.monotonic_ns(), time.time_ns()
+            raw_records = [r for r in records if isinstance(r, RawData)]
             for record in records:
                 envelope = {"type": type(record).__name__, "received_utc_ns": utc_ns,
                             "received_monotonic_ns": mono_ns,
@@ -180,6 +191,7 @@ def run(args, device_factory=None):
                 writer.writerow(row)
                 csvfile.flush()
                 if not duplicate:
+                    latest_measurement = row
                     newest_device_time = record.dt
                     fresh_count += 1
                     last_sample = time.monotonic()
@@ -190,6 +202,18 @@ def run(args, device_factory=None):
                       f"{' (repetida)' if duplicate else ''}", flush=True)
                 if fresh_count == 1 and not duplicate:
                     print("PRIMEIRA LEITURA REAL RECEBIDA. CPM* = 60 × CPS.", flush=True)
+            for record in raw_records:
+                row = pairs.add(record, utc_ns, mono_ns, session_id, serial)
+                if row is None:
+                    continue
+                row.update(timing_quality="batched_uncertain" if len(raw_records) > 2 else "live_receipt",
+                           dose_rate_uSv_h=(latest_measurement or {}).get("dose_rate_uSv_h"),
+                           dose_rate_raw=(latest_measurement or {}).get("dose_rate_raw"),
+                           dose_conversion_verified=False, cumulative_dose_uSv=None)
+                json_line(counts_file, row)
+                last_count = time.monotonic()
+            if getattr(args, "require_counts", False) and time.monotonic() - last_count > args.no_data_timeout:
+                raise TimeoutError("Sem contagens RawData novas; integração CEIA não usa CPS suavizado")
             if time.monotonic() - last_sample > args.no_data_timeout:
                 raise TimeoutError(f"Sem RealTimeData nova por {args.no_data_timeout:g} s; consulte raw_records.jsonl")
             if args.spectrum_interval > 0 and time.monotonic() >= next_spectrum:
@@ -240,6 +264,7 @@ def run(args, device_factory=None):
         lock.close()
         save_json(out / "summary.json", {"state": result, "measurements": count,
                   "fresh_measurements": fresh_count,
+                  "one_second_counts": pairs.sequence, "raw_bins_discarded": pairs.discarded,
                   "serial_number": serial, "elapsed_s": time.monotonic() - started,
                   "hardware_test": device_factory is None,
                   "dose_conversion_verified": False})
@@ -252,6 +277,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, help="Nova pasta exclusiva desta sessão")
     parser.add_argument("--serial", default=None)
+    parser.add_argument("--require-counts", action="store_true", help="Falha se não houver RawData para o CEIA")
     parser.add_argument("--seconds", type=float, default=60, help="0 = contínuo")
     parser.add_argument("--poll", type=float, default=0.25)
     parser.add_argument("--no-data-timeout", type=float, default=20)

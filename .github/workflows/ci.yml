@@ -65,3 +65,6 @@ jobs:
           docker run --rm --entrypoint python ares-radiation-mapper:radiacode-ci \
             -c 'import radiacode, ares_mapper; print("Radiacode USB image ready")'
           docker compose --profile radiacode-dashboard config --quiet
+          docker build -f tools/radiacode_usb/Dockerfile.service -t ares-radiacode-service:ci .
+          docker run --rm --entrypoint python ares-radiacode-service:ci \
+            -c 'import radiacode, fastapi; print("Standalone USB bridge dependencies ready")'
