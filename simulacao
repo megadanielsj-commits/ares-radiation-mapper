@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+export ARES_SIMULATION_ROOT="$PWD"
+export ARES_SIMULATION_ROBOT_ROOT="${ARES_SIMULATION_ROBOT_ROOT:-$PWD/integracao-go2}"
+if [[ ! -d "$ARES_SIMULATION_ROBOT_ROOT" && -f ../ares-go2-wifi/Dockerfile.go2-wifi ]]; then
+  ARES_SIMULATION_ROBOT_ROOT="$(dirname "$PWD")/ares-go2-wifi"
+fi
+export ARES_SIMULATION_UID="$(id -u)" ARES_SIMULATION_GID="$(id -g)"
+compose=(docker compose -f "$PWD/tools/source_simulation/compose.yaml")
+command -v docker >/dev/null || { echo 'Falta Docker Engine.' >&2; exit 2; }
+mkdir -p resultados/fonte-simulada
+case "${1:-iniciar}" in
+  iniciar)
+    "${compose[@]}" down
+    python3 - <<'PY'
+import socket
+with socket.socket() as s:
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        s.bind(('127.0.0.1', 8001))
+    except OSError:
+        raise SystemExit('Porta 8001 ocupada. Na pasta do teste USB, execute: bash ensaio parar')
+PY
+    if ! docker image inspect ares-radiacode-go2:20260930-r4 >/dev/null 2>&1; then
+      [[ -f "$ARES_SIMULATION_ROBOT_ROOT/Dockerfile.go2-wifi" ]] || {
+        echo 'Faltam os arquivos do backend. Use o ZIP completo ARES_Fonte_Simulada_v1.' >&2
+        exit 2
+      }
+      "${compose[@]}" build simulation
+    fi
+    if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 45; then
+      "${compose[@]}" logs --no-color --tail 80
+      exit 1
+    fi
+    echo 'Fonte, detector e robô inteiramente simulados. Radiacode e Go2 físicos não são necessários.'
+    echo 'Painel: http://127.0.0.1:8001 | Inicie uma missão e use as setas.'
+    echo 'Fonte inicial: x=4 m, y=3 m, S=8 µSv·m²/h. Pode ser alterada antes de iniciar uma missão.'
+    echo 'Encerrar e exportar: bash simulacao parar'
+    ;;
+  parar)
+    "${compose[@]}" down
+    python3 tools/integration/export_sessions.py resultados/fonte-simulada
+    echo "Dados preservados em $PWD/resultados/fonte-simulada"
+    ;;
+  verificar)
+    "${compose[@]}" ps -a
+    "${compose[@]}" logs --no-color --tail 40
+    ;;
+  *) echo 'Uso: bash simulacao iniciar | parar | verificar' >&2; exit 2 ;;
+esac

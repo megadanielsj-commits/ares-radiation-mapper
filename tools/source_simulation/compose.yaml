@@ -1,0 +1,23 @@
+name: ares-source-simulation
+services:
+  simulation:
+    image: ares-radiacode-go2:20260930-r4
+    build:
+      context: ${ARES_SIMULATION_ROBOT_ROOT}
+      dockerfile: Dockerfile.go2-wifi
+    init: true
+    network_mode: host
+    user: "${ARES_SIMULATION_UID}:${ARES_SIMULATION_GID}"
+    environment:
+      ARES_DADOS: /app/dados/simulacao
+    volumes:
+      - ${ARES_SIMULATION_ROOT}/tools/source_simulation:/app/simulation:ro
+      - ${ARES_SIMULATION_ROOT}/resultados/fonte-simulada:/app/dados
+    command: [python, /app/simulation/server.py]
+    stop_grace_period: 30s
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; o=urllib.request.build_opener(urllib.request.ProxyHandler({})); o.open('http://127.0.0.1:8001/', timeout=2); o.open('http://127.0.0.1:8001/simulation/adapter.js', timeout=2); o.open('http://127.0.0.1:8001/api/estado', timeout=2)"]
+      interval: 3s
+      timeout: 7s
+      start_period: 10s
+      retries: 4
