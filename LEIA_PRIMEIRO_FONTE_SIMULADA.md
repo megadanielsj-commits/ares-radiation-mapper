@@ -3,7 +3,8 @@
 Nesta demonstração, fonte, detector e robô são simulados. Não conecte dispositivos
 físicos. O desenho, as cores e os controles do painel aprovado são preservados.
 Usa o backend de simulação original da branch de integração e a imagem Docker
-`ares-radiacode-go2:20260930-r4`, já construída no teste USB.
+`ares-radiacode-go2:20260930-r5`, corrigida para renderizar a grade interpolada. A primeira execução a constrói
+se ela ainda não existir no computador.
 
 Antes de trocar de modo, encerre a missão e execute `bash ensaio parar` na pasta
 `ARES_Radiacode_GO2_USB_v4`. Isso preserva e exporta os dados do teste USB.
@@ -43,3 +44,11 @@ USB, não inicia o serviço da porta 1098 e não conecta ao Go2 físico.
 Para voltar ao ensaio USB, pare esta simulação e execute o comando habitual na
 pasta `ARES_Radiacode_GO2_USB_v4`: `bash ensaio usb-simulado` ou, com o robô real,
 `bash ensaio usb-robo`.
+
+## Correção nesta versão
+
+O painel agora recebe os eventos de grade e desenha o gradiente IDW local
+produzido pelo mapa original do ARES, com posição e orientação corretas.
+Cores cobrem a vizinhança amostrada; regiões não investigadas permanecem sem
+valores. A dose acumulada vem da leitura simulada e um único caminho de
+atualização evita alternância com valores ausentes.

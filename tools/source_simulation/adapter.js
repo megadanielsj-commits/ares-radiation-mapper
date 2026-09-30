@@ -24,14 +24,9 @@ applySnapshot = (snapshot, recover = false) => {
 const simulationReadings = updateReadings;
 updateReadings = () => {
   simulationReadings();
-  const reading = state.radiation;
-  const age = reading?.ts == null ? Infinity : Date.now() / 1000 - reading.ts;
-  const live = integration.telemetry?.readyState === WebSocket.OPEN
-    && integration.snapshot?.radiacao?.conectado && age >= -1 && age < 3;
+  const age = state.radiation?.ts == null ? Infinity : Date.now() / 1000 - state.radiation.ts;
   $("usb-age").textContent = Number.isFinite(age)
     ? `${Math.max(0, age).toFixed(1)} s desde a leitura simulada` : "Aguardando simulação";
-  $("dose-total").textContent = live && reading.dose_usv != null
-    ? formatNumber(reading.dose_usv, 4) : "—";
 };
 
 $("sim-apply").addEventListener("click", async () => {

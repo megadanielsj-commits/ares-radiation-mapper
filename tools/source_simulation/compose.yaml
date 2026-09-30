@@ -1,7 +1,7 @@
 name: ares-source-simulation
 services:
   simulation:
-    image: ares-radiacode-go2:20260930-r4
+    image: ares-radiacode-go2:20260930-r5
     build:
       context: ${ARES_SIMULATION_ROBOT_ROOT}
       dockerfile: Dockerfile.go2-wifi

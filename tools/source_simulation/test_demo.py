@@ -72,6 +72,9 @@ def test_simulated_mission_teleop_and_export(tmp_path):
             assert state["pose"]["x"] > .3
             assert state["missao"]["n_amostras"] >= 2
         assert client.post("/api/missao/encerrar").status_code == 200
+        grade = client.get("/api/estado").json()["mapa"]
+        assert grade["unidade"] == "µSv/h" and grade["cps_por_usvh"] == 80
+        assert sum(v is not None for column in grade["valores"] for v in column) > 2
         saved = client.get(f"/api/missoes/{mission}.json").json()
         assert saved["missao"]["fonte_sim"] == {"x": 4., "y": 3., "s": 8.}
         rows = list(csv.DictReader(io.StringIO(client.get(f"/api/missoes/{mission}/amostras.csv").text)))

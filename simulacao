@@ -22,9 +22,9 @@ with socket.socket() as s:
     except OSError:
         raise SystemExit('Porta 8001 ocupada. Na pasta do teste USB, execute: bash ensaio parar')
 PY
-    if ! docker image inspect ares-radiacode-go2:20260930-r4 >/dev/null 2>&1; then
+    if ! docker image inspect ares-radiacode-go2:20260930-r5 >/dev/null 2>&1; then
       [[ -f "$ARES_SIMULATION_ROBOT_ROOT/Dockerfile.go2-wifi" ]] || {
-        echo 'Faltam os arquivos do backend. Use o ZIP completo ARES_Fonte_Simulada_v1.' >&2
+        echo 'Faltam os arquivos do backend. Use o ZIP completo ARES_Fonte_Simulada_v2.' >&2
         exit 2
       }
       "${compose[@]}" build simulation
