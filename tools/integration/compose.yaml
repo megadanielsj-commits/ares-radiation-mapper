@@ -4,13 +4,13 @@ x-app: &app
   build:
     context: ${ARES_ROBOT_ROOT:?Defina ARES_ROBOT_ROOT ou use ./ensaio}
     dockerfile: Dockerfile.go2-wifi
-  image: ares-radiacode-go2:20260930-r2
+  image: ares-radiacode-go2:20260930-r3
   init: true
   network_mode: host
   user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"
   stop_grace_period: 30s
   healthcheck:
-    test: ["CMD", "python", "-c", "import urllib.request; o=urllib.request.build_opener(urllib.request.ProxyHandler({})); o.open('http://127.0.0.1:8001/', timeout=2); o.open('http://127.0.0.1:8001/static/app.js', timeout=2); o.open('http://127.0.0.1:8001/api/estado', timeout=2)"]
+    test: ["CMD", "python", "-c", "import urllib.request; o=urllib.request.build_opener(urllib.request.ProxyHandler({})); o.open('http://127.0.0.1:8001/', timeout=2); o.open('http://127.0.0.1:8001/static/approved/integration.js', timeout=2); o.open('http://127.0.0.1:8001/api/estado', timeout=2)"]
     interval: 3s
     timeout: 7s
     start_period: 10s
@@ -31,7 +31,7 @@ services:
     build:
       context: ${ARES_DETECTOR_ROOT:?Use ./ensaio}
       dockerfile: tools/radiacode_usb/Dockerfile.service
-    image: ares-radiacode-service:20260930-r2
+    image: ares-radiacode-service:20260930-r3
     init: true
     network_mode: host
     user: "${ARES_DOCKER_UID:-1000}:${ARES_DOCKER_GID:-1000}"

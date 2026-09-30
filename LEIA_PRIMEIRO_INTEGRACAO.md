@@ -7,12 +7,12 @@ são simulados. O Go2 físico será usado no segundo modo, no laboratório.
 
 ## Executar agora
 
-Baixe `ARES_Radiacode_GO2_USB_v2.zip` na pasta Downloads. Com o Radiacode
+Baixe `ARES_Radiacode_GO2_USB_v3.zip` na pasta Downloads. Com o Radiacode
 conectado por USB e internet disponível, copie este bloco completo:
 
 ```bash
-python3 -m zipfile -e "$HOME/Downloads/ARES_Radiacode_GO2_USB_v2.zip" "$HOME" &&
-cd "$HOME/ARES_Radiacode_GO2_USB_v2" &&
+python3 -m zipfile -e "$HOME/Downloads/ARES_Radiacode_GO2_USB_v3.zip" "$HOME" &&
+cd "$HOME/ARES_Radiacode_GO2_USB_v3" &&
 bash ensaio preparar &&
 bash ensaio usb-simulado
 ```
@@ -31,22 +31,25 @@ os consumidores recebem seus dados pelo serviço independente.
 O endereço só é anunciado como pronto após a página, o JavaScript e a API
 responderem. Abra **http://127.0.0.1:8001** no mesmo computador.
 
-1. Confira **Robô simulado ok**, **Radiacode ok** e CPS atualizado.
+1. Confira **posição simulada**, detector e Go2 **conectados**, e CPS atualizado.
 2. Clique em **Iniciar missão**. A aquisição USB já está gravando; esse clique
    começa a gravação da missão com posição.
-3. Use as setas ou WASD para mover o robô virtual por alguns minutos. O número
+3. Use as setas para mover o robô virtual por alguns minutos. O número
    de amostras deve aumentar. **Aquisição sem calibração** é esperado neste teste.
 4. Clique em **Encerrar missão** e confira a exportação CSV/JSON pelo painel.
 5. Para finalizar os serviços e exportar automaticamente as missões, execute:
 
 ```bash
-cd "$HOME/ARES_Radiacode_GO2_USB_v2" && bash ensaio parar
+cd "$HOME/ARES_Radiacode_GO2_USB_v3" && bash ensaio parar
 ```
 
 Os serviços permanecem em segundo plano e não param sozinhos após uma hora.
-Fechar o navegador não encerra a aquisição. O painel anterior continua
-separadamente em `bash ares radiacode-dashboard`, na porta 8000;
-use um leitor USB por vez.
+Fechar o navegador não encerra a aquisição. Este teste usa o visual antigo
+do painel, agora conectado ao backend
+Go2/WebRTC na porta 8001. O desenho do Go2 e o estilo foram preservados.
+Não abra outro leitor USB simultaneamente. O comando antigo
+`bash ares radiacode-dashboard`, na porta 8000, continua disponível para
+a aquisição independente, mas não é o comando deste ensaio.
 
 ## No dia do teste com o Go2
 
@@ -58,14 +61,17 @@ Radiacode, encerrem a missão e o controlador anterior do Go2. Conectem o
 computador ao Wi-Fi do robô e o Radiacode por USB. Na mesma pasta, executem:
 
 ```bash
-cd "$HOME/ARES_Radiacode_GO2_USB_v2" && bash ensaio usb-robo
+cd "$HOME/ARES_Radiacode_GO2_USB_v3" && bash ensaio usb-robo
 ```
 
 O script troca o modo simulado pelo real. Abra **http://127.0.0.1:8001**,
-aguarde Go2 e Radiacode conectados e inicie uma missão curta. Câmera,
-teleoperação, watchdog e sincronização usam a implementação original
+aguarde Go2 e Radiacode conectados e inicie uma missão curta. O driver de câmera,
+a teleoperação, o watchdog e a sincronização usam a implementação original
 `ares-wifi`, revisão `84f9148`. Nenhuma missão ou movimento começa pelo
 comando de inicialização. O serviço FS-5000 da porta 1096 não é modificado.
+Para levantar ou deitar
+o robô, use os botões correspondentes apenas quando a área estiver livre;
+**Parar** e soltar as setas encerram o comando de movimento.
 
 Se a montagem exigir offset do detector ou chave AES, use os valores
 conferidos pela equipe. As opções disponíveis são:
@@ -157,3 +163,16 @@ O script usa o bundle completo incluído no ZIP e publica sem `force`:
 
 As branches `main` e `ares-wifi` não são alteradas. O envio ocorre somente
 quando você executa o comando com seu acesso ao GitHub.
+
+## Painel e reinício nesta versão
+
+As cores dos pontos representam CPS da amostra sincronizada pelo backend;
+a taxa de dose provisória aparece somente na telemetria. A dose acumulada
+indisponível é exibida como “—”. Não é criada uma posição virtual no modo
+real enquanto o Go2 estiver desconectado. O mapa calibrado/estimativa de fonte
+continuam no backend original, mas esta interface apresenta os pontos medidos.
+
+A verificação das portas usa `SO_REUSEADDR` para permitir reinício após
+conexões encerradas (TIME_WAIT). Um processo realmente escutando na porta
+ainda impede a inicialização. A porta 1098 pertence ao serviço WebSocket
+do leitor, não à conexão USB do detector.

@@ -82,6 +82,11 @@ async def validate(robot_root, installed=False):
             await wait_until(lambda: orq.radiacao.estado()['conectado'])
             await asyncio.sleep(.5)  # allow pose history for the unchanged 0.5 s correction
             async with httpx.AsyncClient(base_url=f'http://127.0.0.1:{app_port}', trust_env=False) as client:
+                page = await client.get('/')
+                assert 'id="radiation-map"' in page.text
+                for asset in ('renderer.js', 'integration.js', 'styles.css'):
+                    asset_response = await client.get('/static/approved/' + asset)
+                    assert asset_response.status_code == 200 and len(asset_response.content) > 1000
                 response = await client.post('/api/missao/iniciar', json={'nome':'Replay software; USB e pose física NÃO testados'})
                 response.raise_for_status()
                 mission_id = response.json()['id']
@@ -120,7 +125,7 @@ async def validate(robot_root, installed=False):
                 assert len(saved_json['amostras']) == len(data['amostras'])
                 saved_csv = next(Path(p) for p in paths if p.endswith('.csv')).read_text()
                 assert saved_csv.startswith('ts,x,y,dr_usvh,cpm,cps,lacuna_pose_s')
-                report = {'hardware_test':False, 'robot_physical_test':False, 'installed_package_test':installed,
+                report = {'hardware_test':False, 'robot_physical_test':False, 'installed_package_test':installed, 'approved_dashboard_assets':True,
                           'input':'accelerated replay of recorded RawData, with new host timestamps',
                           'positioned_samples':len(data['amostras']), 'saved_poses':len(data['poses']),
                           'saved_readings':len(data['leituras']), 'usb_session_recovery':True,

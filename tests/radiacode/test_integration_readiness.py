@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import socket
 from pathlib import Path
 
 import pytest
@@ -36,7 +37,7 @@ def test_missing_packaged_assets_are_not_reported_ready(monkeypatch):
     state, source = states()
     responses = {
         checks.PANEL + "/": b"<html>no canvas</html>",
-        checks.PANEL + "/static/app.js": b"desenharRobo",
+        checks.PANEL + "/static/approved/renderer.js": b"drawRobot",
         checks.PANEL + "/api/estado": json.dumps(state).encode(),
         checks.USB + "/health": json.dumps(source).encode(),
     }
@@ -76,3 +77,26 @@ def test_real_mode_panel_does_not_require_physical_robot(monkeypatch, clock, cap
     output = capsys.readouterr().out
     assert "Painel ARES pronto" in output and "Radiacode USB conectado" in output
     assert "Aguardando Go2" in output
+
+
+def test_recently_closed_connection_does_not_block_restart():
+    with socket.socket() as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(("127.0.0.1", 0))
+        port = server.getsockname()[1]
+        server.listen(1)
+        with socket.create_connection(("127.0.0.1", port)) as client:
+            peer, _ = server.accept()
+            peer.close()
+            assert client.recv(1) == b""
+    checks.free_ports((port,))
+
+
+def test_listening_process_still_blocks_startup():
+    with socket.socket() as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(("127.0.0.1", 0))
+        port = server.getsockname()[1]
+        server.listen(1)
+        with pytest.raises(RuntimeError, match="ocupada"):
+            checks.free_ports((port,))

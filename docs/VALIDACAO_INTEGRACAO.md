@@ -46,9 +46,9 @@ Não foi feito merge nas branches `main` ou `ares-wifi`.
 | Verificação | Resultado |
 |---|---|
 | Quickstart FS-5000 recebido, sem alterações, na preparação anterior | 111 testes passaram |
-| Testes Python do projeto independente, incluindo USB, serviço e prontidão | 100 testes passaram |
+| Testes Python do projeto independente, incluindo USB, serviço e prontidão | 102 testes passaram |
 | Teste JavaScript do desenho do Go2 no painel anterior | 1 passou |
-| Testes Python da estrutura Go2/WebRTC, incluindo Radiacode | 207 testes passaram |
+| Testes Python da estrutura Go2/WebRTC, incluindo Radiacode | 208 testes passaram |
 | Lint e tipos do projeto independente | Passaram; mypy verificou 76 arquivos |
 | Sintaxe dos scripts, JavaScript e definições YAML | Passou |
 | Wheel instalado: HTML, JavaScript, API e robô simulado | Passou |
@@ -94,3 +94,18 @@ a integração posicionada usa a contagem inteira obtida de RawData.
 A calibração específica CPS por µSv/h é necessária antes de usar a estimativa
 da fonte como resultado radiométrico. Ela não impede o teste de aquisição
 posicionada. Dose acumulada sem conversão validada permanece ausente.
+
+## Consolidação v3 — painel aprovado
+
+O modo Radiacode da aplicação Go2/WebRTC agora serve o estilo e o desenho
+do Go2 do painel aprovado. Um adaptador de apresentação usa diretamente
+`/api/estado`, `/api/missao/*`, `/ws` e `/ws/comando`. Não são emulados
+endpoints antigos nem transferida a sincronização para o navegador.
+O perfil padrão FS-5000 mantém a interface original dessa branch.
+
+Quatro testes JavaScript adicionais verificam o desenho do Go2, ausência
+de pose inventada, timestamp/contagem/posição sem alteração, deduplicação
+visual, parada ao perder foco, reconexão sem repetir teclas e leituras antigas.
+O teste HTTP do modo Radiacode verifica o painel e todos os seus arquivos.
+Dois testes de porta distinguem TIME_WAIT de um processo em LISTEN.
+A aquisição USB e a gravação permanecem independentes da interface.

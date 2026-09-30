@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-30",
+  "original_ares_wifi_revision": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+  "hardware_test": false,
+  "robot_physical_test": false,
+  "docker_engine_test": false,
+  "installed_package_test": true,
+  "approved_dashboard_assets": true,
+  "python_tests_independent": 102,
+  "python_tests_go2": 208,
+  "javascript_tests_independent": 1,
+  "javascript_tests_go2": 4,
+  "core_files_unchanged": [
+    "src/ares/sincronizacao.py",
+    "src/ares/teleop.py",
+    "src/ares/robo/go2.py",
+    "src/ares/radiacao/fs5000.py"
+  ],
+  "input": "accelerated replay of recorded RawData, with new host timestamps",
+  "positioned_samples": 7,
+  "saved_poses": 20,
+  "saved_readings": 7,
+  "usb_session_recovery": true,
+  "teleop_simulation": true,
+  "mission_without_calibration": true,
+  "csv_and_json_export": true,
+  "automatic_file_export": true,
+  "status": "passed"
+}

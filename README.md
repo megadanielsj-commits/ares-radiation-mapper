@@ -10,7 +10,8 @@ provável da fonte. A interface é acessada pelo navegador em
 O ensaio com USB independente e entrada WebSocket compatível com o sistema
 `ares-wifi` está preparado em [LEIA_PRIMEIRO_INTEGRACAO.md](LEIA_PRIMEIRO_INTEGRACAO.md).
 Use `bash ensaio preparar`, depois `bash ensaio usb-simulado` para verificar USB
-real com posição simulada. O painel anterior continua no comando abaixo.
+real com posição simulada, usando o visual antigo na porta 8001.
+Para o Go2 físico pelo Wi-Fi, use `bash ensaio usb-robo` no laboratório.
 A adaptação Go2/WebRTC está na branch `feat/radiacode-go2-wifi`, incluída no pacote
 de ensaio e no bundle; o código original do Werik está em `ares-wifi`.
 
@@ -204,17 +205,18 @@ mypy src
 O workflow em `.github/workflows/ci.yml` executa esses testes e também constrói
 as imagens de simulação e hardware a cada `push` ou `pull request`.
 
-## Preparar a integração no GitHub
+## Publicar a preparação no GitHub
+
+No pacote completo do ensaio, o bundle e o script de publicação estão incluídos:
 
 ```bash
-git switch feat/radiacode-independent
-git push -u origin feat/radiacode-independent
+bash publicar_no_github.sh
 ```
 
-Abra um pull request com base em `feat/go2-real-teleop` e comparação com
-`feat/radiacode-independent`. Essa branch conserva a teleop da integração Go2; os
-scripts Radiacode não iniciam a odometria do robô físico. Arquivos de
-`resultados/` e o ambiente `.venv-radiacode/` ficam fora do Git.
+O comando publica `feat/radiacode-independent` (aquisição USB e serviço) e
+`feat/radiacode-go2-wifi` (consumidor Go2/WebRTC e painel), sem merge automático
+em `main` ou `ares-wifi`. Veja [LEIA_PRIMEIRO_INTEGRACAO.md](LEIA_PRIMEIRO_INTEGRACAO.md).
+Arquivos em `resultados/` e ambientes Python ficam fora do Git.
 
 ## Estrutura principal
 
@@ -243,3 +245,4 @@ FS-5000 no robô, dos timestamps e da qualidade da localização do Go2. O model
 atual considera uma fonte pontual estática em ambiente 2D simples.
 
 Documentação técnica adicional está em [`docs/`](docs/).
+

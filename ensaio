@@ -39,7 +39,8 @@ stop_previous_integration() {
   # images, volumes and unrelated robot control projects intact.
   local containers=()
   while IFS='|' read -r container image project; do
-    if [[ "$image" == ares-radiacode-* && "$project" == ares-radiacode-* ]]; then
+    if [[ "$image" == ares-radiacode-* && "$project" == ares-radiacode-* ]] ||
+       [[ "$image" == ares-radiation-mapper:radiacode && "$project" == ares-radiation-mapper ]]; then
       containers+=("$container")
     fi
   done < <(docker ps --format '{{.ID}}|{{.Image}}|{{.Label "com.docker.compose.project"}}')
@@ -65,15 +66,15 @@ case "$mode" in
     ensure_sources
     "${compose[@]}" --profile simulado build usb ares-usb-simulado
     echo 'Validando a aplicação instalada na imagem...'
-    docker run --rm --network none --entrypoint python ares-radiacode-go2:20260930-r2 /app/tools/check_installed_app.py --robot-imports
-    docker run --rm --network none --entrypoint python ares-radiacode-service:20260930-r2 \
+    docker run --rm --network none --entrypoint python ares-radiacode-go2:20260930-r3 /app/tools/check_installed_app.py --robot-imports
+    docker run --rm --network none --entrypoint python ares-radiacode-service:20260930-r3 \
       -c 'import usb.backend.libusb1, radiacode; assert usb.backend.libusb1.get_backend() is not None; print("Backend USB disponível")'
     echo 'Imagens construídas e painel verificado. O preparo não exige Radiacode nem Go2 conectado.'
     echo 'Primeiro teste: bash ensaio usb-simulado | No Wi-Fi do Go2, no laboratório: bash ensaio usb-robo'
     ;;
   usb-simulado|usb-robo)
     ensure_sources
-    if ! docker image inspect ares-radiacode-service:20260930-r2 ares-radiacode-go2:20260930-r2 >/dev/null 2>&1; then
+    if ! docker image inspect ares-radiacode-service:20260930-r3 ares-radiacode-go2:20260930-r3 >/dev/null 2>&1; then
       echo 'Execute primeiro: bash ensaio preparar (com internet).'
       exit 2
     fi

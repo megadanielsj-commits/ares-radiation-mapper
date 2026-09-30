@@ -21,10 +21,10 @@ def get(url):
 
 def probe():
     page = get(PANEL + "/").decode()
-    script = get(PANEL + "/static/app.js").decode()
+    script = get(PANEL + "/static/approved/renderer.js").decode()
     state = json.loads(get(PANEL + "/api/estado"))
     source = json.loads(get(USB + "/health"))
-    if 'id="mapa"' not in page or "desenharRobo" not in script:
+    if 'id="radiation-map"' not in page or "drawRobot" not in script:
         raise ValueError("Arquivos do painel incompletos")
     return state, source
 
@@ -64,9 +64,10 @@ def wait_ready(mode, timeout):
     return 1
 
 
-def free_ports():
-    for port in (8001, 1098):
+def free_ports(ports=(8001, 1098)):
+    for port in ports:
         with socket.socket() as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 listener.bind(("127.0.0.1", port))
             except OSError as exc:
