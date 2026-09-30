@@ -62,6 +62,9 @@ class RepositorioMissoes:
             self._con.execute("PRAGMA journal_mode=WAL")
             self._con.execute("PRAGMA synchronous=NORMAL")
             self._con.executescript(_ESQUEMA)
+            columns = {r[1] for r in self._con.execute("PRAGMA table_info(missoes)")}
+            if "metadata_json" not in columns:
+                self._con.execute("ALTER TABLE missoes ADD COLUMN metadata_json TEXT")
             self._con.commit()
         self._ultima_pose: dict = {}
 
@@ -76,6 +79,7 @@ class RepositorioMissoes:
         modo: str,
         centro: Tuple[float, float],
         fonte_sim: Optional[dict] = None,
+        metadata: Optional[dict] = None,
     ) -> int:
         with self._lock:
             cur = self._con.execute(
@@ -90,6 +94,9 @@ class RepositorioMissoes:
                     None if fonte_sim is None else json.dumps(fonte_sim),
                 ),
             )
+            if metadata is not None:
+                self._con.execute("UPDATE missoes SET metadata_json = ? WHERE id = ?",
+                                  (json.dumps(metadata), cur.lastrowid))
             self._con.commit()
             return int(cur.lastrowid)
 
@@ -156,6 +163,9 @@ class RepositorioMissoes:
             return None
         m = dict(linha)
         fonte, resultado = m.pop("fonte_sim_json"), m.pop("resultado_json")
+        metadata = m.pop("metadata_json")
+        if metadata is not None:
+            m["metadata"] = json.loads(metadata)
         m["fonte_sim"] = None if fonte is None else json.loads(fonte)
         m["resultado"] = None if resultado is None else json.loads(resultado)
         return m
@@ -184,4 +194,10 @@ class RepositorioMissoes:
         if m is None:
             raise KeyError(missao_id)
         resultado = m.pop("resultado")
-        return {"missao": m, "amostras": self._amostras(missao_id), "resultado": resultado}
+        export = {"missao": m, "amostras": self._amostras(missao_id), "resultado": resultado}
+        if m.get("metadata", {}).get("detector") == "Radiacode 110":
+            with self._lock:
+                for table in ("poses", "leituras"):
+                    export[table] = [dict(row) for row in self._con.execute(
+                        f"SELECT * FROM {table} WHERE missao_id = ? ORDER BY ts", (missao_id,))]
+        return export

@@ -200,8 +200,9 @@ class Orquestrador:
             if m is not None:
                 m.n_amostras += 1
                 self.repositorio.registrar_amostra(m.id, a)
-                m.mapa.adicionar(a)
-                if self._fila_estimador is not None:
+                if m.mapa is not None:
+                    m.mapa.adicionar(a)
+                if m.estimador is not None and self._fila_estimador is not None:
                     self._fila_estimador.put_nowait((m.estimador, a))
             self._emitir("amostra", _amostra_dict(a))
 
@@ -229,6 +230,13 @@ class Orquestrador:
                 log.exception("erro ao calcular a estimativa")
 
     async def _publicar_resultado(self, m: _Missao) -> dict:
+        if m.estimador is None:
+            resultado = dict(self._metadata_radiacode(), tipo="aquisicao", n=m.n_amostras, missao_id=m.id)
+            self.ultimo_resultado = resultado
+            self.ultimo_mapa = None
+            self._emitir("estimativa", resultado)
+            self._emitir("mapa", None)
+            return resultado
         resultado = await asyncio.to_thread(m.estimador.resultado)
         mapa = await asyncio.to_thread(m.mapa.grade_interpolada)
         resultado = dict(resultado, missao_id=m.id)
@@ -280,6 +288,21 @@ class Orquestrador:
             mapa=self.ultimo_mapa,
         )
 
+    def _metadata_radiacode(self):
+        return {
+            "detector": "Radiacode 110", "source": "radiacode_usb",
+            "cps_semantics": "integer_counts_in_nominal_one_second_exposure",
+            "cpm_semantics": "60_times_cps_not_measured_one_minute_window",
+            "dose_conversion_verified": False, "cumulative_dose_available": False,
+            "time_basis": "host_receipt_of_second_half_bin",
+            "position_time_formula": "reading_ts - latencia_leitura_s",
+            "latencia_leitura_s": self.config.latencia_leitura_s,
+            "latency_verified_on_robot": False,
+            "offset_detector_m": list(self.config.offset_detector),
+            "cps_por_usvh": self.config.radiacode_cps_por_usvh,
+            "robot_mode": self.config.modo,
+        }
+
     # ------------------------------------------------------------------ missão
     async def iniciar_missao(self, nome: Optional[str] = None) -> dict:
         if self._missao is not None:
@@ -294,22 +317,26 @@ class Orquestrador:
 
         c = self.config
         centro = (pose.x, pose.y)
-        estimador = EstimadorGrade(
-            centro=centro,
-            lado_m=c.lado_area_m,
-            resolucao_m=c.resolucao_estimador_m,
-            altura_m=c.altura_fonte_m,
-            cps_por_usvh=c.cps_por_usvh,
-            exposicao_s=c.exposicao_s,
-        )
-        mapa = MapaMedido(
-            centro=centro,
-            lado_m=c.lado_area_m,
-            resolucao_m=c.resolucao_mapa_m,
-            cps_por_usvh=c.cps_por_usvh,
-            exposicao_s=c.exposicao_s,
-        )
-        id_ = self.repositorio.criar(nome, c.modo, centro, fonte_sim=self._fonte_sim())
+        k = c.radiacode_cps_por_usvh if c.fonte_radiacao == "radiacode" else c.cps_por_usvh
+        estimador = mapa = None
+        if k is not None:
+            estimador = EstimadorGrade(
+                centro=centro,
+                lado_m=c.lado_area_m,
+                resolucao_m=c.resolucao_estimador_m,
+                altura_m=c.altura_fonte_m,
+                cps_por_usvh=k,
+                exposicao_s=c.exposicao_s,
+            )
+            mapa = MapaMedido(
+                centro=centro,
+                lado_m=c.lado_area_m,
+                resolucao_m=c.resolucao_mapa_m,
+                cps_por_usvh=k,
+                exposicao_s=c.exposicao_s,
+            )
+        metadata = self._metadata_radiacode() if c.fonte_radiacao == "radiacode" else None
+        id_ = self.repositorio.criar(nome, c.modo, centro, fonte_sim=self._fonte_sim(), metadata=metadata)
         self._missao = _Missao(id_, nome, centro, estimador, mapa)
         self.ultimo_resultado = None
         self.ultimo_mapa = None
@@ -390,6 +417,11 @@ def criar_orquestrador(
 
         robo = Go2WebRTC(aes_128_key=config.go2_aes_key)
         radiacao = ClienteFS5000(url=config.fs5000_url, aparelho=config.fs5000_aparelho)
+
+    if config.fonte_radiacao == "radiacode":
+        from .radiacao.radiacode import ClienteRadiacode
+        radiacao = ClienteRadiacode(url=config.radiacode_url)
+        campo = None
 
     teleop = Teleop(
         robo,

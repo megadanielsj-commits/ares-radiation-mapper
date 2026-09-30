@@ -1,0 +1,10 @@
+# Test image only; Werik's original Dockerfile and FS-5000 profiles are preserved.
+FROM python:3.12-slim-bookworm
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+WORKDIR /app
+COPY requirements-radiacode-ceia.txt pyproject.toml ./
+COPY src ./src
+RUN python -m pip install -r requirements-radiacode-ceia.txt \
+ && python -m pip install --no-deps unitree_webrtc_connect==2.2.0 \
+ && python -m pip install --no-deps .
+CMD ["python", "-m", "ares"]

@@ -1,0 +1,26 @@
+name: Radiacode CEIA tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the same direct dependencies as the test image
+        run: |
+          python -m pip install -r requirements-radiacode-ceia.txt
+          python -m pip install --no-deps unitree_webrtc_connect==2.2.0
+          python -m pip install --no-deps -e .
+          python -m pip install pytest httpx pytest-asyncio
+      - name: Test CEIA defaults and Radiacode acquisition
+        run: PYTHONPATH=src python -m pytest -q tests
+      - name: Build test image
+        run: docker build -f Dockerfile.radiacode-ceia -t ares-radiacode-ceia:ci .
+      - name: Smoke-test imports used by the physical robot
+        run: docker run --rm --entrypoint python ares-radiacode-ceia:ci -c 'import ares, unitree_webrtc_connect, cv2; print("Imports OK; physical robot not tested")'

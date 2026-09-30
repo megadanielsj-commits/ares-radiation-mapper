@@ -1,5 +1,6 @@
 """Modelos de dados centrais: pose do robô, leitura do detector e amostra."""
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -17,10 +18,10 @@ class Leitura:
     """Uma leitura do detector de radiação."""
 
     ts: float
-    dr_usvh: float
+    dr_usvh: Optional[float]
     cpm: int
     cps: int
-    dose_usv: float
+    dose_usv: Optional[float]
     detector_id: str
 
 
@@ -31,7 +32,7 @@ class Amostra:
     ts: float
     x: float
     y: float
-    dr_usvh: float
+    dr_usvh: Optional[float]
     cpm: int
     cps: int
     lacuna_pose_s: float

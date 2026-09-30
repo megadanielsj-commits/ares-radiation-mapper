@@ -1,5 +1,11 @@
 # ARES — mapeamento de radiação com o Go2
 
+> Esta branch adiciona o Radiacode 110 à estrutura do CEIA. Veja
+> [RADIACODE_CEIA.md](RADIACODE_CEIA.md) para a entrada USB independente,
+> aquisição sem calibração e limites da validação. Os defaults do FS-5000
+> e a documentação original abaixo permanecem disponíveis.
+
+
 Mapeia radiação andando com o cão-robô **Unitree Go2 EDU**: combina a pose
 do robô (odometria) com as leituras de um medidor **Bosean FS-5000**,
 desenha em tempo real o percurso, o mapa de calor medido e a **estimativa

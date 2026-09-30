@@ -375,7 +375,7 @@ function atualizarCabecalho() {
   atualizarPilula(
     "pill-fs5000",
     !!rad.conectado,
-    rad.conectado ? "FS-5000 ok" : "FS-5000 offline",
+    `${rad.modelo || "FS-5000"} ${rad.conectado ? "ok" : "offline"}`,
     rad.erro
   );
 }
@@ -387,12 +387,20 @@ function atualizarPilulaWs(conectado) {
 // ---------------------------------------------------------------------- lateral: leitura e estimativa
 function atualizarLeitura() {
   const l = estado.leitura;
-  definirTexto("v-dr", l ? `${fmt(l.dr_usvh, 3)} µSv/h` : "—");
+  definirTexto("v-dr", l ? `${fmt(l.dr_usvh, 3)} µSv/h${(estado.radiacao || {}).source === "radiacode_usb" ? " (provisório)" : ""}` : "—");
   definirTexto("v-cps", l ? String(l.cps) : "—");
   definirTexto("v-dose", l ? `${fmt(l.dose_usv, 3)} µSv` : "—");
 }
 
 function atualizarEstimativa() {
+  if (estado.resultado && estado.resultado.tipo === "aquisicao") {
+    definirTexto("v-pfonte", "Aquisição sem calibração");
+    definirTexto("v-posicao", "Posição e contagens gravadas");
+    definirTexto("v-s", "—");
+    definirTexto("v-n", String(estado.resultado.n));
+    el("avisos").textContent = "Estimativa da fonte depende de calibração do Radiacode.";
+    return;
+  }
   const r = estado.resultado;
   if (!r) {
     definirTexto("v-pfonte", "—");
@@ -525,7 +533,7 @@ el("btn-parar").addEventListener("click", () => {
 
 // ---------------------------------------------------------------------- câmera e modo
 function atualizarVisibilidadePorModo() {
-  el("secao-fonte-sim").hidden = estado.modo !== "simulacao";
+  el("secao-fonte-sim").hidden = estado.modo !== "simulacao" || !estado.fonte_sim;
   el("secao-camera").hidden = estado.modo !== "real";
 }
 
