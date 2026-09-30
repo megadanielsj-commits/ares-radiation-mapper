@@ -77,8 +77,11 @@ def test_ws_disconnect_and_reconnect_resume_new_counts(tmp_path):
         async def handler(ws):
             nonlocal calls
             calls += 1
-            await ws.send(json.dumps(dict(tipo='snapshot', dados=[dict(id='radiacode:test', estado='conectado')])))
-            await ws.send(json.dumps(reading(session=f'session-{calls}')))
+            id_ = f'radiacode:test:session-{calls}'
+            await ws.send(json.dumps(dict(tipo='snapshot', dados=[dict(id=id_, estado='conectado')])))
+            event = reading(session=f'session-{calls}')
+            event['aparelho_id'] = id_
+            await ws.send(json.dumps(event))
             await asyncio.sleep(.02)
         async with serve(handler, '127.0.0.1', 0) as server:
             port = server.sockets[0].getsockname()[1]
@@ -91,6 +94,7 @@ def test_ws_disconnect_and_reconnect_resume_new_counts(tmp_path):
                 while len(rows)<3 and time.monotonic()<deadline:
                     await asyncio.sleep(.01)
                 assert len(rows)>=3
+                assert len({row.detector_id for row in rows}) >= 3
             finally:
                 await client.encerrar()
             assert not client.estado()['conectado']
@@ -124,3 +128,17 @@ def test_real_mode_keeps_web_rtc_driver_and_independent_usb_source(tmp_path):
         assert not orq.robo.estado()["conectado"]
     finally:
         orq.repositorio.fechar()
+
+
+def test_new_session_snapshot_replaces_stale_device_selection():
+    client = ClienteRadiacode()
+    rows = []
+    client.assinar(rows.append)
+    for session in ('old', 'new'):
+        id_ = f'radiacode:test:{session}'
+        client._processar_evento(dict(tipo='snapshot', dados=[dict(id=id_, estado='conectado')]))
+        event = reading(session=session)
+        event['aparelho_id'] = id_
+        client._processar_evento(event)
+    assert [row.detector_id for row in rows] == ['radiacode:test:old', 'radiacode:test:new']
+    assert set(client._estados_aparelhos) == {'radiacode:test:new'}

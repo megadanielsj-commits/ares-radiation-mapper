@@ -46,7 +46,7 @@ no tempo do detector não são usados como relógio UTC absoluto.
 
 ## Validação desta preparação
 
-Os 208 testes Python passaram, incluindo os testes originais e seis testes do
+Os 209 testes Python passaram, incluindo os testes originais e seis testes do
 Radiacode. A aplicação instalada a partir do wheel também serviu o HTML,
 o JavaScript e a API, com o robô simulado ativo. O fluxo externo JSONL/WS/API
 com posição e teleop simulados passou usando essa instalação. O ensaio Go2
@@ -73,3 +73,11 @@ Os arquivos visuais foram derivados de `ares_mapper/web` na revisão
 é somente o adaptador de apresentação. Quatro testes JavaScript cobrem
 contrato, desenho, teclas, reconexão e frescor. Nenhum desses arquivos
 abre a conexão USB ou calcula a sincronização espacial.
+
+## Revisão v4
+
+O snapshot do serviço substitui a lista de sessões USB no cliente Radiacode,
+evita seleção de identidade antiga após interrupção do WS e preserva o cliente
+FS-5000. O teste de concorrência herdado foi coordenado por evento para garantir
+a leitura intermediária; `estimativa.py` não foi alterado. O CI publica erros
+pytest nas anotações a partir de JUnit. O ensaio físico continua necessário.

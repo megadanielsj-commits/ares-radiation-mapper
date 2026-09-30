@@ -411,12 +411,16 @@ def test_atualizar_e_resultado_concorrentes_dao_o_mesmo_que_em_sequencia():
     concorrente = EstimadorGrade(centro=(0.0, 0.0), **grade)
     parciais = []
     fim = threading.Event()
+    leitura_intermediaria = threading.Event()
     erros = []
 
     def ler():
         try:
             while not fim.is_set():
-                parciais.append(concorrente.resultado())
+                resultado = concorrente.resultado()
+                parciais.append(resultado)
+                if 0 < resultado["n"] < len(amostras):
+                    leitura_intermediaria.set()
                 time.sleep(0.002)  # não monopoliza o lock
         except Exception as e:  # pragma: no cover - só em falha
             erros.append(e)
@@ -425,8 +429,12 @@ def test_atualizar_e_resultado_concorrentes_dao_o_mesmo_que_em_sequencia():
     for t in leitores:
         t.start()
     try:
-        for a in amostras:
+        for i, a in enumerate(amostras, start=1):
             concorrente.atualizar(a)
+            if i == 1:
+                # Require a genuine intermediate read before finishing writes.
+                # CPU scheduling/lock fairness must not determine coverage.
+                assert leitura_intermediaria.wait(timeout=10), "reader did not observe an intermediate state"
     finally:
         fim.set()
         for t in leitores:

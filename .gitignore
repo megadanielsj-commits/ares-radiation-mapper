@@ -7,3 +7,5 @@ dados/*
 *.egg-info/
 build/
 dist/
+
+pytest-results.xml

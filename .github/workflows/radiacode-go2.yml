@@ -21,7 +21,10 @@ jobs:
       - name: Validate the installed web application
         run: python tools/check_installed_app.py --robot-imports
       - name: Test robot integration defaults and Radiacode acquisition
-        run: PYTHONPATH=src python -m pytest -q tests
+        run: PYTHONPATH=src python -m pytest -q tests --junitxml=pytest-results.xml
+      - name: Publish exact pytest errors as check annotations
+        if: always()
+        run: python tools/report_ci.py pytest-results.xml
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

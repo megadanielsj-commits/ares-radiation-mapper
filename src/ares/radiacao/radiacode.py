@@ -16,6 +16,16 @@ class ClienteRadiacode(ClienteFS5000):
         return dict(super().estado(), modelo="Radiacode 110", source="radiacode_usb",
                     dose_conversion_verified=False, descartadas=self.descartadas)
 
+    def _processar_evento(self, evento):
+        # The bridge snapshot is the complete current USB device list. A USB
+        # restart during WS downtime can hide the old 'disconnected' event.
+        # Replace old devices so the inherited selector chooses the new session.
+        if evento.get("tipo") == "snapshot":
+            devices = evento.get("dados")
+            if isinstance(devices, list) and all(isinstance(d, dict) for d in devices):
+                self._estados_aparelhos.clear()
+        super()._processar_evento(evento)
+
     def _processar_leitura(self, evento):
         dados = evento.get("dados")
         try:
