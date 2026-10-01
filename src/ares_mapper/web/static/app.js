@@ -11,6 +11,7 @@ const state = {
   radiation: null,
   mapped: [],
   map: null,
+  heatmapRaster: null,
   accumulatedDose: 0,
   socket: null,
   pressedKeys: new Set(),
@@ -483,39 +484,107 @@ function drawMapBackground(plot) {
   context.strokeRect(plot.left + 0.5, plot.top + 0.5, plot.width - 1, plot.height - 1);
 }
 
-function drawHeatmap(plot) {
-  const payload = state.map;
-  if (!payload?.values_row_major?.length || !payload.grid_shape) return false;
+function heatmapBracket(coordinates, position) {
+  if (!Array.isArray(coordinates) || !coordinates.length || !Number.isFinite(position)) return null;
+  const first = coordinates[0], last = coordinates.at(-1);
+  if (position < first || position > last) return null;
+  if (coordinates.length === 1) return {lower: 0, upper: 0, fraction: 0};
+  let lower = 0, upper = coordinates.length - 1;
+  while (upper - lower > 1) {
+    const middle = Math.floor((lower + upper) / 2);
+    if (coordinates[middle] <= position) lower = middle;
+    else upper = middle;
+  }
+  const span = coordinates[upper] - coordinates[lower];
+  if (!(span > 0)) return null;
+  return {lower, upper, fraction: clamp((position - coordinates[lower]) / span, 0, 1)};
+}
+
+function heatmapValueFromBrackets(payload, x, y) {
+  if (!x || !y) return null;
+  const columns = payload.grid_shape[1];
+  const corners = [
+    [y.lower * columns + x.lower, (1 - x.fraction) * (1 - y.fraction)],
+    [y.lower * columns + x.upper, x.fraction * (1 - y.fraction)],
+    [y.upper * columns + x.lower, (1 - x.fraction) * y.fraction],
+    [y.upper * columns + x.upper, x.fraction * y.fraction],
+  ];
+  let total = 0, weight = 0;
+  for (const [index, contribution] of corners) {
+    if (contribution <= 0) continue;
+    const value = payload.values_row_major[index];
+    if (!Number.isFinite(value) || value < 0) {
+      // Preserve the original known/unknown footprint at a missing corner.
+      // Do not blend across holes; keep the nearest known node or transparency.
+      const nearestX = x.fraction < 0.5 ? x.lower : x.upper;
+      const nearestY = y.fraction < 0.5 ? y.lower : y.upper;
+      const nearest = payload.values_row_major[nearestY * columns + nearestX];
+      return Number.isFinite(nearest) && nearest >= 0 ? nearest : null;
+    }
+    total += value * contribution;
+    weight += contribution;
+  }
+  return weight > 0 ? total / weight : null;
+}
+
+function heatmapRaster(payload) {
+  if (!payload?.values_row_major?.length || !payload.grid_shape) return null;
   const [rows, columns] = payload.grid_shape.map(Number);
   if (
     rows <= 0
     || columns <= 0
     || rows * columns !== payload.values_row_major.length
+    || payload.x_coordinates_m?.length !== columns
+    || payload.y_coordinates_m?.length !== rows
   ) {
-    return false;
+    return null;
   }
+  const minimum = colorMinimum(), maximum = colorMaximum();
+  const cached = state.heatmapRaster;
+  if (cached?.payload === payload && cached.minimum === minimum && cached.maximum === maximum) return cached;
+  const gridBounds = {
+    x_min: payload.x_coordinates_m[0], x_max: payload.x_coordinates_m.at(-1),
+    y_min: payload.y_coordinates_m[0], y_max: payload.y_coordinates_m.at(-1),
+  };
+  // Four display pixels per grid interval; this does not add observations
+  // or change the resolution of the physical reconstruction or exports.
+  const width = Math.max(1, Math.min(512, (columns - 1) * 4));
+  const height = Math.max(1, Math.min(512, (rows - 1) * 4));
   const offscreen = document.createElement("canvas");
-  offscreen.width = columns;
-  offscreen.height = rows;
+  offscreen.width = width;
+  offscreen.height = height;
   const offscreenContext = offscreen.getContext("2d");
-  const image = offscreenContext.createImageData(columns, rows);
+  const image = offscreenContext.createImageData(width, height);
+  const xBrackets = Array.from({length: width}, (_, column) => heatmapBracket(
+    payload.x_coordinates_m,
+    gridBounds.x_min + (column + 0.5) / width * (gridBounds.x_max - gridBounds.x_min),
+  ));
   let finiteCount = 0;
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const raw = payload.values_row_major[row * columns + column];
-      if (raw == null || !Number.isFinite(Number(raw))) continue;
+  for (let row = 0; row < height; row += 1) {
+    const yBracket = heatmapBracket(payload.y_coordinates_m,
+      gridBounds.y_max - (row + 0.5) / height * (gridBounds.y_max - gridBounds.y_min));
+    for (let column = 0; column < width; column += 1) {
+      const raw = heatmapValueFromBrackets(payload, xBrackets[column], yBracket);
+      if (raw == null) continue;
       finiteCount += 1;
-      const {rgb} = radiationColor(Number(raw));
-      const canvasRow = rows - row - 1;
-      const offset = (canvasRow * columns + column) * 4;
+      const {rgb} = radiationColor(raw);
+      const offset = (row * width + column) * 4;
       image.data[offset] = rgb[0];
       image.data[offset + 1] = rgb[1];
       image.data[offset + 2] = rgb[2];
       image.data[offset + 3] = 238;
     }
   }
-  if (!finiteCount) return false;
+  if (!finiteCount) return null;
   offscreenContext.putImageData(image, 0, 0);
+  state.heatmapRaster = {payload, minimum, maximum, gridBounds, canvas: offscreen};
+  return state.heatmapRaster;
+}
+
+function drawHeatmap(plot) {
+  const raster = heatmapRaster(state.map);
+  if (!raster) return false;
+  const {gridBounds} = raster;
   context.save();
   context.beginPath();
   context.rect(plot.left, plot.top, plot.width, plot.height);
@@ -524,14 +593,8 @@ function drawHeatmap(plot) {
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   // Keep the original grid in world coordinates as the view auto-zooms.
-  const gridBounds = {
-    x_min: Number(payload.x_coordinates_m?.[0] ?? plot.bounds.x_min),
-    x_max: Number(payload.x_coordinates_m?.at(-1) ?? plot.bounds.x_max),
-    y_min: Number(payload.y_coordinates_m?.[0] ?? plot.bounds.y_min),
-    y_max: Number(payload.y_coordinates_m?.at(-1) ?? plot.bounds.y_max),
-  };
   context.drawImage(
-    offscreen,
+    raster.canvas,
     plot.xToPixel(gridBounds.x_min),
     plot.yToPixel(gridBounds.y_max),
     (gridBounds.x_max - gridBounds.x_min) * plot.scale,
@@ -973,6 +1036,7 @@ function updateStatus(payload) {
 
 function updateMap(payload) {
   state.map = payload;
+  state.heatmapRaster = null;
   const exposure = payload.exposure;
   if (exposure?.cumulative_robot_path_dose_uSv != null) {
     state.accumulatedDose = Number(exposure.cumulative_robot_path_dose_uSv);
@@ -1202,12 +1266,8 @@ function nearestIndex(values, target) {
 function mapValueAt(x, y) {
   const payload = state.map;
   if (!payload?.grid_shape || !payload.values_row_major) return null;
-  const [rows, columns] = payload.grid_shape.map(Number);
-  const column = nearestIndex(payload.x_coordinates_m, x);
-  const row = nearestIndex(payload.y_coordinates_m, y);
-  if (column < 0 || row < 0 || row >= rows || column >= columns) return null;
-  const value = payload.values_row_major[row * columns + column];
-  return value == null || !Number.isFinite(Number(value)) ? null : Number(value);
+  return heatmapValueFromBrackets(payload,
+    heatmapBracket(payload.x_coordinates_m, x), heatmapBracket(payload.y_coordinates_m, y));
 }
 
 function bindMapPointer() {

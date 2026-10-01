@@ -33,9 +33,25 @@ os do painel original. Durante a missão a escala depende da fonte configurada,
 e não do máximo momentâneo das leituras. Superfície, pontos antigos e legenda
 usam a mesma escala e são redesenhados juntos.
 
-A única correção no desenho do mapa posiciona a grade nas coordenadas que ela
-representa quando o enquadramento automático muda. Não altera os valores do
-mapa, a reconstrução ou o layout.
+A grade é desenhada nas coordenadas que representa quando o enquadramento
+automático muda.
+
+### Melhoria de renderização — v5
+
+O mapa usa interpolação bilinear dos valores numéricos entre nós conhecidos
+antes de aplicar a paleta original. O valor intermediário permanece entre o
+menor e o maior dos vizinhos. Próximo a uma lacuna, conserva o nó conhecido mais
+próximo ou a transparência, sem interpolar através da região desconhecida.
+
+A consulta pelo cursor usa o mesmo cálculo. A imagem da grade é reaproveitada
+durante a animação do robô e refeita quando chega um mapa novo ou muda a escala.
+Isso reduz a reconstrução de imagens no navegador, mantendo atualização das
+cores antigas junto com a legenda.
+
+A subdivisão de quatro pixels por intervalo serve à exibição. Não aumenta a
+resolução física, a quantidade de medições ou a precisão do estimador. O cálculo
+original de reconstrução, seus critérios de estabilidade e os arquivos
+exportados permanecem os mesmos da versão v4.
 
 ## Parar e salvar
 
@@ -51,5 +67,5 @@ metadados e demais produtos do simulador original.
 O cenário original dura até 3.600 segundos. Fechar o navegador não encerra a
 missão. Use o comando de parada para finalizar antes desse prazo.
 
-Os arquivos de v1, v2 e v3 permanecem nas respectivas pastas anteriores.
+Os arquivos de v1, v2, v3 e v4 permanecem nas respectivas pastas anteriores.
 Esta simulação não utiliza USB nem conexão com um robô físico.
