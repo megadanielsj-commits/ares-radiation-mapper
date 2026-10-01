@@ -3,8 +3,7 @@
 Nesta demonstração, fonte, detector e robô são simulados. Não conecte dispositivos
 físicos. O desenho, as cores e os controles do painel aprovado são preservados.
 Usa o backend de simulação original da branch de integração e a imagem Docker
-`ares-radiacode-go2:20260930-r5`, corrigida para renderizar a grade interpolada. A primeira execução a constrói
-se ela ainda não existir no computador.
+`ares-radiacode-go2:20260930-r5`, já usada na versão anterior; a apresentação do campo é atualizada pelo volume da demonstração. A primeira execução só a constrói se ela ainda não existir no computador.
 
 Antes de trocar de modo, encerre a missão e execute `bash ensaio parar` na pasta
 `ARES_Radiacode_GO2_USB_v4`. Isso preserva e exporta os dados do teste USB.
@@ -45,10 +44,34 @@ Para voltar ao ensaio USB, pare esta simulação e execute o comando habitual na
 pasta `ARES_Radiacode_GO2_USB_v4`: `bash ensaio usb-simulado` ou, com o robô real,
 `bash ensaio usb-robo`.
 
-## Correção nesta versão
+## Campo completo e escala coerente — v3
 
-O painel agora recebe os eventos de grade e desenha o gradiente IDW local
-produzido pelo mapa original do ARES, com posição e orientação corretas.
-Cores cobrem a vizinhança amostrada; regiões não investigadas permanecem sem
-valores. A dose acumulada vem da leitura simulada e um único caminho de
-atualização evita alternância com valores ausentes.
+A borda recortada da versão anterior vinha do mapa IDW local limitado a 1,5 m.
+Nesta demonstração o fundo do mapa passa a ser um campo contínuo estimado em
+cada ponto da área visível. Os parâmetros vêm do estimador bayesiano original
+alimentado pelas leituras sincronizadas; a posição e a intensidade configuradas
+no formulário não são usadas para desenhar antecipadamente um campo verdadeiro.
+A marca FONTE continua sendo apenas a referência conhecida da simulação.
+
+A apresentação usa uma aproximação do campo com os parâmetros estimados de
+posição, intensidade e fundo do modelo pontual. A contribuição da fonte é
+ponderada por sua probabilidade estimada. É um campo previsto, não uma alegação
+de que todos os pontos do espaço foram medidos. A interface identifica o campo
+como estimado e sinaliza levantamento parcial quando o modelo tem limites ativos
+ou ainda não consegue distinguir fonte de fundo.
+
+A legenda, os pontos e a superfície usam uma escala comum de CPS em cada quadro.
+Se surge um máximo novo, todas as cores são recalculadas e o raster anterior é
+invalidado; os valores e timestamps das medições antigas não são modificados.
+O máximo medido da missão é mantido mesmo quando o limite de pontos visíveis
+remove os pontos mais antigos da memória gráfica. Uma nova missão reinicia a
+escala. A previsão do modelo também entra nos limites exibidos na legenda.
+
+A dose acumulada segue vindo da leitura simulada. Os controles, a API e a
+exportação de leituras permanecem os da versão validada.
+
+Validação: três testes Python da demonstração, nove testes JavaScript incluindo
+os seis compartilhados do painel, e renderização real do canvas com 96 amostras
+sintéticas processadas pelo estimador original. O teste de recoloração confirmou
+que 100 CPS muda de vermelho quando o máximo passa a 10.000 CPS e que o valor
+armazenado continua sendo 100 CPS.

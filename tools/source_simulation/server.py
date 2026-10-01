@@ -1,6 +1,7 @@
 """Fonte e robô simulados com o painel aprovado e o backend ARES original."""
 from pathlib import Path
 import os
+import json
 
 import uvicorn
 from fastapi.responses import FileResponse, HTMLResponse
@@ -25,6 +26,9 @@ def create_app(data_dir=None):
     html = html.replace("RADIACODE USB · GO2 / WEBRTC", "FONTE E ROBÔ SIMULADOS")
     html = html.replace("Aquisição independente", "Fonte simulada")
     html = html.replace("taxa de dose provisória", "dados inteiramente simulados")
+    html = html.replace("Gradiente interpolado em CPS", "Campo estimado e medições em CPS")
+    html = html.replace("Mapa construído pelas medições", "Campo estimado pelas medições")
+    html = html.replace("CONTAGENS MEDIDAS · ESCALA LOGARÍTMICA", "CAMPO ESTIMADO · ESCALA LOGARÍTMICA")
     fields = '''
         <details style="margin-top:14px"><summary>Configurar fonte simulada</summary>
         <div class="coordinate-grid">
@@ -37,7 +41,10 @@ def create_app(data_dir=None):
         </details>
     '''
     html = html.replace('        <button id="start-button"', fields + '\n        <button id="start-button"', 1)
-    html = html.replace("</body>", '<script src="/simulation/adapter.js"></script>\n</body>')
+    html = html.replace("</body>", '<script src="/simulation/field.js"></script>\n<script src="/simulation/adapter.js"></script>\n</body>')
+    model = {"sensitivity": config.cps_por_usvh, "height_m": config.altura_fonte_m}
+    html = html.replace("</head>", '<script>window.ARES_SIMULATION_MODEL = '
+                        + json.dumps(model, allow_nan=False) + ';</script>\n</head>')
     html = html.replace("</head>", '<style>.sidebar{overflow-y:auto;grid-template-rows:auto auto auto;align-content:start}</style>\n</head>')
 
     @app.get("/", response_class=HTMLResponse)
@@ -47,6 +54,10 @@ def create_app(data_dir=None):
     @app.get("/simulation/adapter.js")
     def adapter():
         return FileResponse(Path(__file__).with_name("adapter.js"), media_type="application/javascript")
+
+    @app.get("/simulation/field.js")
+    def field_script():
+        return FileResponse(Path(__file__).with_name("field.js"), media_type="application/javascript")
 
     return app
 

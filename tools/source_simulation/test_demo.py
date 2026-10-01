@@ -20,13 +20,15 @@ def test_demo_uses_original_panel_and_only_simulated_devices(tmp_path):
         assert "FONTE E ROBÔ SIMULADOS" in page.text
         assert 'id="sim-strength"' in page.text
         for path in ("/static/approved/renderer.js", "/static/approved/integration.js",
-                     "/static/approved/styles.css", "/simulation/adapter.js"):
+                     "/static/approved/styles.css", "/simulation/adapter.js", "/simulation/field.js"):
             assert client.get(path).status_code == 200
         state = client.get("/api/estado").json()
         assert state["modo"] == "simulacao"
         assert state["radiacao"]["detector_id"] == "sim-1"
         assert state["fonte_sim"] == {"x": 4.0, "y": 3.0, "s": 8.0}
         assert state["robo"]["conectado"]
+        assert "window.ARES_SIMULATION_MODEL" in page.text
+        assert "Campo estimado pelas medições" in page.text
 
 
 def test_source_changes_actual_simulated_counts(tmp_path):
