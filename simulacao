@@ -2,46 +2,38 @@
 set -Eeuo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 export ARES_SIMULATION_ROOT="$PWD"
-export ARES_SIMULATION_ROBOT_ROOT="${ARES_SIMULATION_ROBOT_ROOT:-$PWD/integracao-go2}"
-if [[ ! -d "$ARES_SIMULATION_ROBOT_ROOT" && -f ../ares-go2-wifi/Dockerfile.go2-wifi ]]; then
-  ARES_SIMULATION_ROBOT_ROOT="$(dirname "$PWD")/ares-go2-wifi"
-fi
 export ARES_SIMULATION_UID="$(id -u)" ARES_SIMULATION_GID="$(id -g)"
 compose=(docker compose -f "$PWD/tools/source_simulation/compose.yaml")
 command -v docker >/dev/null || { echo 'Falta Docker Engine.' >&2; exit 2; }
+docker compose version >/dev/null
 mkdir -p resultados/fonte-simulada
 case "${1:-iniciar}" in
   iniciar)
-    "${compose[@]}" down
-    python3 - <<'PY'
+    "${compose[@]}" down --timeout 45 --remove-orphans
+    python3 - <<'PORT_CHECK'
 import socket
-with socket.socket() as s:
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+with socket.socket() as probe:
+    probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-        s.bind(('127.0.0.1', 8001))
+        probe.bind(('127.0.0.1', 8001))
     except OSError:
-        raise SystemExit('Porta 8001 ocupada. Na pasta do teste USB, execute: bash ensaio parar')
-PY
-    if ! docker image inspect ares-radiacode-go2:20260930-r5 >/dev/null 2>&1; then
-      [[ -f "$ARES_SIMULATION_ROBOT_ROOT/Dockerfile.go2-wifi" ]] || {
-        echo 'Faltam os arquivos do backend. Use o ZIP completo ARES_Fonte_Simulada_v3.' >&2
-        exit 2
-      }
+        raise SystemExit('Porta 8001 ocupada. Pare o ensaio USB antes de iniciar a simulação.')
+PORT_CHECK
+    if ! docker image inspect ares-source-simulation:classic-20261001-r1 >/dev/null 2>&1; then
       "${compose[@]}" build simulation
     fi
     if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 45; then
       "${compose[@]}" logs --no-color --tail 80
       exit 1
     fi
-    echo 'Fonte, detector e robô inteiramente simulados. Radiacode e Go2 físicos não são necessários.'
-    echo 'Painel: http://127.0.0.1:8001 | Inicie uma missão e use as setas.'
-    echo 'Fonte inicial: x=4 m, y=3 m, S=8 µSv·m²/h. Pode ser alterada antes de iniciar uma missão.'
-    echo 'Encerrar e exportar: bash simulacao parar'
+    echo 'Simulador original: fonte, detector e robô simulados.'
+    echo 'Painel: http://127.0.0.1:8001 | Clique em Iniciar mapeamento e use as setas.'
+    echo 'A taxa da fonte a 1 metro é informada em mSv/h, como no painel original.'
+    echo 'Parar e salvar: bash simulacao parar'
     ;;
   parar)
-    "${compose[@]}" down
-    python3 tools/integration/export_sessions.py resultados/fonte-simulada
-    echo "Dados preservados em $PWD/resultados/fonte-simulada"
+    "${compose[@]}" down --timeout 45 --remove-orphans
+    echo "Dados e exportações preservados em $PWD/resultados/fonte-simulada"
     ;;
   verificar)
     "${compose[@]}" ps -a

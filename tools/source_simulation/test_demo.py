@@ -1,87 +1,92 @@
-"""Teste do modo separado com o pacote ares da integração, sem dispositivos."""
-import csv
+"""Integration checks for the restored original simulation entry point."""
 import importlib.util
-import io
 from pathlib import Path
 import time
+import csv
 
 from fastapi.testclient import TestClient
 
-spec = importlib.util.spec_from_file_location("source_demo", Path(__file__).with_name("server.py"))
-demo = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(demo)
+ROOT = Path(__file__).resolve().parents[2]
+spec = importlib.util.spec_from_file_location('classic_simulation', Path(__file__).with_name('server.py'))
+server = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(server)
 
 
-def test_demo_uses_original_panel_and_only_simulated_devices(tmp_path):
-    with TestClient(demo.create_app(str(tmp_path))) as client:
-        page = client.get("/")
-        assert page.status_code == 200
-        assert 'id="radiation-map"' in page.text
-        assert "FONTE E ROBÔ SIMULADOS" in page.text
-        assert 'id="sim-strength"' in page.text
-        for path in ("/static/approved/renderer.js", "/static/approved/integration.js",
-                     "/static/approved/styles.css", "/simulation/adapter.js", "/simulation/field.js"):
-            assert client.get(path).status_code == 200
-        state = client.get("/api/estado").json()
-        assert state["modo"] == "simulacao"
-        assert state["radiacao"]["detector_id"] == "sim-1"
-        assert state["fonte_sim"] == {"x": 4.0, "y": 3.0, "s": 8.0}
-        assert state["robo"]["conectado"]
-        assert "window.ARES_SIMULATION_MODEL" in page.text
-        assert "Campo estimado pelas medições" in page.text
-
-
-def test_source_changes_actual_simulated_counts(tmp_path):
-    with TestClient(demo.create_app(str(tmp_path))) as client:
-        assert client.post("/api/simulacao/fonte", json={"x": 0, "y": 0, "s": 8}).status_code == 200
-        deadline = time.monotonic() + 4
-        while time.monotonic() < deadline:
-            reading = client.get("/api/estado").json().get("leitura")
-            if reading is not None:
-                break
-            time.sleep(0.05)
-        assert reading["cps"] > 1000  # Média de 10252 CPS junto à fonte.
-        ts = reading["ts"]
-        assert client.post("/api/simulacao/fonte", json={"x": 100, "y": 100, "s": 8}).status_code == 200
-        deadline = time.monotonic() + 4
-        while time.monotonic() < deadline:
-            far = client.get("/api/estado").json().get("leitura")
-            if far is not None and far["ts"] > ts:
-                break
-            time.sleep(0.05)
-        assert far["cps"] < 100
-        assert client.post("/api/simulacao/fonte", json={"x": 0, "y": 0, "s": 0}).status_code == 400
-
-
-def test_simulated_mission_teleop_and_export(tmp_path):
-    data = tmp_path / "simulacao"
-    with TestClient(demo.create_app(str(data))) as client:
-        deadline = time.monotonic() + 2
-        while client.get("/api/estado").json().get("pose") is None:
-            assert time.monotonic() < deadline
-            time.sleep(.05)
-        response = client.post("/api/missao/iniciar", json={"nome": "Fonte e robô simulados"})
+def test_original_dashboard_is_served_without_a_projection_adapter(tmp_path):
+    with TestClient(server.create_app(tmp_path)) as client:
+        response = client.get('/')
+        text = response.text
         assert response.status_code == 200
-        mission = response.json()["id"]
-        with client.websocket_connect("/ws/comando") as ws:
-            deadline = time.monotonic() + 4
-            while time.monotonic() < deadline:
-                ws.send_json({"vx": .45, "vy": 0, "vyaw": 0})
-                time.sleep(.1)
-                state = client.get("/api/estado").json()
-                if state["missao"]["n_amostras"] >= 2:
-                    break
-            assert state["pose"]["x"] > .3
-            assert state["missao"]["n_amostras"] >= 2
-        assert client.post("/api/missao/encerrar").status_code == 200
-        grade = client.get("/api/estado").json()["mapa"]
-        assert grade["unidade"] == "µSv/h" and grade["cps_por_usvh"] == 80
-        assert sum(v is not None for column in grade["valores"] for v in column) > 2
-        saved = client.get(f"/api/missoes/{mission}.json").json()
-        assert saved["missao"]["fonte_sim"] == {"x": 4., "y": 3., "s": 8.}
-        rows = list(csv.DictReader(io.StringIO(client.get(f"/api/missoes/{mission}/amostras.csv").text)))
-        assert len(rows) >= 2 and all(float(row["x"]) >= 0 for row in rows)
-    spec_export = importlib.util.spec_from_file_location("demo_export", Path(__file__).parents[1]/"integration/export_sessions.py")
-    exporter = importlib.util.module_from_spec(spec_export)
-    spec_export.loader.exec_module(exporter)
-    assert len(exporter.export(tmp_path)) == 2
+        assert (ROOT/'src/ares_mapper/web/static/styles.css').read_text() in text
+        assert (ROOT/'src/ares_mapper/web/static/app.js').read_text() in text
+        assert 'Taxa da fonte a 1 metro' in text
+        assert 'GRADIENTE ESTIMADO · ESCALA LOGARÍTMICA DA MISSÃO' in text
+        assert '<b>mSv/h</b>' in text
+        assert 'simulation/field.js' not in text and 'simulation/adapter.js' not in text
+        assert client.get('/simulation/field.js').status_code == 404
+        assert client.get('/api/v1/health').status_code == 200
+        config = client.get('/api/v1/scenario').json()
+        assert config['pose']['provider'] == 'manual_sim'
+        assert config['detectors'][0]['source_type'] == 'simulated'
+        assert config['mapping']['global_model_stable_updates'] == 5
+        assert config['dashboard']['scale_mode'] == 'log_fixed'
+
+
+def test_original_start_control_and_export_run_together(tmp_path):
+    app = server.create_app(tmp_path)
+    controller = app.state.controller
+    controller.scenario.mission.duration_s = 60
+    controller.scenario.mission.simulation_speed = 4
+    with TestClient(app) as client:
+        response = client.post('/api/v1/simulation/start', json={
+            'x_m': 4.0, 'y_m': 3.0, 'dose_rate_at_1m_uSv_h': 8.0})
+        assert response.status_code == 200
+        assert client.post('/api/v1/mission/control', json={
+            'linear_m_s': .45, 'yaw_rate_rad_s': 0}).status_code == 200
+        deadline = time.monotonic() + 12
+        while time.monotonic() < deadline:
+            status = client.get('/api/v1/status').json()
+            if status['counts']['mapped'] >= 3:
+                break
+            time.sleep(.04)
+        assert status['counts']['mapped'] >= 3
+        assert client.post('/api/v1/mission/stop').status_code == 200
+        assert controller.mission_directory is not None
+        with (controller.mission_directory/'exports/mapped_samples.csv').open() as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) >= 3
+        assert any(float(row['base_x_m']) > 2 for row in rows)
+        assert all(float(row['dose_rate_uSv_h_raw']) > 0 for row in rows)
+        assert controller.latest_map.sample_count >= 3
+        assert controller.latest_map.metrics['reconstruction_mode'] == 'measured_local'
+        assert controller.latest_map.source_estimate is None
+        assert (controller.mission_directory/'mission.json').exists()
+
+
+def test_insufficient_observations_do_not_create_a_distant_peak(tmp_path):
+    from ares_mapper.mapping.service import MapService
+    from ares_mapper.domain.models import MappedSample
+    from ares_mapper.domain.enums import MappingQuality, Quality, SyncMethod
+    config = server.create_app(tmp_path).state.controller.scenario
+    service = MapService('short-trajectory', config.world, config.mapping,
+        inference=config.inference, grid_config=config.grid,
+        residual_config=config.residual, detectors=config.detectors)
+    service.add_sample(MappedSample(mission_id='short-trajectory', mapped_sequence=1,
+        radiation_sequence=1, sensor_id=config.detectors[0].sensor_id,
+        time_domain_id='sim:short-trajectory', effective_measurement_time_ns=0,
+        frame_id='world', base_x_m=2, base_y_m=2, base_z_m=.32,
+        sensor_x_m=2, sensor_y_m=2, sensor_z_m=.57, sensor_yaw_rad=0,
+        dose_rate_uSv_h_raw=100, dose_rate_uSv_h_filtered=100,
+        sync_method=SyncMethod.EXACT, max_pose_gap_ms=0, sync_error_estimate_ms=0,
+        pose_quality=Quality.VALID, radiation_quality=Quality.VALID,
+        mapping_quality=MappingQuality.VALID))
+    prediction = service.predict(0)
+    assert prediction.metrics['reconstruction_mode'] == 'measured_local'
+    assert prediction.source_estimate is None
+    finite = [value for value in prediction.values_row_major if value is not None]
+    assert finite and max(finite) <= 100
+    nx = len(prediction.x_coordinates_m)
+    for row, y in enumerate(prediction.y_coordinates_m):
+        for column, x in enumerate(prediction.x_coordinates_m):
+            if ((x-2)**2+(y-2)**2)**.5 > 1.0:
+                assert prediction.values_row_major[row*nx+column] is None

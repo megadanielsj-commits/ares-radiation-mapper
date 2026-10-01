@@ -1,71 +1,79 @@
-"use strict";
-const fs = require("node:fs");
-const path = require("node:path");
-const assert = require("node:assert/strict");
-const test = require("node:test");
-const root = path.resolve(__dirname, "../..");
-const robot = fs.existsSync(path.join(root, "integracao-go2"))
-  ? path.join(root, "integracao-go2") : path.resolve(root, "../ares-go2-wifi");
-const {setup} = require(path.join(robot, "tests/approved_dashboard.test.cjs"));
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const test = require('node:test');
 
-test("source simulation adapter retains dose and gradient on every actual timer tick", () => {
-  const ui = setup();
-  ui.run(`window.ARES_SIMULATION_MODEL={sensitivity:80,height_m:.25};`);
-  ui.run(fs.readFileSync(path.join(__dirname, "field.js"), "utf8"));
-  ui.run(fs.readFileSync(path.join(__dirname, "adapter.js"), "utf8"));
-  ui.sockets[0].readyState = 1;
-  ui.run(`applySnapshot({modo:'simulacao',missao:{id:7},robo:{conectado:true},
-    radiacao:{conectado:true},fonte_sim:{x:4,y:3,s:8},pose:{x:0,y:0,yaw:0,ts:1},
-    leitura:{ts:Date.now()/1000+.5,detector_id:'sim-1',cps:40,dr_usvh:.5,dose_usv:.0123},
-    resultado:{missao_id:7,n:10,p_fonte:1,x_map:4,y_map:3,s_map:8,b_map:.15},
-    mapa:{missao_id:7,unidade:'µSv/h',cps_por_usvh:80,nx:2,ny:2,res:.5,
-      x0:0,y0:0,valores:[[.5,.7],[1,2]]}});`);
-  for (let tick=0; tick<8; tick++) {
-    ui.intervals.forEach(cb => cb());
-    assert.equal(ui.element("dose-total").textContent, "0,0123");
-    assert.equal(ui.element("usb-cps").textContent, "40");
+function setup() {
+  const elements = new Map(), rasters = [], images = [], labels = [];
+  const drawing = new Proxy({measureText:t=>({width:t.length*7}),
+    createLinearGradient:()=>({addColorStop(){}}),
+    fillText:t=>labels.push(t), drawImage:(...args)=>images.push(args)},
+    {get:(obj,key)=>obj[key] || (()=>{})});
+  const canvas = {clientWidth:1200, clientHeight:800,getContext:()=>drawing,
+    getBoundingClientRect:()=>({width:1200,height:800}),addEventListener(){},parentElement:{}};
+  elements.set('radiation-map',canvas);
+  function element(id) {
+    if (!elements.has(id)) elements.set(id,{value:'10',max:'10000',style:{},
+      addEventListener(){},classList:{toggle(){}}});
+    return elements.get(id);
   }
-  assert.equal(ui.element("integration-mode").textContent, "Radiação simulada · posição simulada");
-  assert.equal(ui.run("sourceDisplay.field.strength"), 8);
-  ui.run("renderMapNow(10);");
-  assert.equal(ui.images.length, 1);
-  assert.ok(ui.labels.includes("FONTE") && ui.labels.includes("GO2"));
-  assert.equal(ui.element("sim-apply").disabled, true);
+  const sandbox={console,Date,HTMLInputElement:class {},performance:{now:()=>0},
+    fetch:()=>new Promise(()=>{}),setInterval(){},
+    document:{getElementById:element,querySelector:element,addEventListener(){},
+      createElement:()=>({getContext:()=>({
+        createImageData:(w,h)=>({data:new Uint8ClampedArray(w*h*4)}),
+        putImageData:image=>rasters.push(image.data)})})},
+    window:{devicePixelRatio:1,requestAnimationFrame(){},addEventListener(){},setTimeout(){},
+      location:{protocol:'http:',host:'localhost:8001'}}};
+  vm.createContext(sandbox);
+  const script=fs.readFileSync(path.resolve(__dirname,'../../src/ares_mapper/web/static/app.js'),'utf8');
+  vm.runInContext(script,sandbox);
+  return {run:code=>vm.runInContext(code,sandbox),images,rasters,labels,element};
+}
+
+test('a higher reading does not change the original mission scale or reinterpret old points',()=>{
+  const ui=setup();
+  ui.run(`state.scenario={detectors:[{source_type:'simulated'}]};
+    state.configuredSource={enabled:true,x_m:4,y_m:3,dose_rate_at_1m_uSv_h:8,background_uSv_h:.1};
+    state.mapped=[{sensor_x_m:2,sensor_y_m:2,dose_rate_uSv_h_filtered:1}];`);
+  const color=ui.run('JSON.stringify(radiationColor(1).rgb)'), maximum=ui.run('colorMaximum()');
+  ui.run(`state.mapped.push({sensor_x_m:4,sensor_y_m:3,dose_rate_uSv_h_filtered:10000});
+    state.radiation={dose_rate_uSv_h:10000};`);
+  assert.equal(ui.run('colorMaximum()'),maximum);
+  assert.equal(ui.run('JSON.stringify(radiationColor(1).rgb)'),color);
+  assert.equal(ui.run('state.mapped[0].dose_rate_uSv_h_filtered'),1);
 });
 
-test("full field comes from measured estimator output and covers the entire viewport", () => {
-  const ui = setup();
-  ui.run(`window.ARES_SIMULATION_MODEL={sensitivity:80,height_m:.25};`);
-  for (const name of ["field.js", "adapter.js"]) ui.run(fs.readFileSync(path.join(__dirname, name), "utf8"));
-  ui.run(`state.missionId=9;integration.snapshot={};
-    acceptSourceEstimate({missao_id:9,n:20,p_fonte:1,x_map:4,y_map:3,s_map:8,b_map:.15});`);
-  assert.ok(ui.run("estimatedCounts(sourceDisplay.field,4,3)>estimatedCounts(sourceDisplay.field,0,0)"));
-  assert.ok(ui.run("Number.isFinite(estimatedCounts(sourceDisplay.field,100,-100))"));
-  const before = ui.run("estimatedCounts(sourceDisplay.field,4,3)");
-  ui.run(`state.configuredSource={enabled:true,x_m:100,y_m:100,dose_rate_at_1m_uSv_h:999};`);
-  assert.equal(ui.run("estimatedCounts(sourceDisplay.field,4,3)"), before);
-  ui.run(`drawHeatmap({left:10,top:20,width:500,height:300,bounds:{x_min:-10,x_max:10,y_min:-10,y_max:10}});`);
-  assert.deepEqual(ui.images.at(-1).slice(1), [10,20,500,300]);
-  ui.run(`handleBackendEvent({tipo:'mapa',dados:{missao_id:9,unidade:'CPS',nx:1,ny:1,x0:0,y0:0,res:.5,valores:[[42]]}});`);
-  assert.equal(ui.run("sourceDisplay.field.strength"), 8);
+test('the original grid is placed at its world coordinates rather than stretched by auto-zoom',()=>{
+  const ui=setup();
+  ui.run(`state.scenario={detectors:[{source_type:'simulated'}]};
+    state.configuredSource={enabled:true,dose_rate_at_1m_uSv_h:8,background_uSv_h:.1};
+    state.map={grid_shape:[2,2],values_row_major:[1,2,3,null],
+      x_coordinates_m:[0,10],y_coordinates_m:[0,8]};
+    drawHeatmap({left:10,top:20,width:400,height:320,scale:10,
+      bounds:{x_min:-10,y_max:20},xToPixel:x=>10+(x+10)*10,yToPixel:y=>20+(20-y)*10});`);
+  assert.deepEqual(ui.images[0].slice(1),[110,140,100,80]);
+  assert.equal(ui.rasters[0][3],238);
+  assert.equal(ui.rasters[0][7],0);
+  ui.run(`drawHeatmap({left:10,top:20,width:800,height:640,scale:20,
+      bounds:{x_min:-10,y_max:20},xToPixel:x=>10+(x+10)*20,yToPixel:y=>20+(20-y)*20});`);
+  assert.deepEqual(ui.images[1].slice(1),[210,260,200,160]);
 });
 
-test("a new maximum recolors every historic value and invalidates the whole raster", () => {
-  const ui = setup();
-  ui.run(`window.ARES_SIMULATION_MODEL={sensitivity:80,height_m:.25};`);
-  for (const name of ["field.js", "adapter.js"]) ui.run(fs.readFileSync(path.join(__dirname, name), "utf8"));
-  ui.run(`state.missionId=7;integration.snapshot={};
-    appendSample({ts:1,x:0,y:0,cps:100});
-    acceptSourceEstimate({missao_id:7,n:1,p_fonte:null,x_map:4,y_map:3,s_map:8,b_map:.15});
-    renderMapNow(10);`);
-  const oldColor = ui.run("JSON.stringify(radiationColor(100).rgb)");
-  const oldKey = ui.run("sourceDisplay.raster.key");
-  assert.equal(ui.run("colorMaximum()"),100);
-  ui.run(`appendSample({ts:2,x:4,y:3,cps:10000});renderMapNow(20);`);
-  assert.equal(ui.run("colorMaximum()"),10000);
-  assert.notEqual(ui.run("JSON.stringify(radiationColor(100).rgb)"),oldColor);
-  assert.notEqual(ui.run("sourceDisplay.raster.key"),oldKey);
-  assert.equal(ui.run("state.mapped[0].cps"),100);
-  assert.equal(ui.run("state.mapped[0].dose_rate_uSv_h_filtered"),100);
-  assert.equal(ui.run("integration.sampleCount"),0); // No synthetic measurements added by drawing.
+test('every map redraw recalculates pixels from numeric values using the shared original palette',()=>{
+  const ui=setup();
+  ui.run(`state.scenario={detectors:[{source_type:'simulated'}]};
+    state.configuredSource={enabled:true,dose_rate_at_1m_uSv_h:8,background_uSv_h:.1};
+    state.map={grid_shape:[2,2],values_row_major:[1,2,3,4],
+      x_coordinates_m:[0,1],y_coordinates_m:[0,1]};
+    const plot={left:0,top:0,width:10,height:10,scale:10,bounds:{x_min:0,y_max:1},
+      xToPixel:x=>x*10,yToPixel:y=>(1-y)*10}; drawHeatmap(plot);`);
+  const old=Array.from(ui.rasters[0]);
+  ui.run('state.configuredSource.dose_rate_at_1m_uSv_h=80; drawHeatmap(plot);');
+  assert.notDeepEqual(Array.from(ui.rasters[1]),old);
+  assert.equal(ui.run('JSON.stringify(state.map.values_row_major)'),'[1,2,3,4]');
 });
+
+module.exports = {setup};

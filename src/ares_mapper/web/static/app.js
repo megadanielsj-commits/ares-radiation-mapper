@@ -523,12 +523,19 @@ function drawHeatmap(plot) {
   context.globalAlpha = 0.96;
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
+  // Keep the original grid in world coordinates as the view auto-zooms.
+  const gridBounds = {
+    x_min: Number(payload.x_coordinates_m?.[0] ?? plot.bounds.x_min),
+    x_max: Number(payload.x_coordinates_m?.at(-1) ?? plot.bounds.x_max),
+    y_min: Number(payload.y_coordinates_m?.[0] ?? plot.bounds.y_min),
+    y_max: Number(payload.y_coordinates_m?.at(-1) ?? plot.bounds.y_max),
+  };
   context.drawImage(
     offscreen,
-    plot.left,
-    plot.top,
-    plot.width,
-    plot.height,
+    plot.xToPixel(gridBounds.x_min),
+    plot.yToPixel(gridBounds.y_max),
+    (gridBounds.x_max - gridBounds.x_min) * plot.scale,
+    (gridBounds.y_max - gridBounds.y_min) * plot.scale,
   );
   context.restore();
   return true;
