@@ -1,4 +1,4 @@
-# ARES Console 1.0.0 — versão de referência para o ensaio
+# ARES Console 1.0.1 — versão de referência para o ensaio
 
 O mapa, as cores, o gradiente, o desenho do Go2 e a interpolação da versão v4
 aprovada foram preservados. Esta revisão mantém a interface aprovada e a correção de permanência da v3.
@@ -7,8 +7,12 @@ O pacote é a referência de software para o ensaio de 08/10/2026; a validação
 com o Go2 físico continua dependente desse ensaio.
 
 Nesta revisão o mapa ocupa a área principal e a coluna de telemetria fica à esquerda.
-O título é **Levantamento Radiométrico**. As medidas exibidas têm duas casas decimais;
-os registros mantêm a precisão original. A quantidade de amostras permanece inteira.
+O título é **Levantamento Radiométrico**. A revisão 1.0.1 corrige o bloqueio indevido
+da taxa USB e a apresentação de valores pequenos. As medidas usam duas casas quando
+o erro relativo de apresentação não supera 0,5%; caso contrário, usam notação
+científica com duas casas na mantissa. Uma dose positiva pequena não vira zero.
+Somente os rótulos são formatados; dados, registros e cálculos mantêm a precisão
+original. A quantidade de amostras permanece inteira.
 A logo é exibida em branco, sem fundo branco, por CSS sobre a imagem original.
 O bloco de setas foi removido. O teclado mantém o controle já existente.
 A contagem de medições posicionadas usa o total da missão, e não o tamanho do
@@ -96,11 +100,16 @@ casas na mantissa sem mostrar zero. O algoritmo, a paleta e a interpolação per
 protegidos; a evidência que entra no mapa é o canal de dose. Os modos simulados
 mantêm o modelo sintético aprovado e usam a mesma unidade na legenda.
 
-O SDK 0.4.0 fornece valores brutos escalados. A conversão do leitor (fator 10.000,
-como no exemplo do SDK) permanece provisória até conferir com o visor em Sv.
-O bridge libera o canal de dose somente com configuração `Sv` identificada e
-recebimento recente da taxa; R, unidade desconhecida ou taxa antiga mantêm as
-contagens e registros brutos, mas não produzem um ponto fictício de dose no mapa.
+O SDK 0.4.0 fornece valores brutos escalados. A configuração dos registros USB
+disponíveis declara `CHN_DoseRate` em `R/h`. O leitor aplica o fator 10.000 utilizado
+pelo exportador dessa versão do SDK para obter µSv/h, sem usar CPS como entrada.
+`get_alarm_limits().dose_unit` informa a unidade do visor/alarmes (`R` ou `Sv`),
+separada da unidade do canal bruto; não deve impedir essa conversão conhecida.
+A convenção do SDK permanece provisória até comparar a taxa com o visor em Sv.
+O bridge valida unidade/escala do canal bruto, consistência com o valor bruto e
+timestamps próprios recentes da taxa. Unidade bruta desconhecida, taxa ausente
+ou antiga mantém contagens e registros, mas não produz dose zero nem ponto
+fictício no mapa. Os motivos ficam em `service.log` e no diagnóstico `/health`.
 Não altere a unidade do detector durante uma sessão USB: encerre, ajuste no
 aparelho e reinicie o console. Não são alterados alarmes ou contadores do detector.
 
@@ -141,17 +150,17 @@ Para voltar ao painel anterior, pare o console e execute `bash simulacao iniciar
 na pasta v4. Nenhum resultado antigo é apagado. Esta versão não substitui
 automaticamente as branches do ensaio físico no GitHub.
 
-O pacote inclui `ARES_Console_Oficial_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
-O script publica `release/ares-console-1.0.0`, sem force push e sem editar `ares-wifi`.
+O pacote inclui `ARES_Console_Oficial_1.0.1_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
+O script publica `release/ares-console-1.0.1`, sem force push e sem editar `ares-wifi`.
 Consulte [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação, preparação
 sem internet no campo, sequência dos testes e critérios de aceitação.
-A imagem Docker é `ares-operator-console:1.0.0`. O CI constrói a imagem e testa
+A imagem Docker é `ares-operator-console:1.0.1`. O CI constrói a imagem e testa
 início, encerramento e exportação em simulação completa.
 
 ## Verificação de desenvolvimento
 
 ```bash
-PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py tests/unit tests/integration
+PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py
 node --test tools/source_simulation/dashboard.test.cjs tools/operator_console/console.test.cjs
 python -m tools.operator_console.check_map_lock
 ```

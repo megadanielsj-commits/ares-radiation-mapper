@@ -1,0 +1,312 @@
+{
+  "version": "ARES Console 1.0.1",
+  "date": "2026-10-02",
+  "field_trial_date": "2026-10-08",
+  "software_test_result": "passed",
+  "python_package_tests": 144,
+  "reference_runtime_tests": 209,
+  "javascript_tests": 12,
+  "python_version_tested_here": "3.12.14",
+  "python_ci_matrix": [
+    "3.10",
+    "3.12"
+  ],
+  "reproduced_before_patch": {
+    "simulation": "browser passed",
+    "usb_reported_dose": "R display unit vetoed converted native R/h; dose null while counts survived",
+    "positive_small_integral": "0.000035144194043823516 uSv displayed as 0,00",
+    "current_operator_service_log_available": false
+  },
+  "dose_source": "Radiacode RealTimeData.dose_rate; never CPS",
+  "native_dose_unit": "R/h",
+  "configured_dose_unit_is_alarm_display_metadata": true,
+  "dose_scale_from_raw_protocol": 10000,
+  "dose_conversion_physically_verified_here": false,
+  "dose_timestamp_policy": "independent UTC and monotonic receipt timestamps; maximum age 3s",
+  "raw_counts_preserved": true,
+  "fractional_smoothed_cps_preserved_in_recorder": true,
+  "dose_precision_fixture": {
+    "raw": 0.000012651909855776466,
+    "uSv_h": 0.12651909855776466,
+    "cps_counts_1s": 13,
+    "cpm_derived": 780
+  },
+  "precision_original_preserved_in": [
+    "raw JSONL",
+    "readings JSONL/CSV",
+    "counts JSONL",
+    "WebSocket",
+    "Leitura",
+    "runtime samples",
+    "mission CSV/JSON",
+    "map calculations"
+  ],
+  "formatting_only_in_ui": true,
+  "maximum_relative_error_for_fixed_two_decimals": 0.005,
+  "small_values": "scientific notation; 2 mantissa decimals",
+  "missing_dose_policy": "null, CSV empty, UI em dash; never CPS or zero fallback",
+  "map_real_evidence": "reported_dose_rate",
+  "map_internal_unit": "uSv/h",
+  "map_display_unit": "mSv/h",
+  "preserved_map_and_input_hashes": 56,
+  "reference_runtime_identical_files": 30,
+  "runtime_origin_commit": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+  "runtime_adaptation_commit": "4048f7c8b4ffe2cc0f604a8bae1b89d4763aa4f2",
+  "approved_console_reference_commit": "a84b972f9d27bb3f2bc7dc32a3bb4e9581f25d08",
+  "previous_official_commit": "fcc87377c6b6eb67198b8c0b629e57382857f697",
+  "unchanged_since_1_0_0": [
+    "map algorithms",
+    "palette",
+    "layout CSS",
+    "interpolation",
+    "stationary-source fix",
+    "console runtime",
+    "console server",
+    "independent input core",
+    "Werik synchronization, teleop, persistence, watchdog"
+  ],
+  "browser_modes": 4,
+  "browser_report": {
+    "profiles": [
+      {
+        "mode": "usb_simulated_robot",
+        "count": 2,
+        "rate": "1,27E-1",
+        "unit": "µSv/h",
+        "dose": "7,03E-5",
+        "countClipped": false
+      },
+      {
+        "mode": "robot_simulated_source",
+        "count": 2,
+        "rate": "61,15",
+        "unit": "µSv/h",
+        "dose": "3,51E-2",
+        "countClipped": false
+      },
+      {
+        "mode": "hardware",
+        "count": 3,
+        "rate": "1,27E-1",
+        "unit": "µSv/h",
+        "dose": "1,05E-4",
+        "countClipped": false
+      }
+    ],
+    "errors": [],
+    "hardware": "SDK protocol fixtures over actual local WebSocket; virtual Go2 contract"
+  },
+  "simulation_browser": {
+    "layouts": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "scrollWidth": 1920,
+        "map": {
+          "x": 365,
+          "y": 127,
+          "width": 1542,
+          "height": 908,
+          "bottom": 1035,
+          "right": 1907
+        },
+        "count": {
+          "x": 188,
+          "y": 254.59375,
+          "width": 143,
+          "height": 28.796875,
+          "bottom": 283.390625,
+          "right": 331
+        },
+        "section": {
+          "x": 13,
+          "y": 79,
+          "width": 338,
+          "height": 370.484375,
+          "bottom": 449.484375,
+          "right": 351
+        },
+        "rail": {
+          "x": 12,
+          "y": 78,
+          "width": 340,
+          "height": 990,
+          "bottom": 1068,
+          "right": 352
+        },
+        "logo": "grayscale(1) invert(1) contrast(1.7)",
+        "background": "screen"
+      },
+      {
+        "width": 1536,
+        "height": 864,
+        "scrollWidth": 1536,
+        "map": {
+          "x": 345,
+          "y": 127,
+          "width": 1178,
+          "height": 692,
+          "bottom": 819,
+          "right": 1523
+        },
+        "count": {
+          "x": 178,
+          "y": 249.59375,
+          "width": 135,
+          "height": 28.796875,
+          "bottom": 278.390625,
+          "right": 313
+        },
+        "section": {
+          "x": 13,
+          "y": 79,
+          "width": 318,
+          "height": 361.484375,
+          "bottom": 440.484375,
+          "right": 331
+        },
+        "rail": {
+          "x": 12,
+          "y": 78,
+          "width": 320,
+          "height": 774,
+          "bottom": 852,
+          "right": 332
+        },
+        "logo": "grayscale(1) invert(1) contrast(1.7)",
+        "background": "screen"
+      },
+      {
+        "width": 1366,
+        "height": 768,
+        "scrollWidth": 1366,
+        "map": {
+          "x": 339,
+          "y": 112,
+          "width": 1017,
+          "height": 617,
+          "bottom": 729,
+          "right": 1356
+        },
+        "count": {
+          "x": 175,
+          "y": 214.59375,
+          "width": 137,
+          "height": 25.1875,
+          "bottom": 239.78125,
+          "right": 312
+        },
+        "section": {
+          "x": 10,
+          "y": 68,
+          "width": 318,
+          "height": 320.875,
+          "bottom": 388.875,
+          "right": 328
+        },
+        "rail": {
+          "x": 9,
+          "y": 67,
+          "width": 320,
+          "height": 692,
+          "bottom": 759,
+          "right": 329
+        },
+        "logo": "grayscale(1) invert(1) contrast(1.7)",
+        "background": "screen"
+      },
+      {
+        "width": 1024,
+        "height": 768,
+        "scrollWidth": 1024,
+        "map": {
+          "x": 313,
+          "y": 112,
+          "width": 701,
+          "height": 617,
+          "bottom": 729,
+          "right": 1014
+        },
+        "count": {
+          "x": 162,
+          "y": 214.59375,
+          "width": 124,
+          "height": 25.1875,
+          "bottom": 239.78125,
+          "right": 286
+        },
+        "section": {
+          "x": 10,
+          "y": 68,
+          "width": 292,
+          "height": 320.875,
+          "bottom": 388.875,
+          "right": 302
+        },
+        "rail": {
+          "x": 9,
+          "y": 67,
+          "width": 294,
+          "height": 692,
+          "bottom": 759,
+          "right": 303
+        },
+        "logo": "grayscale(1) invert(1) contrast(1.7)",
+        "background": "screen"
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "map": {
+          "x": 9,
+          "y": 205,
+          "width": 620,
+          "height": 559.4375,
+          "bottom": 764.4375,
+          "right": 629
+        },
+        "count": {
+          "x": 201,
+          "y": 976.03125,
+          "width": 163,
+          "height": 28.796875,
+          "bottom": 1004.828125,
+          "right": 364
+        },
+        "section": {
+          "x": 9,
+          "y": 806.4375,
+          "width": 372,
+          "height": 361.484375,
+          "bottom": 1167.921875,
+          "right": 381
+        },
+        "rail": {
+          "x": 8,
+          "y": 805.4375,
+          "width": 374,
+          "height": 817.078125,
+          "bottom": 1622.515625,
+          "right": 382
+        },
+        "logo": "grayscale(1) invert(1) contrast(1.7)",
+        "background": "screen"
+      }
+    ],
+    "errors": [],
+    "simulation": "passed",
+    "configuration": "passed",
+    "cancel": "passed",
+    "expand": "passed",
+    "stop": "passed",
+    "export": "enabled"
+  },
+  "physical_usb_test_completed_here": false,
+  "physical_go2_radiacode_test_completed_here": false,
+  "docker_image": "ares-operator-console:1.0.1",
+  "docker_build_executed_here": false,
+  "github_push_executed_here": false,
+  "target_branch": "release/ares-console-1.0.1",
+  "full_mypy": "passed; 76 owned source modules; external FS5000 vendor excluded, untouched"
+}

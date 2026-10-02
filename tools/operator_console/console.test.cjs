@@ -61,12 +61,14 @@ test('measurement labels have two decimals without rounding stored dose or rates
   ui.run(shell);
   ui.run(`state.radiation={dose_rate_uSv_h:.224567};
     state.accumulatedDose=.017654; updateReadings();`);
-  assert.equal(ui.element('dose-rate').textContent, '0,22');
-  assert.equal(ui.element('dose-total').textContent, '0,02');
+  assert.equal(ui.element('dose-rate').textContent, '2,25E-1');
+  assert.equal(ui.element('dose-total').textContent, '1,77E-2');
   assert.equal(ui.run('formatRateWithUnit(10456)'), '10,46 mSv/h');
   assert.equal(ui.run('formatRateWithUnit(.12)'), '1,20E-4 mSv/h');
   assert.equal(ui.run('formatRateWithUnit(0)'), '0,00 mSv/h');
   assert.equal(ui.run('formatRateWithUnit(NaN)'), '—');
+  assert.equal(ui.run('formatRateWithUnit(null)'), '—');
+  assert.equal(ui.run('formatRateWithUnit(.00000123456789)'), '1,23E-9 mSv/h');
   assert.equal(ui.run('formatAxisValue(5, 1)'), '5,00');
   assert.equal(ui.run('state.radiation.dose_rate_uSv_h'), .224567);
   assert.equal(ui.run('state.accumulatedDose'), .017654);
@@ -104,4 +106,17 @@ test('positioned mission total is independent of the 5000 point drawing buffer a
     acceptPositionedCount('mission-two', 0); updateReadings();
     handleEnvelope({type:'mapped_sample',payload:{mission_id:'mission-one',mapped_sequence:7000}});`);
   assert.equal(ui.element('sample-count').textContent, '0');
+});
+
+test('a positive small mission dose stays visible and stored values keep full precision', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};`);
+  ui.run(shell);
+  ui.run(`state.accumulatedDose=.000035144194043823516;
+    state.radiation={dose_rate_uSv_h:.12651909855776466}; updateReadings();`);
+  assert.equal(ui.element('dose-total').textContent, '3,51E-5');
+  assert.equal(ui.element('dose-rate').textContent, '1,27E-1');
+  assert.equal(ui.run('state.accumulatedDose'), .000035144194043823516);
+  assert.equal(ui.run('state.radiation.dose_rate_uSv_h'), .12651909855776466);
 });

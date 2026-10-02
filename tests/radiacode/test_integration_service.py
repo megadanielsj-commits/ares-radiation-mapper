@@ -40,6 +40,12 @@ def row(sequence=1, session="SOFTWARE-TEST", **overrides):
         dose_rate_received_monotonic_ns=time.monotonic_ns(),
         dose_rate_received_utc_ns=time.time_ns(),
         configured_dose_unit="Sv",
+        dose_rate_raw=.000012,
+        dose_rate_scale=10000,
+        dose_rate_native_unit="R/h",
+        dose_rate_unit="uSv/h",
+        dose_rate_conversion_available=True,
+        dose_rate_conversion_basis="sdk_raw_R_h_to_uSv_h",
     )
     value.update(overrides)
     return value
@@ -141,13 +147,44 @@ def test_fresh_counts_cannot_make_old_or_undated_dose_fresh(tmp_path, missing):
 
 
 @pytest.mark.parametrize("unit", ["R", None])
-def test_roentgen_or_unknown_unit_keeps_counts_without_mislabeling_dose(tmp_path, unit):
+def test_alarm_unit_does_not_veto_a_known_converted_protocol_dose(tmp_path, unit):
     bridge = service.Bridge(tmp_path)
     assert bridge.accept(row(configured_dose_unit=unit))
     assert bridge.latest["dados"]["cps"] == 12
-    assert bridge.latest["dados"]["dr_usvh"] is None
+    assert bridge.latest["dados"]["dr_usvh"] == .12
     assert bridge.accept(row(2))
     assert bridge.latest["dados"]["dr_usvh"] == .12
+
+
+@pytest.mark.parametrize("overrides", [
+    {"dose_rate_uSv_h": None},
+    {"dose_rate_native_unit": "unknown"},
+    {"dose_rate_scale": 1},
+    {"dose_rate_conversion_available": False},
+    {"dose_rate_conversion_basis": "CPS_calibration"},
+    {"dose_rate_uSv_h": .13},
+    {"dose_rate_uSv_h": float("nan")},
+    {"dose_rate_uSv_h": -1},
+    {"dose_rate_raw": True},
+])
+def test_unusable_dose_keeps_counts_separate_and_recovers(tmp_path, overrides):
+    bridge = service.Bridge(tmp_path)
+    assert bridge.accept(row(**overrides))
+    assert bridge.latest["dados"]["dr_usvh"] is None
+    assert bridge.latest["dados"]["cps"] == 12
+    assert bridge.latest["dados"]["cpm"] == 720
+    assert bridge.device["dose_rate_available"] is False
+    assert bridge.device["dose_unavailable_reason"]
+    assert bridge.accept(row(2))
+    assert bridge.latest["dados"]["dr_usvh"] == .12
+    assert bridge.device["dose_rate_available"] is True
+
+
+def test_reported_zero_dose_is_distinct_from_unavailable_dose(tmp_path):
+    bridge = service.Bridge(tmp_path)
+    assert bridge.accept(row(dose_rate_uSv_h=0.0, dose_rate_raw=0.0))
+    assert bridge.latest["dados"]["dr_usvh"] == 0.0
+    assert bridge.device["dose_rate_available"] is True
 
 
 @pytest.mark.asyncio

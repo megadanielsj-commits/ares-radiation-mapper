@@ -58,13 +58,43 @@ def save_json(path, item):
     temporary.replace(path)
 
 
+def dose_channel_metadata(configuration, scale):
+    """Identify the buffered channel, independently of the alarm/display unit.
+
+    The recorded 110 configuration declares R/h for RealTimeData. SDK 0.4.0's
+    exporter scales this channel by 10000 to µSv/h, even with display unit R.
+    This is the SDK's provisional convention, never a CPS calibration.
+    """
+    native = None
+    group = channel = None
+    for text in configuration.splitlines() if isinstance(configuration, str) else ():
+        line = text.strip()
+        if line.startswith("[[["):
+            channel = line.strip("[]")
+        elif line.startswith("[["):
+            group, channel = line.strip("[]"), None
+        elif line.startswith("["):
+            group = channel = None
+        elif group == "GRP_RealTimeData" and channel == "CHN_DoseRate":
+            key, separator, value = line.partition("=")
+            if separator and key.strip() == "Unit":
+                native = value.strip().strip('\"').split("|", 1)[0].strip()
+                break
+    available = native == "R/h" and scale == 10000
+    reason = None if available else "Unidade/escala do canal bruto de dose não reconhecida"
+    return {"dose_rate_native_unit": native, "dose_rate_scale": scale,
+            "dose_rate_unit": "uSv/h" if available else None,
+            "dose_rate_conversion_basis": "sdk_raw_R_h_to_uSv_h" if available else None,
+            "dose_rate_conversion_available": available, "dose_unavailable_reason": reason}
+
+
 def measurement(record, sequence, received_utc_ns, received_monotonic_ns, *, scale,
-                session_id, serial, status, duplicate=False):
+                session_id, serial, status, duplicate=False, dose_metadata=None):
     """Preserve fractional CPS and raw dose. Scale is explicit and provisional."""
     cps, raw_rate = float(record.count_rate), float(record.dose_rate)
     if not all(math.isfinite(v) and v >= 0 for v in (cps, raw_rate)):
         raise ValueError("Taxa de dose/CPS negativa ou não finita recebida do detector")
-    return {
+    row = {
         "schema_version": "ares-radiacode-usb-1",
         "kind": "measurement", "source": "radiacode_usb",
         "session_id": session_id, "serial_number": serial, "sequence": sequence,
@@ -89,11 +119,18 @@ def measurement(record, sequence, received_utc_ns, received_monotonic_ns, *, sca
         "is_duplicate": duplicate,
         "position": None,
     }
+    if dose_metadata is not None:
+        row.update(dose_metadata)
+        if not dose_metadata["dose_rate_conversion_available"]:
+            row["dose_rate_uSv_h"] = None
+    return row
 
 
 CSV_FIELDS = ["timestamp_utc", "received_utc_ns", "received_monotonic_ns",
               "device_record_time_utc", "session_id", "serial_number", "sequence",
               "dose_rate_raw", "dose_rate_scale", "dose_rate_uSv_h",
+              "dose_rate_native_unit", "dose_rate_unit", "dose_rate_conversion_basis",
+              "dose_rate_conversion_available", "configured_dose_unit",
               "dose_conversion_verified", "cps", "cpm_derived",
               "dose_rate_error_percent", "count_rate_error_percent",
               "cumulative_dose_raw", "cumulative_dose_uSv", "status_record_time_utc",
@@ -165,8 +202,17 @@ def run(args, device_factory=None):
                 metadata[name] = serializable(getattr(device, name)())
             except Exception as exc:
                 metadata[name + "_error"] = f"{type(exc).__name__}: {exc}"
+        alarm = metadata.get("get_alarm_limits")
+        metadata["configured_dose_unit"] = alarm.get("dose_unit") if isinstance(alarm, dict) else None
+        dose_metadata = dose_channel_metadata(metadata.get("configuration"), args.dose_scale)
+        metadata.update(dose_metadata)
         save_json(out / "session.json", metadata)
         print(f"Conectado: {serial} | firmware {metadata['firmware']}", flush=True)
+        print(f"Canal bruto: {dose_metadata['dose_rate_native_unit']} | "
+              f"unidade do visor/alarmes: {metadata['configured_dose_unit']} | "
+              f"conversão de taxa disponível: {dose_metadata['dose_rate_conversion_available']}", flush=True)
+        if dose_metadata["dose_unavailable_reason"]:
+            print(dose_metadata["dose_unavailable_reason"], flush=True)
         status = {}
         newest_device_time = None
         last_sample = time.monotonic()
@@ -191,7 +237,8 @@ def run(args, device_factory=None):
                 count += 1
                 row = measurement(record, count, utc_ns, mono_ns, scale=args.dose_scale,
                                   session_id=session_id, serial=serial, status=status,
-                                  duplicate=duplicate)
+                                  duplicate=duplicate, dose_metadata=dose_metadata)
+                row["configured_dose_unit"] = metadata["configured_dose_unit"]
                 json_line(readings, row)
                 writer.writerow(row)
                 csvfile.flush()
@@ -201,9 +248,9 @@ def run(args, device_factory=None):
                     fresh_count += 1
                     last_sample = time.monotonic()
                 print(f"{row['timestamp_utc']}  #{count}  "
-                      f"DR≈{row['dose_rate_uSv_h']:.6g} µSv/h  "
-                      f"CPS={row['cps']:.4g}  CPM*={row['cpm_derived']:.4g}  "
-                      f"raw={row['dose_rate_raw']:.8g}"
+                      f"DR≈{row['dose_rate_uSv_h']!r} µSv/h  "
+                      f"CPS={row['cps']!r}  CPM*={row['cpm_derived']!r}  "
+                      f"raw={row['dose_rate_raw']!r}"
                       f"{' (repetida)' if duplicate else ''}", flush=True)
                 if fresh_count == 1 and not duplicate:
                     print("PRIMEIRA LEITURA REAL RECEBIDA. CPM* = 60 × CPS.", flush=True)
@@ -216,7 +263,8 @@ def run(args, device_factory=None):
                            dose_rate_raw=(latest_measurement or {}).get("dose_rate_raw"),
                            dose_rate_received_utc_ns=(latest_measurement or {}).get("received_utc_ns"),
                            dose_rate_received_monotonic_ns=(latest_measurement or {}).get("received_monotonic_ns"),
-                           configured_dose_unit=metadata.get("get_alarm_limits", {}).get("dose_unit"),
+                           configured_dose_unit=metadata["configured_dose_unit"],
+                           **dose_metadata,
                            dose_conversion_verified=False, cumulative_dose_uSv=None)
                 json_line(counts_file, row)
                 last_count = time.monotonic()

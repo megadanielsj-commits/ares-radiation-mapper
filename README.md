@@ -1,6 +1,6 @@
-# ARES Console 1.0.0 — FS-5000 e Radiacode 110
+# ARES Console 1.0.1 — FS-5000 e Radiacode 110
 
-## Console unificado de operação 1.0.0
+## Console unificado de operação 1.0.1
 
 Execute `bash ares-console iniciar` e abra http://127.0.0.1:8001. A interface
 permite selecionar simulação completa, USB real com robô virtual, Go2 real com
@@ -8,12 +8,17 @@ fonte simulada ou ambos reais. O desenho e a escala do mapa aprovado v4 foram ma
 para a permanência sobre a fonte.
 O layout concentra a telemetria em uma coluna, amplia o mapa e usa a logo branca.
 O menu do cabeçalho escolhe as entradas. **Fonte simulada** permite ajustar local
-e taxa de dose; a telemetria fica à esquerda. As medidas exibem duas casas decimais.
+e taxa de dose; a telemetria fica à esquerda. As medidas exibem duas casas quando
+a perda de apresentação não supera 0,5%; nos demais casos usam notação científica.
 **Mapa de calor** apresenta taxa de dose em mSv/h em todos os modos; com USB real
 usa a taxa reportada pelo Radiacode, preservando CPS nos registros. Valores muito
 baixos usam notação científica para permanecerem legíveis.
 **Configurar** ajusta a duração; **Ampliar mapa** recolhe a coluna lateral.
-![ARES Console 1.0.0 em simulação completa](docs/images/operator-console-1.0.0.png)
+O leitor identifica o canal bruto de dose pela configuração do protocolo. A unidade
+do visor/alarmes retornada por `get_alarm_limits()` não bloqueia uma taxa já convertida
+do canal `R/h` conhecido. Contagens e timestamps da taxa permanecem separados.
+Dados brutos, CSV, JSONL, WebSocket e cálculos conservam sua precisão original.
+![Interface aprovada do ARES Console, preservada na revisão 1.0.1](docs/images/operator-console-1.0.0.png)
 
 Veja [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação e ensaio de 08/10/2026.
 Veja [LEIA_PRIMEIRO_CONSOLE.md](LEIA_PRIMEIRO_CONSOLE.md) para operação,

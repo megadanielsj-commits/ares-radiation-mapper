@@ -16,6 +16,39 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import uvicorn
 
 
+def reported_dose(row, freshness_s):
+    """Validate the separately received dose channel, keeping its float intact."""
+    dose_age = None
+    try:
+        dose = row.get("dose_rate_uSv_h")
+        if dose is None:
+            return None, dose_age, row.get("dose_unavailable_reason") or "Taxa de dose não recebida"
+        if isinstance(dose, bool) or not math.isfinite(dose) or dose < 0:
+            raise ValueError("Taxa de dose inválida")
+        # configuration() describes the stream. get_alarm_limits() describes
+        # display/alarm units and must not veto a converted R/h stream.
+        if (row.get("dose_rate_native_unit") != "R/h"
+                or row.get("dose_rate_unit") != "uSv/h"
+                or row.get("dose_rate_conversion_available") is not True
+                or row.get("dose_rate_conversion_basis") != "sdk_raw_R_h_to_uSv_h"
+                or row.get("dose_rate_scale") != 10000):
+            raise ValueError("Unidade/escala do canal bruto de dose não reconhecida")
+        raw = row["dose_rate_raw"]
+        if isinstance(raw, bool) or not math.isfinite(raw) or raw < 0:
+            raise ValueError("Canal bruto de dose inválido")
+        if not math.isclose(dose, raw * 10000, rel_tol=1e-12, abs_tol=0):
+            raise ValueError("Taxa de dose inconsistente com o canal bruto")
+        if row.get("dose_rate_received_monotonic_ns") is None or row.get("dose_rate_received_utc_ns") is None:
+            raise ValueError("Taxa de dose sem timestamp próprio de recebimento")
+        dose_age = (time.monotonic_ns() - int(row["dose_rate_received_monotonic_ns"])) / 1e9
+        wall_age = time.time() - int(row["dose_rate_received_utc_ns"]) / 1e9
+        if not 0 <= dose_age <= freshness_s or not -.1 <= wall_age <= freshness_s:
+            raise ValueError("Sem taxa de dose recente")
+        return dose, dose_age, None
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        return None, dose_age, str(exc)
+
+
 class Bridge:
     def __init__(self, output, *, serial=None, freshness_s=3.0, poll=.25,
                  spectrum_interval=15.0, backoff_min=1.0, backoff_max=10.0):
@@ -75,21 +108,13 @@ class Bridge:
             seq = int(row["sequence"])
             if session == self.session and seq <= self.last_sequence:
                 raise ValueError("sequência repetida")
-            dose = row.get("dose_rate_uSv_h")
-            if dose is not None and (not math.isfinite(dose) or dose < 0):
-                raise ValueError("dose inválida")
-            dose_age = None
-            dose_received = row.get("dose_rate_received_monotonic_ns")
+            dose, dose_age, dose_reason = reported_dose(row, self.freshness_s)
             dose_wall_received = row.get("dose_rate_received_utc_ns")
-            if dose_received is not None and dose_wall_received is not None:
-                dose_age = (time.monotonic_ns() - int(dose_received)) / 1e9
-                dose_wall_age = time.time() - int(dose_wall_received) / 1e9
-                if not 0 <= dose_age <= self.freshness_s or not -.1 <= dose_wall_age <= self.freshness_s:
-                    dose = None
-            else:
-                dose = None  # current counts do not prove an old dose is current
-            if row.get("configured_dose_unit") != "Sv":
-                dose = None  # never label Roentgen/unknown configuration as Sievert
+            if (self.device.get("dose_rate_available"), self.device.get("dose_unavailable_reason")) != (dose is not None, dose_reason):
+                print(f"Canal de dose: {'disponível' if dose is not None else dose_reason}", flush=True)
+            self.device.update(dose_rate_available=dose is not None, dose_unavailable_reason=dose_reason,
+                               dose_rate_native_unit=row.get("dose_rate_native_unit"),
+                               configured_dose_unit=row.get("configured_dose_unit"))
             self.session, self.last_sequence = session, seq
             new_id = f"radiacode:{row['serial_number']}:{session}"
             if self.device["id"] != new_id:
@@ -108,6 +133,11 @@ class Bridge:
                           "dose_rate_age_s": dose_age,
                           "dose_rate_received_utc_ns": dose_wall_received,
                           "configured_dose_unit": row.get("configured_dose_unit"),
+                          "dose_rate_native_unit": row.get("dose_rate_native_unit"),
+                          "dose_rate_raw": row.get("dose_rate_raw"),
+                          "dose_rate_scale": row.get("dose_rate_scale"),
+                          "dose_rate_conversion_basis": row.get("dose_rate_conversion_basis"),
+                          "dose_unavailable_reason": dose_reason,
                           "time_basis": row["time_basis"],
                           "timing_quality": row["timing_quality"]},
             }

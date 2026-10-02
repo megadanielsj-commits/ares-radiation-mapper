@@ -1,4 +1,4 @@
-# ARES Console 1.0.0 — publicação e ensaio de 08/10/2026
+# ARES Console 1.0.1 — publicação e ensaio de 08/10/2026
 
 Esta é a versão de referência do console aprovado. O mapa usa taxa de dose em
 mSv/h nos quatro modos. O canal USB permanece independente do robô e conserva
@@ -9,13 +9,13 @@ software não validam o rádio, a montagem ou a resposta temporal do detector.
 ## Preparar no computador do teste, com internet
 
 Use Linux e o Docker Engine/Compose já utilizados nos ensaios anteriores.
-Extraia `ARES_Console_Oficial_1.0.0.zip`. Na pasta extraída:
+Extraia `ARES_Console_Oficial_1.0.1.zip`. Na pasta extraída:
 
 ```bash
 bash ares-console iniciar
 ```
 
-Abra http://127.0.0.1:8001. O iniciador constrói a imagem `ares-operator-console:1.0.0`
+Abra http://127.0.0.1:8001. O iniciador constrói a imagem `ares-operator-console:1.0.1`
 se ela ainda não existir, espera o servidor ficar saudável e preserva dados do
 console anterior ao encerrá-lo. Faça isso **antes** de conectar ao Wi-Fi do Go2,
 que pode não oferecer internet. O modo inicial é Simulação completa.
@@ -24,7 +24,9 @@ que pode não oferecer internet. O modo inicial é Simulação completa.
 2. Percorra uma trajetória por teclado, pare, encerre e baixe os dados.
 3. Conecte o Radiacode por cabo USB de dados; feche os leitores anteriores.
 4. Selecione **Robô simulado**. Espere USB online e taxa de dose disponível.
-5. Confira o visor do aparelho configurado em Sv contra a taxa do painel.
+5. Compare a taxa do painel com o visor em Sv, usando a mesma unidade e considerando
+   a média interna do aparelho. A unidade de visor `R` não bloqueia o canal bruto
+   conhecido em `R/h`; escolher Sv serve para facilitar esta comparação.
    A legenda do mapa usa mSv/h; 0,12 µSv/h equivale a `1,20E-4 mSv/h`.
    A conversão do valor bruto do SDK permanece provisória até essa comparação.
 6. Inicie, percorra a trajetória, encerre, baixe o ZIP e verifique CPS e `dr_usvh`
@@ -46,13 +48,13 @@ necessário transferir para outro computador Linux compatível com a arquitetura
 da imagem, exporte-a antes, ainda no computador preparado:
 
 ```bash
-docker save ares-operator-console:1.0.0 | gzip > ARES_Console_1.0.0_imagem.tar.gz
+docker save ares-operator-console:1.0.1 | gzip > ARES_Console_1.0.1_imagem.tar.gz
 ```
 
 No outro computador, com Docker instalado e o pacote extraído:
 
 ```bash
-gunzip -c ARES_Console_1.0.0_imagem.tar.gz | docker load
+gunzip -c ARES_Console_1.0.1_imagem.tar.gz | docker load
 bash ares-console iniciar
 ```
 
@@ -65,26 +67,27 @@ bash PUBLICAR_CONSOLE_GITHUB.sh
 ```
 
 O script cria um checkout separado, importa o bundle e publica
-`release/ares-console-1.0.0`. Usa sua autenticação Git já existente e não faz
+`release/ares-console-1.0.1`. Usa sua autenticação Git já existente e não faz
 force push, não modifica `ares-wifi` e não envia registros de campo.
 
 Link para a equipe:
-https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.0
+https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.1
 
 Verifique os checks de **Actions** dessa branch. O CI executa testes em Python
 3.10/3.12, regressões do mapa, lint, tipos e construção/inicialização da imagem.
 Depois abra:
-https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.0?expand=1
+https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.1?expand=1
 
-Título sugerido: `ARES Console 1.0.0: Radiacode independente e mapa em taxa de dose`.
+Título sugerido: `ARES Console 1.0.1: canal USB de dose e precisão dos valores`.
 Descrição sugerida:
 
-> Consolida o console aprovado com quatro combinações de entradas, mantendo o
-> runtime Go2/Wi-Fi, o sincronizador e a aquisição independente. O mapa usa a taxa
-> de dose reportada do Radiacode e apresenta mSv/h, conservando CPS/CPM e dados
-> brutos. Inclui Docker, verificações e roteiro do ensaio de 08/10/2026. A integração
-> física conjunta com o Go2 será validada no ensaio; latência e offset continuam
-> parâmetros de campo.
+> Corrige o descarte da taxa de dose do Radiacode quando `get_alarm_limits()`
+> informa `R`, identificando a unidade do canal bruto separadamente. Preserva
+> a taxa reportada, CPS/CPM e precisão dos arquivos/cálculos; valores pequenos
+> aparecem em notação científica na interface. Mantém mapa, layout e integração
+> aprovados. Validação: 144 testes Python do pacote, 209 do runtime de referência,
+> 12 JavaScript e quatro modos no navegador com substitutos de hardware. O ensaio
+> físico USB/Go2 desta revisão e o build Docker/CI ainda precisam ser confirmados.
 
 Após revisão e checks verdes, o merge torna essa versão visível na branch
 principal. Até lá, a equipe deve usar o link da branch de release, pois a página
@@ -146,8 +149,25 @@ lsusb
 
 Pare o leitor antigo pelo iniciador dele se 1098 estiver ocupada. Não execute
 dois leitores USB simultâneos. Taxa indisponível com CPS presente pode indicar
-configuração de unidade desconhecida/R ou taxa antiga; consulte os logs e
-`session.json` da aquisição, confira Sv no aparelho e reinicie a sessão.
+unidade/escala bruta desconhecida ou timestamps de dose ausentes/antigos.
+`R` em `get_alarm_limits()` sozinho não é motivo para descartar a taxa.
+Consulte `resultados/console/usb/service.log`, o log `usb-*.log` e o `session.json`
+da sessão mais recente. Confira `dose_rate_native_unit`, `dose_rate_scale`,
+`dose_rate_conversion_available` e `configured_dose_unit`. O par esperado nesta
+configuração conhecida é `R/h` e fator 10.000, com conversão disponível.
+Em `counts_1s.jsonl`, confira `dose_rate_raw`, `dose_rate_uSv_h` e os dois
+`dose_rate_received_*_ns`; eles são da taxa, separados dos timestamps da contagem.
+O motivo de uma taxa recusada pode ser consultado enquanto o modo USB está ativo:
+
+```bash
+curl --fail --silent http://127.0.0.1:1098/health | python3 -m json.tool
+```
+
+Exemplo de precisão: `0.12651909855776466` µSv/h deve continuar com esse valor
+numérico nos arquivos e mensagens. No painel aparece `1,27E-1 µSv/h`; na legenda
+do mapa, `1,27E-4 mSv/h`. A dose integrada de um intervalo pode aparecer como
+`3,51E-5 µSv`, em vez de `0,00`. Um zero efetivamente reportado continua zero;
+taxa ausente permanece `null`/campo vazio/`—`, não é preenchida a partir de CPS.
 
 Aceite o ensaio quando os equipamentos reais fornecem pose e taxa recente,
 os dados são posicionados sem atraso progressivo, movimento/parada funcionam,

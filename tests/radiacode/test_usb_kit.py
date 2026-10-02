@@ -43,7 +43,8 @@ class FakeDevice:
         return ((4, 0, "test"), (4, 14, "test"))
 
     def configuration(self):
-        return "SpecFormatVersion=0"
+        return ('[DeviceParams]\nSpecFormatVersion=0\n[DataStructure]\n'
+                '[[GRP_RealTimeData]]\n[[[CHN_DoseRate]]]\nUnit=" R/h| Р/ч"\n')
 
     def energy_calib(self):
         return [0., 3., 0.]

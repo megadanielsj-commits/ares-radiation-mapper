@@ -30,23 +30,32 @@ const originalReferenceLabel = regulatoryBandForExcessRate;
 const originalEnvelope = handleEnvelope;
 const originalReadings = updateReadings;
 const realRadiation = () => consoleSnapshot?.inputs.radiation === "real";
+function formatRadiologicalValue(value) {
+  if (value == null || value === "") return "—";
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  const rounded = Number(number.toFixed(2));
+  const error = number === 0 ? 0 : Math.abs((rounded - number) / number);
+  // Two decimal places are acceptable only below 0.5% presentation error.
+  // This formats a label; it never replaces a telemetry or map value.
+  return number !== 0 && (rounded === 0 || error > .005)
+    ? number.toLocaleString("pt-BR", {notation:"scientific", minimumFractionDigits:2, maximumFractionDigits:2})
+    : formatNumber(number, 2);
+}
 formatRateWithUnit = function (value) {
+  if (value == null || value === "") return "—";
   const rate = Number(value) / 1000;
   if (!Number.isFinite(rate)) return "—";
-  const magnitude = Math.abs(rate);
-  const label = magnitude > 0 && magnitude < .01
-    ? rate.toLocaleString("pt-BR", {notation:"scientific", minimumFractionDigits:2, maximumFractionDigits:2})
-    : formatNumber(rate, 2);
-  return `${label} mSv/h`;
+  return `${formatRadiologicalValue(rate)} mSv/h`;
 };
-formatDoseRate = function (value) {return formatNumber(scaledDoseRate(value).value, 2);};
+formatDoseRate = function (value) {return value == null ? "—" : formatRadiologicalValue(scaledDoseRate(value).value);};
 formatAxisValue = function (value) {return formatNumber(value, 2);};
 regulatoryBandForExcessRate = function (value) {
   return realRadiation() ? "Taxa reportada · conversão USB provisória" : originalReferenceLabel(value);
 };
 updateReadings = function () {
   originalReadings();
-  $("dose-total").textContent = formatNumber(scaledDose(state.accumulatedDose).value, 2);
+  $("dose-total").textContent = state.accumulatedDose == null ? "—" : formatRadiologicalValue(scaledDose(state.accumulatedDose).value);
   if (realRadiation() && state.radiation?.dose_rate_uSv_h == null) {
     $("dose-rate").textContent = "—";
     $("dose-rate-unit").textContent = "µSv/h";
@@ -161,8 +170,8 @@ function paintConsole(snapshot) {
   $("physical-ack-row").hidden = !realRobot || snapshot.control_enabled;
   $("control-state").textContent = snapshot.control_enabled ? "Setas do teclado · solte para parar · Esc interrompe." : "Teclado bloqueado. Habilite para movimentar.";
   const r = status.radiation;
-  $("cps-reading").textContent = r?.cps == null ? "—" : formatNumber(r.cps, 2);
-  $("cpm-reading").textContent = r?.cpm == null ? "—" : formatNumber(r.cpm, 2);
+  $("cps-reading").textContent = formatRadiologicalValue(r?.cps);
+  $("cpm-reading").textContent = formatRadiologicalValue(r?.cpm);
   if (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3)) $("dose-rate").textContent = "—";
   $("data-origin").textContent = realRadiation ? "USB real · dose provisória · CPM = 60 × CPS" : "Radiação simulada · treinamento";
   $("spatial-note").textContent = realRobot
