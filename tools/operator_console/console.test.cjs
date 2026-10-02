@@ -39,19 +39,19 @@ test('operator shell exposes four distinct inputs and an always available stop',
   assert.equal(html.includes('class="control-panel"'), false);
 });
 
-test('real count samples never turn CPS into cumulative dose', () => {
+test('real dose samples do not double-count the server mission dose anchor', () => {
   const ui = setup();
   ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
     document.querySelectorAll=()=>[]; document.addEventListener=()=>{};`);
   ui.run(shell);
   ui.run(`consoleSnapshot={inputs:{radiation:'real'}};
     state.accumulatedDose=.01; state.radiation={dose_rate_uSv_h:.22};
-    handleEnvelope({type:'mapped_sample',payload:{dose_rate_uSv_h_filtered:100,
+    handleEnvelope({type:'mapped_sample',payload:{dose_rate_uSv_h_filtered:.22,cps:100,
       sensor_x_m:0,sensor_y_m:0,integration_time_s:1}});`);
   assert.equal(ui.run('state.accumulatedDose'), .01);
-  assert.equal(ui.run('state.mapped[0].dose_rate_uSv_h_filtered'), 100);
-  assert.equal(ui.run('formatRateWithUnit(100)'), '100,00 CPS');
-  assert.equal(ui.run('regulatoryBandForExcessRate(100)'), 'Contagens · sem conversão CPS para dose');
+  assert.equal(ui.run('state.mapped[0].dose_rate_uSv_h_filtered'), .22);
+  assert.equal(ui.run('formatRateWithUnit(.22)'), '2,20E-4 mSv/h');
+  assert.equal(ui.run('regulatoryBandForExcessRate(.22)'), 'Taxa reportada · conversão USB provisória');
 });
 
 test('measurement labels have two decimals without rounding stored dose or rates', () => {
@@ -64,6 +64,9 @@ test('measurement labels have two decimals without rounding stored dose or rates
   assert.equal(ui.element('dose-rate').textContent, '0,22');
   assert.equal(ui.element('dose-total').textContent, '0,02');
   assert.equal(ui.run('formatRateWithUnit(10456)'), '10,46 mSv/h');
+  assert.equal(ui.run('formatRateWithUnit(.12)'), '1,20E-4 mSv/h');
+  assert.equal(ui.run('formatRateWithUnit(0)'), '0,00 mSv/h');
+  assert.equal(ui.run('formatRateWithUnit(NaN)'), '—');
   assert.equal(ui.run('formatAxisValue(5, 1)'), '5,00');
   assert.equal(ui.run('state.radiation.dose_rate_uSv_h'), .224567);
   assert.equal(ui.run('state.accumulatedDose'), .017654);

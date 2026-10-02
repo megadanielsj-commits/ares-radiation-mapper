@@ -91,10 +91,9 @@ def scenario(data, setup):
     config.radiation_sources[0].strength_keyframes[0].dose_rate_at_reference_uSv_h = setup.dose_rate_at_1m_uSv_h
     if MODES[setup.mode]["radiation"] == "real":
         config.radiation_sources[0].enabled = False
-        # MapService's numeric rate coordinate is CPS in this input profile.
-        # k=1 is an identity, never a physical CPS-to-dose calibration.
-        config.detectors[0].observation_mode = "counts_poisson"
-        config.detectors[0].sensitivity_cps_per_uSv_h = 1
+        # Map the separately reported dose rate. Preserve raw CPS in the
+        # original acquisition/synchronization path; no count calibration.
+        config.detectors[0].observation_mode = "dose_rate_robust"
         config.detectors[0].response_mode = "dose_direct"
         config.detectors[0].response_compensation_enabled = False
         config.radiation_sources[0].strength_keyframes[0].dose_rate_at_reference_uSv_h = 250
@@ -106,6 +105,7 @@ class MapWorker:
     def __init__(self, owner, mission_id):
         self.owner = owner
         self.samples = []
+        self.skipped_dose_samples = 0
         self.lock = threading.Lock()
         c = owner.scenario
         self.service = MapService(mission_id, c.world, c.mapping, field=None,
@@ -117,7 +117,12 @@ class MapWorker:
             self._update(sample)
 
     def _update(self, sample):
-        rate = sample.cps / self.owner.sensitivity if self.owner.simulated_radiation else sample.cps
+        rate = sample.cps / self.owner.sensitivity if self.owner.simulated_radiation else sample.dr_usvh
+        if rate is None or not math.isfinite(rate) or rate < 0:
+            # The original repository still keeps the positioned count sample.
+            # A missing reported dose is not zero and must not be fabricated.
+            self.skipped_dose_samples += 1
+            return
         elapsed = sample.ts - self.owner.latency - self.owner.started_wall
         if elapsed < 0:
             return  # raw data remain recorded; no pre-mission point is mapped
@@ -225,6 +230,10 @@ class LiveController:
             reading = self.orq.ultima_leitura
             if not self.simulated_radiation and (reading is None or time.time()-reading.ts > 3):
                 raise RuntimeError("Aguardando uma contagem USB recente para iniciar a missão.")
+            if not self.simulated_radiation and (
+                reading.dr_usvh is None or not math.isfinite(reading.dr_usvh) or reading.dr_usvh < 0
+            ):
+                raise RuntimeError("Aguardando taxa de dose USB válida para construir o mapa.")
             pose = self.orq.ultima_pose
             if pose is not None:
                 bounds = self.scenario.world.bounds_m
@@ -235,11 +244,11 @@ class LiveController:
                 if self.simulated_radiation and not (bounds.x_min <= self.setup.x_m <= bounds.x_max and bounds.y_min <= self.setup.y_m <= bounds.y_max):
                     raise RuntimeError("Fonte simulada fora da área de 20 m ao redor do robô. Informe X/Y no referencial odom mostrado no console.")
             if not self.simulated_radiation and self.orq.ultima_leitura is not None:
-                # Priors must also use counts units, never the FS-5000 dose prior.
-                reference = max(.1, self.orq.ultima_leitura.cps)
+                # Priors and evidence share the reported dose-rate unit µSv/h.
+                reference = max(.001, self.orq.ultima_leitura.dr_usvh)
                 self.scenario.inference.background_prior_uSv_h = reference
-                self.scenario.inference.background_prior_std_uSv_h = max(1, reference)
-                self.scenario.inference.background_max_uSv_h = max(100, reference*10)
+                self.scenario.inference.background_prior_std_uSv_h = max(.01, reference)
+                self.scenario.inference.background_max_uSv_h = max(2, reference*10)
                 self.scenario.inference.source_strength_max_uSv_h = max(1000, reference*100)
             info = await self.orq.iniciar_missao("ARES console")
             self.started_wall = time.time()
@@ -283,12 +292,12 @@ class LiveController:
     def map_presentation(self, prediction):
         if self.simulated_radiation:
             return prediction
-        # The original engine is dimensionally reused in counts space. Only
-        # the display exposure is replaced by the independent dose channel.
+        # Dose and map now share the reported-rate channel. Keep the existing
+        # mission-dose anchor, without asserting device-total availability.
         exposure = ExposureSummary(cumulative_robot_path_dose_uSv=self.reported_dose_integral,
             cumulative_detector_dose_uSv=self.reported_dose_integral,
             reported_cumulative_dose_uSv=None, audit_state="PROVISIONAL_REPORTED_RATE_INTEGRAL")
-        return prediction.model_copy(update={"exposure": exposure, "unit":"CPS", "value_name":"cps"})
+        return prediction.model_copy(update={"exposure": exposure})
 
     @property
     def current_time_ns(self):
@@ -330,9 +339,12 @@ class LiveController:
                 "reason": reason, "timestamp_basis": "host_receipt",
                 "position_time_formula": "reading_ts - latencia_leitura_s",
                 "latencia_leitura_s": self.latency, "latency_verified_on_robot": False,
-                "map_engine": "ares_classic_v4", "map_evidence": "synthetic_counts_calibrated" if self.simulated_radiation else "raw_cps",
-                "map_unit": "µSv/h" if self.simulated_radiation else "CPS",
-                "internal_map_rate_coordinate": "identity_to_cps_not_physical_dose" if not self.simulated_radiation else "dose_rate_uSv_h",
+                "map_engine": "ares_classic_v4", "map_evidence": "synthetic_counts_calibrated" if self.simulated_radiation else "reported_dose_rate",
+                "map_unit": "uSv/h", "map_display_unit": "mSv/h",
+                "internal_map_rate_coordinate": "dose_rate_uSv_h",
+                "raw_counts_preserved": True,
+                "skipped_dose_samples": self.worker.skipped_dose_samples,
+                "reported_rate_timing_verified": self.simulated_radiation,
                 "dose_conversion_verified": self.simulated_radiation,
                 "cumulative_dose_kind": "integral_of_reported_rate_not_detector_total",
                 "samples": len(self.worker.samples)}
@@ -350,14 +362,8 @@ class LiveController:
                         f"SELECT * FROM {table} WHERE missao_id = ? ORDER BY ts", (info["missao"]["id"],))]
         files = []
         map_payload = self.latest_map.model_dump(mode="json") if self.latest_map else {}
-        if not self.simulated_radiation:
-            map_payload = {"mission_id": self.mission_id, "unit": "CPS",
-                "grid_shape": map_payload.get("grid_shape"),
-                "x_coordinates_m": map_payload.get("x_coordinates_m"),
-                "y_coordinates_m": map_payload.get("y_coordinates_m"),
-                "values_row_major": map_payload.get("values_row_major"),
-                "sample_count": map_payload.get("sample_count"),
-                "metrics": map_payload.get("metrics")}
+        map_payload.update(display_unit="mSv/h", display_factor_from_internal=0.001,
+                           dose_conversion_verified=self.simulated_radiation)
         for filename, content in (("amostras.csv", self.repo.exportar_csv(info["missao"]["id"])),
                 ("mission_raw.json", json.dumps(info, ensure_ascii=False, indent=2)),
                 ("map_latest.json", json.dumps(json_finite(map_payload), ensure_ascii=False, indent=2))):

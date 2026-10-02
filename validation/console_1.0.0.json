@@ -1,0 +1,59 @@
+{
+  "version": "ARES Console 1.0.0",
+  "date": "2026-10-02",
+  "field_trial_date": "2026-10-08",
+  "software_test_result": "passed",
+  "python_package_tests": 127,
+  "reference_runtime_tests": 209,
+  "javascript_tests": 11,
+  "browser_modes": 4,
+  "hardware_for_mixed_browser_tests": "contract doubles only",
+  "preserved_map_and_input_hashes": 56,
+  "reference_runtime_identical_files": 30,
+  "runtime_origin_commit": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+  "runtime_adaptation_commit": "4048f7c8b4ffe2cc0f604a8bae1b89d4763aa4f2",
+  "approved_console_reference_commit": "a84b972f9d27bb3f2bc7dc32a3bb4e9581f25d08",
+  "map_real_evidence": "reported_dose_rate",
+  "map_internal_unit": "uSv/h",
+  "map_display_unit": "mSv/h",
+  "map_display_factor_from_internal": 0.001,
+  "raw_counts_preserved": true,
+  "dose_scale_from_raw_protocol": 10000,
+  "dose_conversion_physically_verified_here": false,
+  "physical_go2_radiacode_test_completed_here": false,
+  "docker_image": "ares-operator-console:1.0.0",
+  "docker_build_executed_here": false,
+  "github_push_executed_here": false,
+  "target_branch": "release/ares-console-1.0.0",
+  "full_mypy": "passed; external FS-5000 vendor typing explicitly excluded; protocol untouched",
+  "browser_report": {
+    "profiles": [
+      {
+        "mode": "usb_simulated_robot",
+        "count": 3,
+        "rate": "0,22",
+        "unit": "µSv/h",
+        "dose": "0,00",
+        "countClipped": false
+      },
+      {
+        "mode": "robot_simulated_source",
+        "count": 2,
+        "rate": "61,15",
+        "unit": "µSv/h",
+        "dose": "0,04",
+        "countClipped": false
+      },
+      {
+        "mode": "hardware",
+        "count": 5,
+        "rate": "0,22",
+        "unit": "µSv/h",
+        "dose": "0,00",
+        "countClipped": false
+      }
+    ],
+    "errors": [],
+    "hardware": "contract doubles only"
+  }
+}

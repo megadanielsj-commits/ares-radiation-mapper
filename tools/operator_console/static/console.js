@@ -24,25 +24,30 @@ function acceptPositionedCount(mission, value) {
 }
 
 // Units and telemetry only: the original map geometry, gradient and numeric
-// color transform stay untouched. Real bins are CPS, not FS-5000 dose units.
+// color transform stay untouched. The map uses reported dose; raw CPS remain
+// separate. Internal µSv/h are displayed in mSv/h with no count calibration.
 const originalReferenceLabel = regulatoryBandForExcessRate;
 const originalEnvelope = handleEnvelope;
 const originalReadings = updateReadings;
-const countsMap = () => consoleSnapshot?.inputs.radiation === "real";
+const realRadiation = () => consoleSnapshot?.inputs.radiation === "real";
 formatRateWithUnit = function (value) {
-  if (countsMap()) return `${formatNumber(value, 2)} CPS`;
-  const scaled = scaledDoseRate(value);
-  return Number.isFinite(scaled.value) ? `${formatNumber(scaled.value, 2)} ${scaled.unit}` : "—";
+  const rate = Number(value) / 1000;
+  if (!Number.isFinite(rate)) return "—";
+  const magnitude = Math.abs(rate);
+  const label = magnitude > 0 && magnitude < .01
+    ? rate.toLocaleString("pt-BR", {notation:"scientific", minimumFractionDigits:2, maximumFractionDigits:2})
+    : formatNumber(rate, 2);
+  return `${label} mSv/h`;
 };
 formatDoseRate = function (value) {return formatNumber(scaledDoseRate(value).value, 2);};
 formatAxisValue = function (value) {return formatNumber(value, 2);};
 regulatoryBandForExcessRate = function (value) {
-  return countsMap() ? "Contagens · sem conversão CPS para dose" : originalReferenceLabel(value);
+  return realRadiation() ? "Taxa reportada · conversão USB provisória" : originalReferenceLabel(value);
 };
 updateReadings = function () {
   originalReadings();
   $("dose-total").textContent = formatNumber(scaledDose(state.accumulatedDose).value, 2);
-  if (countsMap() && state.radiation?.dose_rate_uSv_h == null) {
+  if (realRadiation() && state.radiation?.dose_rate_uSv_h == null) {
     $("dose-rate").textContent = "—";
     $("dose-rate-unit").textContent = "µSv/h";
   }
@@ -53,7 +58,7 @@ handleEnvelope = function (envelope) {
   if (state.missionId && payload.mission_id && payload.mission_id !== state.missionId) return;
   const before = state.accumulatedDose;
   originalEnvelope(envelope);
-  if (countsMap() && envelope.type === "mapped_sample") {
+  if (realRadiation() && envelope.type === "mapped_sample") {
     state.accumulatedDose = before;
     updateReadings();
   }
@@ -146,7 +151,7 @@ function paintConsole(snapshot) {
     const input = $(id);
     if (document.activeElement !== input) input.value = setupNumber(input.value);
   }
-  $("start-button").disabled = running || actionPending || !snapshot.robot.conectado || !snapshot.radiation.conectado || (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3));
+  $("start-button").disabled = running || actionPending || !snapshot.robot.conectado || !snapshot.radiation.conectado || (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3 || status.radiation?.dose_rate_uSv_h == null));
   $("start-button").textContent = running ? "Mapeamento em andamento" : "Iniciar mapeamento";
   $("finish-button").disabled = !running || actionPending;
   $("enable-control").disabled = !running || snapshot.control_enabled || actionPending;
@@ -164,8 +169,8 @@ function paintConsole(snapshot) {
     ? (realRadiation ? "Posição em odometria local. Offset e latência devem ser conferidos no ensaio real." : "Robô real com radiação sintética. Este modo testa comunicação, movimento e sincronização.")
     : (realRadiation ? "Posição simulada: este mapa testa o software e não representa a distribuição física da radiação." : "Ambiente de treinamento com fonte e posição virtuais.");
   $("frame-label").textContent = snapshot.mode === "simulation" ? "Mundo simulado" : "Odometria local (odom)";
-  $("map-title").textContent = realRadiation ? "Mapa de contagens pelas medições" : "Mapa construído pelas medições";
-  document.querySelector(".public-reference").textContent = realRadiation ? "Cores: contagens relativas · escala em CPS" : "Cores: intensidade relativa · referências CNEN no cursor";
+  $("map-title").textContent = "Mapa de calor";
+  document.querySelector(".public-reference").textContent = realRadiation ? "Taxa de dose reportada · escala em mSv/h" : "Escala em mSv/h · referências CNEN no cursor";
   $("mission-id").textContent = status.mission_id || "—";
   $("duration-reading").textContent = `${snapshot.setup.duration_s / 60} minutos`;
   $("elapsed").textContent = elapsedLabel(status.simulation_time_ns / 1e9);

@@ -1,57 +1,102 @@
-# Verificação do console ARES v3 — 02/10/2026
+# Verificação do ARES Console 1.0.0 — 02/10/2026
 
-Esta revisão aplica somente os ajustes de interface solicitados e a correção da
-estimativa ao permanecer sobre a fonte. A v2 foi confirmada pelo operador com
-simulação completa e Radiacode real conectado ao USB com robô simulado.
+Versão de referência preparada para o ensaio de 08/10/2026. A interface aprovada
+foi preservada; esta revisão muda o título para **Mapa de calor** e alimenta o
+mapa real com a taxa de dose reportada, apresentando **mSv/h**. Não há conversão
+CPS→dose do FS-5000 aplicada ao Radiacode.
 
-- 116 testes Python existentes passaram; quatro casos adicionais exercitam
-  permanência sobre a fonte e na posição 7,66 / 5,69 m, com leituras exatas e
-  ruído de 2%. Outros dois casos verificam a distinção entre picos próximos e
-  locais realmente distintos, totalizando 122 casos aprovados.
-- Os casos de regressão percorrem 118 posições e permanecem por mais 550
-  leituras. Conferem a estabilidade do campo, a localização estimada, a retenção
-  da geometria, a posição do máximo do mapa, a quantidade de amostras, a integral
-  da dose e a retomada do movimento.
-- Dez testes JavaScript passaram, incluindo paleta, posicionamento do raster,
-  unidade CPS, contagem da missão e duas casas decimais sem arredondar os dados.
-- A correção alcança somente `inference/identifiability.py` e
-  `inference/particle_filter.py`: o histórico de geometria registra posições
-  independentes e a injeção de partículas do prior ocorre com deslocamento,
-  sem suspender as atualizações de probabilidade durante a permanência.
-  O diagnóstico de múltiplos picos exige separação em metros de pelo menos
-  uma célula de observação; pequenas oscilações dentro da mesma localização
-  não revogam o campo. Hipóteses em locais distintos continuam sendo rejeitadas
-  como ambíguas.
-- Dos 56 arquivos protegidos, 54 mantêm os hashes da v2. Os outros dois são
-  explicitamente registrados como correção autorizada no `map.lock.json`, com
-  seus hashes de referência e atualizados. A verificação continua obrigatória
-  na construção da imagem Docker.
-- A seção HTML do mapa e o JavaScript original permanecem idênticos à v4.
-  Desenho, interpolação, transformação numérica de cores e escala não foram
-  substituídos. Os wrappers mudam apenas a apresentação das unidades e rótulos.
-- O runtime do Werik, a aquisição USB independente, o sincronizador, a persistência
-  e o controle do Go2 não foram modificados.
-- No Chrome 145, o painel ficou à esquerda em 1920×1080, 1536×864, 1366×768 e
-  1024×768. Também foi verificada a tela de 390×844. Não houve overflow horizontal
-  da página ou contagem de medições fora da seção. O canvas em Full HD continua
-  com 1542×908 pixels.
-- Foram exercitados no navegador: menu superior de modos, configuração da fonte
-  pela seção recolhível, duração, cancelamento, início, bloqueio das entradas
-  durante a missão, movimento por teclado, ampliação/restauração, parada e exportação.
-- As três combinações mistas/reais foram exercitadas no navegador com substitutos
-  dos contratos de hardware. A fonte aparece somente com radiação simulada.
-  Não houve erros JavaScript; a dose real continua separada das contagens CPS.
-- `ruff check src tests` passou. A tipagem dos dois módulos alterados passou.
-  A verificação global `mypy src` reporta 49 erros no arquivo de terceiro
-  `adapters/fs5000/vendor/fs5000.py`; a mesma verificação da v2, sem alterações,
-  reporta exatamente esses 49 erros nesse arquivo. Esse código ficou preservado
-  nesta revisão, que não corrige nem declara aprovado esse check global.
-- A imagem recebe o tag `20261002-r3`. Não há Docker Engine neste ambiente:
-  a imagem será construída no computador de operação pelo iniciador.
+## Referências comparadas
 
-Os testes com substitutos não validam o USB físico, rádio Wi-Fi, unidade de dose,
-offset, latência ou movimentação do Go2. A v3 foi verificada com o servidor Python
-e os recursos que compõem a imagem; o novo teste físico é realizado pelo operador.
+| Componente | Referência | Resultado |
+|---|---|---|
+| Trabalho original de integração Go2/Wi-Fi | `ares-wifi`, `84f9148d1da6b7b3aa84b177b09a30d2631ecb8f` | A branch remota continua nessa revisão na consulta de 02/10/2026 |
+| Driver Go2, sincronizador e teleop | Arquivos originais do runtime acima | Sem diferenças entre a referência original e a adaptação Radiacode |
+| Runtime com adaptador Radiacode | `4048f7c8b4ffe2cc0f604a8bae1b89d4763aa4f2` | Os 30 arquivos copiados em `vendor/go2_runtime/src/ares` são idênticos byte a byte |
+| Mapa, paleta e integração protegidos | Console aprovado `a84b972f9d27bb3f2bc7dc32a3bb4e9581f25d08` | Os 56 hashes e o próprio `map.lock.json` continuam iguais |
+| SDK USB | `cdump/radiacode`, tag `0.4.0`, commit `3e9a2aaec60aa1da06834310c5fb660133e734d3` | Unidades/escala conferidas no código e na documentação primária dessa versão |
+| Base para publicação | `main`, `fcf4377be8ccfd86f7d56343c58b0fc342fd3cdc` | Ancestral desta implementação; a publicação usa uma branch de release separada |
 
-A revisão fica em `feat/operator-console`, no bundle incluído no ZIP. Não foi
-enviada ao GitHub nem substitui automaticamente as branches do ensaio físico.
+O runtime adaptado já continha seleção do detector, metadados Radiacode e
+exportação de leituras/poses. Esses acréscimos anteriores não são atribuídos ao
+código original do Werik. O console usa sua aquisição, interpolação temporal,
+worker ordenado fora do event loop, reconexão e watchdog. A subclasse troca o
+worker/publicação do mapa; não cria outro driver de robô ou sincronizador.
+
+## Alterações nesta revisão
+
+- O mapa real recebe `dr_usvh`; CPS/CPM permanecem como canais separados nos
+  registros USB e no CSV/SQLite de amostras posicionadas. O modo de observação
+  existente do motor passa de contagens para taxa de dose, com prior na mesma
+  unidade da evidência. Nenhum arquivo do núcleo de inferência foi alterado.
+- Internamente a taxa continua em µSv/h; somente a apresentação usa mSv/h.
+  Taxas baixas usam notação científica com duas casas na mantissa. O layout,
+  desenho, interpolação, cálculo de cores e correção de permanência da v3
+  permanecem protegidos. A seção HTML do mapa só muda o título solicitado.
+- O recebimento da taxa tem timestamps próprios no registro de contagens.
+  Contagens novas não tornam uma taxa antiga recente. O bridge não publica
+  dose rotulada em Sv se a configuração consultada é R ou desconhecida.
+  Não altera configurações do detector. Uma dose ausente não vira zero:
+  bloqueia o início ou é omitida do mapa, mantendo o registro bruto.
+- A dose integrada mantém o anchor do servidor, evitando somar novamente os
+  mesmos intervalos ao receber amostras e atualizações do mapa. Não representa
+  a dose acumulada total do aparelho e não recupera intervalos perdidos.
+- O CI mantém os testes Python 3.10/3.12 e passa a validar também o Compose do
+  console antes de construir a imagem. A tipagem global exclui explicitamente
+  o módulo terceiro FS-5000 já preservado; os módulos próprios seguem verificados.
+  Isso trata os erros de tipagem do fornecedor sem editar seu protocolo.
+
+## Verificações executadas
+
+- **127 testes Python do pacote passaram**, incluindo modos, contratos USB,
+  exportação, falta/retorno de dose, taxa antiga, unidade desconhecida, parada,
+  controle exclusivo e as regressões de permanência sobre a fonte.
+- **209 testes do runtime Go2/Radiacode de referência passaram**, executados
+  contra o código vendorizado. Exercitam contratos de sincronização, persistência,
+  recepção e controle com substitutos de hardware.
+- **10 testes JavaScript do console/mapa e 1 do painel USB passaram**. Conferem
+  paleta preservada, redesenho numérico coerente, posicionamento do raster,
+  mSv/h, precisão armazenada, contagem total e ausência de dupla integração.
+- `ruff check src tests`, `mypy src` (76 módulos), verificação SHA-256 do mapa,
+  `git diff --check` e sintaxe Bash dos iniciadores passaram.
+- Imports usados no build, configuração YAML do Compose e workflow CI foram
+  verificados. SDK Radiacode e driver Unitree permanecem nas versões previstas.
+- Chrome 145: simulação completa em cinco resoluções (1920, 1536, 1366, 1024
+  e 390 px), menu de modos, fonte recolhível, configuração de duração, teclado,
+  ampliação/restauração, parada e exportação. Os outros três modos passaram
+  com substitutos dos contratos de hardware. Título e unidade do mapa foram
+  conferidos; taxa reportada 0,22 µSv/h apareceu como `2,20E-4 mSv/h`, enquanto
+  CPS 100 permaneceu separado. Não houve erros JavaScript na execução concluída.
+
+Comandos para reproduzir as verificações principais em ambiente de desenvolvimento:
+
+```bash
+python -m pip install -e '.[dev,fs5000,radiacode-usb]'
+PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py
+node --test tools/operator_console/console.test.cjs tests/radiacode/dashboard_usb.test.cjs
+python -m tools.operator_console.check_map_lock
+ruff check src tests
+mypy src
+bash -n ares-console PUBLICAR_CONSOLE_GITHUB.sh
+```
+
+## Limites e validação em campo
+
+Não há Docker Engine nem Go2/Radiacode físicos neste ambiente. **A imagem Docker
+não foi construída aqui**, e o workflow novo ainda precisa executar após a
+publicação. O computador de operação constrói `ares-operator-console:1.0.0` pelo
+iniciador; isso deve acontecer com internet antes de conectar ao LocalAP.
+
+As confirmações anteriores do operador cobrem simulação completa e USB real com
+robô virtual na versão anterior. Como o canal que alimenta o mapa foi alterado,
+repita esse teste nesta versão. Os testes automatizados não substituem essa
+verificação física, nem validam Go2+Radiacode juntos, firmware/AES, média interna
+da taxa, latência, offset ou precisão radiométrica da reconstrução.
+
+A conversão de dose do SDK continua marcada provisória. Confira Sv e a taxa do
+visor antes do ensaio. Preserve o padrão temporal do Werik e ajuste os parâmetros
+existentes só após medir a resposta da taxa e a montagem. O roteiro completo é
+[PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md).
+
+Referências primárias do SDK consultadas:
+https://github.com/cdump/radiacode/blob/0.4.0/docs/guides/measurements.md
+https://github.com/cdump/radiacode/blob/0.4.0/src/radiacode/examples/radiacode-exporter.py

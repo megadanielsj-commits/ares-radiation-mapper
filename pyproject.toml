@@ -87,3 +87,9 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 exclude = ["^src/ares_mapper/adapters/fs5000/vendor/"]
+
+# Preserve the external FS-5000 implementation; check all ARES-owned modules.
+# exclude skips discovery only, so this override also handles followed imports.
+[[tool.mypy.overrides]]
+module = "ares_mapper.adapters.fs5000.vendor.*"
+ignore_errors = true

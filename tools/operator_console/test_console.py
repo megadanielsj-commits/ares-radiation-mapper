@@ -1,5 +1,6 @@
 """Input selection, unchanged map, real contracts and operator stop semantics."""
 import asyncio
+import csv
 import io
 import json
 import time
@@ -22,6 +23,7 @@ class FakeRadiation:
         self.callbacks = []
         self.connected = True
         self.task = None
+        self.dose_rate = .22
 
     def assinar(self, callback):
         self.callbacks.append(callback)
@@ -40,7 +42,7 @@ class FakeRadiation:
         while True:
             await asyncio.sleep(.2)
             if self.connected:
-                reading = Leitura(time.time(), .22, 6000, 100, None, "test-usb")
+                reading = Leitura(time.time(), self.dose_rate, 6000, 100, None, "test-usb")
                 for callback in self.callbacks:
                     callback(reading)
 
@@ -65,7 +67,7 @@ def test_map_and_original_input_cores_are_exactly_preserved():
     marker = '<section class="panel map-panel"'
     original_map = original.split(marker, 1)[1].split("</section>", 1)[0]
     new_map = console.split(marker, 1)[1].split("</section>", 1)[0]
-    assert new_map == original_map
+    assert new_map == original_map.replace("Mapa construído pelas medições", "Mapa de calor")
 
 
 def test_default_is_exact_classic_simulator_with_no_hardware(tmp_path):
@@ -131,15 +133,24 @@ def test_mixed_and_real_modes_use_werik_inputs_v4_map_and_save(tmp_path, mode):
         if mode != "robot_simulated_source":
             sample = active.worker.samples[0]
             assert sample.cps == 100
-            assert sample.dose_rate_uSv_h_raw == 100  # identity count coordinate, not dose
-            assert metadata["map_evidence"] == "raw_cps"
-            assert active.latest_map.unit == "CPS"
-            assert metadata["map_unit"] == "CPS"
+            assert sample.dose_rate_uSv_h_raw == .22  # reported rate, never raw CPS relabeled
+            assert metadata["map_evidence"] == "reported_dose_rate"
+            assert active.latest_map.unit == "uSv/h"
+            assert metadata["map_unit"] == "uSv/h"
+            assert metadata["map_display_unit"] == "mSv/h"
             assert active.latest_map.exposure.cumulative_robot_path_dose_uSv == pytest.approx(.22*len(active.worker.samples)/3600)
         response = client.get("/api/console/export")
         with zipfile.ZipFile(io.BytesIO(response.content)) as package:
             assert "amostras.csv" in package.namelist()
             assert "map_latest.json" in package.namelist()
+            exported_map = json.loads(package.read("map_latest.json"))
+            assert exported_map["unit"] == "uSv/h"
+            assert exported_map["display_unit"] == "mSv/h"
+            assert exported_map["display_factor_from_internal"] == .001
+            if mode != "robot_simulated_source":
+                rows = list(csv.DictReader(io.StringIO(package.read("amostras.csv").decode())))
+                assert float(rows[0]["cps"]) == 100
+                assert float(rows[0]["dr_usvh"]) == .22
         assert client.post("/api/console/configure", json={"mode":"simulation"}).status_code == 200
         assert isinstance(runtime.active, MissionController)
 
@@ -155,6 +166,34 @@ def test_usb_disconnect_is_visible_and_blocks_mission_start(tmp_path):
         rad.connected = True
         wait_for(client, lambda s:s["status"]["pose"] is not None and s["status"]["radiation"] is not None)
         assert client.post("/api/console/start", json={}).status_code == 200
+
+
+def test_unavailable_reported_dose_blocks_start_and_skips_map_without_losing_raw_counts(tmp_path):
+    app = create_app(tmp_path, FACTORIES, manage_usb=False)
+    with TestClient(app) as client:
+        client.post("/api/console/configure", json={"mode":"usb_simulated_robot"})
+        active = app.state.console.active
+        radiation = active.orq.radiacao
+        radiation.dose_rate = None
+        wait_for(client, lambda s:s["status"]["radiation"] is not None)
+        assert client.post("/api/console/start", json={}).status_code == 409
+        radiation.dose_rate = .22
+        wait_for(client, lambda s:s["status"]["radiation"]["dose_rate_uSv_h"] == .22)
+        assert client.post("/api/console/start", json={}).status_code == 200
+        wait_for(client, lambda s:s["status"]["counts"]["mapped"] >= 2)
+        radiation.dose_rate = None
+        wait_for(client, lambda s:active.worker.skipped_dose_samples >= 2)
+        mapped = len(active.worker.samples)
+        skipped = active.worker.skipped_dose_samples
+        wait_for(client, lambda s:active.worker.skipped_dose_samples >= skipped + 2)
+        assert len(active.worker.samples) == mapped
+        radiation.dose_rate = .44
+        wait_for(client, lambda s:s["status"]["counts"]["mapped"] > mapped)
+        client.post("/api/console/stop", json={})
+        raw = json.loads((active.mission_directory/"mission_raw.json").read_text())
+        assert any(a["dr_usvh"] is None and a["cps"] == 100 for a in raw["amostras"])
+        assert len(raw["amostras"]) > len(active.worker.samples)
+        assert active.worker.samples[-1].dose_rate_uSv_h_raw == .44
 
 
 def test_invalid_mode_source_and_origin_leave_current_runtime_intact(tmp_path):
@@ -193,7 +232,7 @@ def test_nonzero_initial_real_odometry_centers_mission_and_map(tmp_path):
         wait_for(client, lambda s:s["status"]["counts"]["mapped"] >= 1)
         client.post("/api/console/stop", json={})
         payload = client.get("/api/v1/map/latest").json()
-        assert payload["unit"] == "CPS"
+        assert payload["unit"] == "uSv/h"
         assert 35 in payload["x_coordinates_m"]
         assert -21 in payload["y_coordinates_m"]
 

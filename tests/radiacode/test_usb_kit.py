@@ -231,6 +231,9 @@ def test_recorder_keeps_smoothed_cps_separate_from_raw_counts(tmp_path):
     assert len(rows) >= 2
     assert rows[0]["cps"] == 12 and rows[0]["exposure_s"] == 1
     assert rows[0]["timing_quality"] == "live_receipt"
+    assert rows[0]["configured_dose_unit"] == "Sv"
+    assert rows[0]["dose_rate_received_monotonic_ns"] > 0
+    assert rows[0]["dose_rate_received_utc_ns"] > 0
     assert rows[0]["received_utc_ns"] > 0 and rows[0]["received_monotonic_ns"] > 0
     summary = json.loads((tmp_path / "raw-counts/summary.json").read_text())
     assert summary["one_second_counts"] == len(rows) and not summary["hardware_test"]

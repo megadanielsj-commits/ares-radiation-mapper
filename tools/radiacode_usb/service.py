@@ -78,6 +78,18 @@ class Bridge:
             dose = row.get("dose_rate_uSv_h")
             if dose is not None and (not math.isfinite(dose) or dose < 0):
                 raise ValueError("dose inválida")
+            dose_age = None
+            dose_received = row.get("dose_rate_received_monotonic_ns")
+            dose_wall_received = row.get("dose_rate_received_utc_ns")
+            if dose_received is not None and dose_wall_received is not None:
+                dose_age = (time.monotonic_ns() - int(dose_received)) / 1e9
+                dose_wall_age = time.time() - int(dose_wall_received) / 1e9
+                if not 0 <= dose_age <= self.freshness_s or not -.1 <= dose_wall_age <= self.freshness_s:
+                    dose = None
+            else:
+                dose = None  # current counts do not prove an old dose is current
+            if row.get("configured_dose_unit") != "Sv":
+                dose = None  # never label Roentgen/unknown configuration as Sievert
             self.session, self.last_sequence = session, seq
             new_id = f"radiacode:{row['serial_number']}:{session}"
             if self.device["id"] != new_id:
@@ -93,6 +105,9 @@ class Bridge:
                           "dose_usv": None, "cps": cps, "cpm": 60*cps,
                           "sequence": seq, "session_id": session, "exposure_s": 1.0,
                           "dose_conversion_verified": False,
+                          "dose_rate_age_s": dose_age,
+                          "dose_rate_received_utc_ns": dose_wall_received,
+                          "configured_dose_unit": row.get("configured_dose_unit"),
                           "time_basis": row["time_basis"],
                           "timing_quality": row["timing_quality"]},
             }

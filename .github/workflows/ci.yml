@@ -72,6 +72,7 @@ jobs:
       - name: Build and smoke-test unified console
         if: matrix.python-version == '3.12'
         run: |
+          ARES_CONSOLE_ROOT="$PWD" ARES_CONSOLE_UID="$(id -u)" ARES_CONSOLE_GID="$(id -g)" ARES_USB_LOCK_DIR=/tmp/ares-ci-usb-lock docker compose -f tools/operator_console/compose.yaml config --quiet
           docker build -f tools/operator_console/Dockerfile -t ares-operator-console:ci .
           docker run --detach --name ares-console-ci --network host ares-operator-console:ci
           trap 'docker rm --force ares-console-ci' EXIT

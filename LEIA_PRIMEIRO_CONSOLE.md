@@ -1,9 +1,10 @@
-# ARES — console de operação v3
+# ARES Console 1.0.0 — versão de referência para o ensaio
 
 O mapa, as cores, o gradiente, o desenho do Go2 e a interpolação da versão v4
-aprovada foram preservados. Esta revisão aplica os ajustes pedidos na interface
-e uma correção pontual na inferência durante a permanência sobre a fonte.
-O console é uma versão candidata; a v4 continua incluída.
+aprovada foram preservados. Esta revisão mantém a interface aprovada e a correção de permanência da v3.
+O título do mapa é **Mapa de calor** e sua legenda usa **mSv/h** nos quatro modos.
+O pacote é a referência de software para o ensaio de 08/10/2026; a validação conjunta
+com o Go2 físico continua dependente desse ensaio.
 
 Nesta revisão o mapa ocupa a área principal e a coluna de telemetria fica à esquerda.
 O título é **Levantamento Radiométrico**. As medidas exibidas têm duas casas decimais;
@@ -88,16 +89,27 @@ ajustar parâmetros existentes sem alterar o código:
 ARES_LATENCIA_LEITURA_S=0.5 ARES_OFFSET_DETECTOR=0,0 bash ares-console iniciar
 ```
 
-A dose mostrada pelo leitor USB permanece provisória até comparar a unidade com
-o visor; nenhuma calibração CPS→dose do FS-5000 é aplicada ao Radiacode. O mapa
-real usa **CPS bruto**, como a aquisição do Werik. O mesmo motor e gradiente v4
-operam nessa coordenada numérica de contagens, com a unidade CPS indicada na
-legenda e no JSON exportado. `k=1` é identidade matemática, não uma calibração
-física. Os nomes internos do motor v4 permanecem preservados; o metadado
-`internal_map_rate_coordinate` deixa a unidade explícita. A dose exibida ao lado
-é um canal separado: a taxa reportada pelo leitor e sua integral nos intervalos
-de 1 s posicionados; não é a dose total acumulada no aparelho. Nenhuma dose é
-calculada a partir de CPS. CPM do Radiacode é 60×CPS, não uma janela medida de 1 minuto.
+O mapa real usa a **taxa de dose reportada pelo Radiacode**, não CPS convertido.
+O motor trabalha em µSv/h e a apresentação divide por 1.000 para exibir mSv/h.
+Exemplo: 0,12 µSv/h = 0,00012 mSv/h, exibido como `1,20E-4 mSv/h` para manter duas
+casas na mantissa sem mostrar zero. O algoritmo, a paleta e a interpolação permanecem
+protegidos; a evidência que entra no mapa é o canal de dose. Os modos simulados
+mantêm o modelo sintético aprovado e usam a mesma unidade na legenda.
+
+O SDK 0.4.0 fornece valores brutos escalados. A conversão do leitor (fator 10.000,
+como no exemplo do SDK) permanece provisória até conferir com o visor em Sv.
+O bridge libera o canal de dose somente com configuração `Sv` identificada e
+recebimento recente da taxa; R, unidade desconhecida ou taxa antiga mantêm as
+contagens e registros brutos, mas não produzem um ponto fictício de dose no mapa.
+Não altere a unidade do detector durante uma sessão USB: encerre, ajuste no
+aparelho e reinicie o console. Não são alterados alarmes ou contadores do detector.
+
+CPS e CPM continuam nos registros independentes e nas amostras posicionadas do
+Werik. CPM é 60×CPS, não uma janela medida de um minuto. A dose acumulada no painel
+é a integral da taxa dos intervalos posicionados aceitos de 1 s; não é o total do
+aparelho nem uma recuperação da dose perdida em interrupções. O JSON do mapa
+mantém µSv/h e informa a apresentação em mSv/h e o fator 0,001 nos modos mistos/reais.
+Os CSV e o SQLite conservam nomes de campos, unidades e precisão originais.
 O protocolo FS-5000 permanece no runtime de referência, mas sua seleção não é
 oferecida neste console Radiacode.
 
@@ -129,10 +141,12 @@ Para voltar ao painel anterior, pare o console e execute `bash simulacao iniciar
 na pasta v4. Nenhum resultado antigo é apagado. Esta versão não substitui
 automaticamente as branches do ensaio físico no GitHub.
 
-Após validar esta interface, o pacote inclui `ARES_Console_Operacao_GITHUB.bundle`
-e `PUBLICAR_CONSOLE_GITHUB.sh`. Executar esse script publica uma branch nova,
-`feat/operator-console`, sem substituir a preparação do ensaio físico. A imagem
-do console recebe uma construção e um teste de inicialização próprios no CI.
+O pacote inclui `ARES_Console_Oficial_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
+O script publica `release/ares-console-1.0.0`, sem force push e sem editar `ares-wifi`.
+Consulte [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação, preparação
+sem internet no campo, sequência dos testes e critérios de aceitação.
+A imagem Docker é `ares-operator-console:1.0.0`. O CI constrói a imagem e testa
+início, encerramento e exportação em simulação completa.
 
 ## Verificação de desenvolvimento
 

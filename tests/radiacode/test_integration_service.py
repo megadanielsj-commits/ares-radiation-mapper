@@ -37,6 +37,9 @@ def row(sequence=1, session="SOFTWARE-TEST", **overrides):
         serial_number="REPLAY-NOT-HARDWARE",
         time_basis="host_receipt_of_second_half_bin",
         dose_rate_uSv_h=0.12,
+        dose_rate_received_monotonic_ns=time.monotonic_ns(),
+        dose_rate_received_utc_ns=time.time_ns(),
+        configured_dose_unit="Sv",
     )
     value.update(overrides)
     return value
@@ -120,6 +123,31 @@ def test_slow_subscriber_has_bounded_queue_and_never_blocks_recorder(tmp_path):
     assert queue.qsize() == 4 and bridge.published == 1000
     assert queue.get_nowait()["dados"]["sequence"] == 997
     assert bridge.dropped_for_slow_clients > 990
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_fresh_counts_cannot_make_old_or_undated_dose_fresh(tmp_path, missing):
+    bridge = service.Bridge(tmp_path)
+    value = row(dose_rate_received_monotonic_ns=time.monotonic_ns() - 5_000_000_000,
+                dose_rate_received_utc_ns=time.time_ns() - 5_000_000_000)
+    if missing:
+        value.pop("dose_rate_received_monotonic_ns")
+        value.pop("dose_rate_received_utc_ns")
+    assert bridge.accept(value)
+    assert bridge.latest["dados"]["cps"] == 12
+    assert bridge.latest["dados"]["dr_usvh"] is None
+    assert bridge.accept(row(2))
+    assert bridge.latest["dados"]["dr_usvh"] == .12
+
+
+@pytest.mark.parametrize("unit", ["R", None])
+def test_roentgen_or_unknown_unit_keeps_counts_without_mislabeling_dose(tmp_path, unit):
+    bridge = service.Bridge(tmp_path)
+    assert bridge.accept(row(configured_dose_unit=unit))
+    assert bridge.latest["dados"]["cps"] == 12
+    assert bridge.latest["dados"]["dr_usvh"] is None
+    assert bridge.accept(row(2))
+    assert bridge.latest["dados"]["dr_usvh"] == .12
 
 
 @pytest.mark.asyncio

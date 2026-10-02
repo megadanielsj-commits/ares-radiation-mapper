@@ -131,7 +131,7 @@ def run(args, device_factory=None):
                 "python": sys.version, "platform": platform.platform(),
                 "radiacode_version": importlib.metadata.version("radiacode"),
                 "dose_rate_scale": args.dose_scale, "dose_conversion_verified": False,
-                "dose_scale_reference": "cdump/radiacode examples/radiacode-exporter.py: 10000 * dose_rate",
+                "dose_scale_reference": "cdump/radiacode@0.4.0 src/radiacode/examples/radiacode-exporter.py: 10000 * dose_rate",
                 "dose_note": "Conversão provisória: comparar com o visor em Sv. Dose acumulada mantida bruta.",
                 "timestamp_note": "UTC/monotônico de recebimento; dt da biblioteca deriva do relógio do host.",
                 "initialization_note": "A biblioteca inicializa a sessão e ajusta o relógio do detector. Não zeramos dose/espectro nem alteramos alarmes.",
@@ -214,6 +214,9 @@ def run(args, device_factory=None):
                 row.update(timing_quality="batched_uncertain" if len(raw_records) > 2 else "live_receipt",
                            dose_rate_uSv_h=(latest_measurement or {}).get("dose_rate_uSv_h"),
                            dose_rate_raw=(latest_measurement or {}).get("dose_rate_raw"),
+                           dose_rate_received_utc_ns=(latest_measurement or {}).get("received_utc_ns"),
+                           dose_rate_received_monotonic_ns=(latest_measurement or {}).get("received_monotonic_ns"),
+                           configured_dose_unit=metadata.get("get_alarm_limits", {}).get("dose_unit"),
                            dose_conversion_verified=False, cumulative_dose_uSv=None)
                 json_line(counts_file, row)
                 last_count = time.monotonic()
