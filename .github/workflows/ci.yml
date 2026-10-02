@@ -34,6 +34,13 @@ jobs:
       - name: USB dashboard regression
         if: matrix.python-version == '3.12'
         run: node --test tests/radiacode/dashboard_usb.test.cjs
+      - name: Operator console and approved map regression
+        run: |
+          PYTHONPATH=src:vendor/go2_runtime/src python -m pytest -q tools/operator_console/test_console.py tools/source_simulation/test_demo.py
+          python -m tools.operator_console.check_map_lock
+      - name: Console rendering contracts
+        if: matrix.python-version == '3.12'
+        run: node --test tools/operator_console/console.test.cjs
       - name: Lint
         if: matrix.python-version == '3.12'
         run: ruff check src tests
@@ -62,6 +69,20 @@ jobs:
       - name: Build hardware image
         if: matrix.python-version == '3.12'
         run: docker build --target hardware -t ares-radiation-mapper:hardware-ci .
+      - name: Build and smoke-test unified console
+        if: matrix.python-version == '3.12'
+        run: |
+          docker build -f tools/operator_console/Dockerfile -t ares-operator-console:ci .
+          docker run --detach --name ares-console-ci --network host ares-operator-console:ci
+          trap 'docker rm --force ares-console-ci' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8001/api/console/state && break
+            sleep 1
+          done
+          curl --fail --silent --header 'Content-Type: application/json' --data '{}' http://127.0.0.1:8001/api/console/start
+          sleep 3
+          curl --fail --silent --header 'Content-Type: application/json' --data '{}' http://127.0.0.1:8001/api/console/stop
+          curl --fail --silent http://127.0.0.1:8001/api/console/export --output /tmp/ares-console-mission.zip
       - name: Build Radiacode USB image and validate Compose
         if: matrix.python-version == '3.12'
         run: |

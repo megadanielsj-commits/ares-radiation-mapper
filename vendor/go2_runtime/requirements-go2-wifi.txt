@@ -1,0 +1,14 @@
+# Direct versions used for the software tests on 2026-09-30.
+# Unitree driver is installed separately with --no-deps, as in Werik's Dockerfile.
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+numpy==2.5.3
+websockets==16.1.1
+aiortc==1.15.0
+pycryptodome==3.23.0
+requests==2.34.2
+curl_cffi==0.16.3
+wasmtime==49.0.0
+lz4==4.4.5
+packaging==26.3
+opencv-python-headless==5.0.0.93

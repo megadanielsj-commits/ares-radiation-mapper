@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07101a">
+  <title>ARES · Console de operação</title>
+  <style>{{CLASSIC_CSS}}</style>
+  <link rel="stylesheet" href="/console-static/console.css">
+</head>
+<body class="operator-console">
+  <header class="console-header">
+    <div class="identity">
+      <div class="logo-crop"><img src="/console-static/ares-logo.png" alt="A.R.E.S. — Autonomous Radiological Emergency System"></div>
+      <div class="identity-text"><p class="kicker">CONSOLE DE OPERAÇÃO</p><h1>Reconhecimento radiológico</h1></div>
+    </div>
+    <div class="header-status"><span id="mode-banner" class="mode-banner">SIMULAÇÃO COMPLETA</span>
+      <button id="global-brake-button" class="global-brake" type="button">PARAR MOVIMENTO</button>
+      <div class="connection"><i id="connection-dot"></i><span id="connection-label">Conectando</span></div>
+      <time id="clock">—</time>
+    </div>
+  </header>
+
+  <div class="system-strip" aria-live="polite">
+    <div><span class="status-light" id="robot-light"></span><b>ROBÔ</b><span id="robot-status">Simulado</span></div>
+    <div><span class="status-light" id="detector-light"></span><b>RADIAÇÃO</b><span id="detector-status">Simulada</span></div>
+    <div><b>MISSÃO</b><span id="mission-status">Pronto</span></div>
+    <div><b>ÚLTIMA LEITURA</b><span id="reading-age">—</span></div>
+    <div class="record-state"><span id="record-light" class="status-light"></span><span id="record-label">Registro aguardando início</span></div>
+  </div>
+
+  <main class="console-grid">
+    <aside class="operation-sidebar">
+      <section class="panel setup-panel">
+        <div class="section-heading"><p class="kicker">ENTRADAS DO SISTEMA</p><h2>Modo de operação</h2></div>
+        <label class="mode-label" for="operation-mode">Escolha as entradas da missão</label>
+        <select id="operation-mode">
+          <option value="simulation">Simulação completa</option>
+          <option value="usb_simulated_robot">Radiacode real · robô simulado</option>
+          <option value="robot_simulated_source">Go2 real · fonte simulada</option>
+          <option value="hardware">Go2 e Radiacode reais</option>
+        </select>
+        <div id="input-explanation" class="input-explanation">Fonte, detector e robô simulados. Nenhum equipamento é acessado.</div>
+        <div id="source-setup">
+          <div class="subheading"><span>FONTE SIMULADA</span><small>Posição no mapa</small></div>
+          <div class="coordinate-grid">
+            <label><span>Coordenada X</span><div class="input-unit"><input id="source-x" type="number" step="0.1" value="7.5"><b>m</b></div></label>
+            <label><span>Coordenada Y</span><div class="input-unit"><input id="source-y" type="number" step="0.1" value="5.5"><b>m</b></div></label>
+          </div>
+          <label class="dose-input"><span>Taxa da fonte a 1 metro</span><div class="input-unit"><input id="source-strength" type="number" step="0.1" min="0.000001" max="10000" value="10"><b>mSv/h</b></div></label>
+        </div>
+        <label class="duration-label"><span>Duração da missão</span><select id="mission-duration"><option value="600">10 minutos</option><option value="1800">30 minutos</option><option value="3600" selected>1 hora</option><option value="7200">2 horas</option></select></label>
+        <button id="apply-mode" class="secondary-button" type="button">Aplicar entradas</button>
+        <button id="start-button" class="start-button" type="button">Iniciar mapeamento</button>
+        <button id="finish-button" class="secondary-button" type="button" disabled>Encerrar e salvar</button>
+        <p id="action-message" class="status-message" role="status">Pronto para iniciar a simulação.</p>
+      </section>
+
+      <section class="panel control-panel">
+        <div class="section-heading"><p class="kicker">CONTROLE DE MOVIMENTO</p><h2 id="control-title">Go2 simulado</h2></div>
+        <label id="physical-ack-row" class="check-row" hidden><input id="physical-ack" type="checkbox"><span>Área livre e controle oficial à mão. As setas moverão o robô real.</span></label>
+        <button id="enable-control" class="secondary-button" type="button" disabled>Habilitar controle</button>
+        <div class="direction-pad" aria-label="Controle de movimento: mantenha pressionado">
+          <button data-direction="ArrowUp" aria-label="Avançar">↑</button>
+          <button data-direction="ArrowLeft" aria-label="Girar à esquerda">←</button>
+          <button data-direction="ArrowDown" aria-label="Recuar">↓</button>
+          <button data-direction="ArrowRight" aria-label="Girar à direita">→</button>
+        </div>
+        <p>Setas do teclado ou botões · solte para parar.</p>
+        <button id="brake-button" class="brake-button" type="button">PARAR MOVIMENTO</button>
+        <p id="control-state" class="control-state">Controle bloqueado</p>
+      </section>
+    </aside>
+
+    <section class="panel map-panel" aria-labelledby="map-title">
+      <header class="map-heading">
+        <div>
+          <p class="kicker">GRADIENTE ESTIMADO · ESCALA LOGARÍTMICA DA MISSÃO</p>
+          <h2 id="map-title">Mapa construído pelas medições</h2>
+        </div>
+        <span id="map-mode" class="map-mode">Aguardando medições</span>
+      </header>
+
+      <div class="map-stage">
+        <canvas
+          id="radiation-map"
+          role="img"
+          aria-label="Mapa do gradiente radiológico, trajeto do Go2 e fonte configurada"
+        >
+          Seu navegador não oferece suporte ao mapa.
+        </canvas>
+        <div id="map-tooltip" class="map-tooltip" hidden></div>
+      </div>
+
+      <footer class="map-foot">
+        <span><i class="legend robot"></i>Go2</span>
+        <span><i class="legend path"></i>Caminho medido</span>
+        <span><i class="legend source"></i>Fonte configurada</span>
+        <span class="public-reference">Cores: intensidade relativa · referências CNEN no cursor</span>
+        <span id="map-coordinate">x — &nbsp; y —</span>
+      </footer>
+    </section>
+
+    <aside class="telemetry-sidebar">
+      <section class="panel telemetry-panel">
+        <div class="section-heading"><p class="kicker">TELEMETRIA RADIOLÓGICA</p><h2>Medições em tempo real</h2></div>
+        <article class="primary-reading"><span>Taxa atual</span><div><strong id="dose-rate">—</strong><small id="dose-rate-unit">mSv/h</small></div></article>
+        <div class="secondary-readings"><article><span>Dose integrada na missão</span><strong id="dose-total">0,00000</strong><small id="dose-total-unit">µSv</small></article><article><span>Medições posicionadas</span><strong id="sample-count">0</strong><small>registro com timestamp</small></article></div>
+        <div class="count-readings"><article><span>CPS</span><strong id="cps-reading">—</strong></article><article><span>CPM</span><strong id="cpm-reading">—</strong></article></div>
+        <p id="data-origin" class="data-origin">DADOS SIMULADOS</p>
+      </section>
+
+      <section class="panel mission-panel">
+        <div class="section-heading"><p class="kicker">RASTREABILIDADE</p><h2>Registro da missão</h2></div>
+        <dl><div><dt>Identificador</dt><dd id="mission-id">—</dd></div><div><dt>Tempo decorrido</dt><dd id="elapsed">00:00:00</dd></div><div><dt>Posição X / Y</dt><dd id="pose-reading">—</dd></div><div><dt>Referencial</dt><dd id="frame-label">Mundo simulado</dd></div></dl>
+        <a id="download-button" class="secondary-button" href="/api/console/export" aria-disabled="true">Baixar dados da missão</a>
+        <p class="section-description">CSV e metadados. Arquivos também ficam em resultados/console.</p>
+      </section>
+      <section class="panel diagnostic-panel"><p class="kicker">ESTADO DOS COMPONENTES</p><p id="diagnostic-text">Nenhuma falha reportada.</p><p id="spatial-note" class="section-description">Ambiente de treinamento com fonte e posição virtuais.</p></section>
+    </aside>
+  </main>
+  <footer class="console-footer"><span>A.R.E.S. · Reconhecimento e registro radiológico</span><span>Mapa validado v4 <b id="mission-lock">· Entradas editáveis</b></span></footer>
+  <script>{{CLASSIC_JS}}</script>
+  <script src="/console-static/console.js"></script>
+</body>
+</html>

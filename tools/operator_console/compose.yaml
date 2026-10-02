@@ -1,0 +1,28 @@
+name: ares-operator-console
+services:
+  console:
+    image: ares-operator-console:20261002-r1
+    build:
+      context: ${ARES_CONSOLE_ROOT:?Use bash ares-console iniciar}
+      dockerfile: tools/operator_console/Dockerfile
+    init: true
+    network_mode: host
+    user: "${ARES_CONSOLE_UID}:${ARES_CONSOLE_GID}"
+    stop_grace_period: 45s
+    environment:
+      ARES_DADOS: /app/resultados/console
+      ARES_RADIACODE_LOCK_DIR: /app/usb-lock
+      ARES_LATENCIA_LEITURA_S: "${ARES_LATENCIA_LEITURA_S:-0.5}"
+      ARES_OFFSET_DETECTOR: "${ARES_OFFSET_DETECTOR:-0,0}"
+      GO2_AES_KEY: "${GO2_AES_KEY:-}"
+    volumes:
+      - ${ARES_CONSOLE_ROOT}/resultados/console:/app/resultados/console
+      - ${ARES_USB_LOCK_DIR}:/app/usb-lock
+      - /dev/bus/usb:/dev/bus/usb
+    device_cgroup_rules: ['c 189:* rwm']
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; o=urllib.request.build_opener(urllib.request.ProxyHandler({})); o.open('http://127.0.0.1:8001/api/console/state', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      start_period: 20s
+      retries: 5

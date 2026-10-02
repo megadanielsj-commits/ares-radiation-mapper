@@ -1,0 +1,276 @@
+"use strict";
+
+// This shell does not replace any map, color, interpolation or drawing function.
+const sessionId = crypto.randomUUID();
+let consoleSnapshot = null;
+let configuredFingerprint = null;
+let actionPending = false;
+let pollPending = false;
+let consoleStarted = false;
+
+// Units and telemetry only: the original map geometry, gradient and numeric
+// color transform stay untouched. Real bins are CPS, not FS-5000 dose units.
+const originalRateLabel = formatRateWithUnit;
+const originalReferenceLabel = regulatoryBandForExcessRate;
+const originalEnvelope = handleEnvelope;
+const originalReadings = updateReadings;
+const countsMap = () => consoleSnapshot?.inputs.radiation === "real";
+formatRateWithUnit = function (value, compact = false) {
+  return countsMap() ? `${formatNumber(value, compact ? 0 : 1)} CPS` : originalRateLabel(value, compact);
+};
+regulatoryBandForExcessRate = function (value) {
+  return countsMap() ? "Contagens · sem conversão CPS para dose" : originalReferenceLabel(value);
+};
+updateReadings = function () {
+  originalReadings();
+  if (countsMap() && state.radiation?.dose_rate_uSv_h == null) {
+    $("dose-rate").textContent = "—";
+    $("dose-rate-unit").textContent = "µSv/h";
+  }
+};
+handleEnvelope = function (envelope) {
+  const before = state.accumulatedDose;
+  originalEnvelope(envelope);
+  if (countsMap() && envelope.type === "mapped_sample") {
+    state.accumulatedDose = before;
+    updateReadings();
+  }
+};
+
+async function consoleApi(path, body) {
+  const response = await fetch(`/api/console${path}`, {
+    cache: "no-store", headers: {"Content-Type": "application/json"},
+    ...(body === undefined ? {} : {method: "POST", body: JSON.stringify(body)}),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.detail || `Falha HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+function readSetup() {
+  return {
+    mode: $("operation-mode").value,
+    x_m: numberFromInput("source-x"), y_m: numberFromInput("source-y"),
+    dose_rate_at_1m_uSv_h: numberFromInput("source-strength") * 1000,
+    duration_s: Number($("mission-duration").value),
+  };
+}
+
+function modeDescription(mode) {
+  return {
+    simulation: "Fonte, detector e robô simulados. Nenhum equipamento é acessado.",
+    usb_simulated_robot: "Radiacode no USB deste computador. O movimento e as posições são virtuais.",
+    robot_simulated_source: "Go2 pelo Wi-Fi. As leituras são sintéticas, calculadas na posição real do robô.",
+    hardware: "Go2 pelo Wi-Fi e Radiacode pelo USB. Aquisição e posição independentes, sincronizadas por timestamp.",
+  }[mode];
+}
+
+function showModeChoice() {
+  const mode = $("operation-mode").value;
+  const synthetic = mode === "simulation" || mode === "robot_simulated_source";
+  $("source-setup").hidden = !synthetic;
+  $("input-explanation").textContent = modeDescription(mode);
+}
+
+function elapsedLabel(seconds) {
+  const value = Math.max(0, Math.floor(Number(seconds) || 0));
+  return [Math.floor(value / 3600), Math.floor(value / 60) % 60, value % 60]
+    .map(part => String(part).padStart(2, "0")).join(":");
+}
+
+function paintConsole(snapshot) {
+  consoleSnapshot = snapshot;
+  const status = snapshot.status;
+  const running = status.state === "RUNNING" || status.state === "STOPPING";
+  const realRobot = snapshot.inputs.robot === "real";
+  const realRadiation = snapshot.inputs.radiation === "real";
+  $("mode-banner").textContent = snapshot.inputs.name.toUpperCase();
+  $("mode-banner").classList.toggle("physical", realRobot || realRadiation);
+  for (const [part, connected, label] of [
+    ["robot", snapshot.robot.conectado, realRobot ? "Go2 real" : "Simulado"],
+    ["detector", snapshot.radiation.conectado, realRadiation ? "Radiacode USB" : "Simulada"],
+  ]) {
+    $(part + "-status").textContent = `${label} · ${connected ? "online" : "aguardando"}`;
+    $(part + "-light").classList.toggle("ok", !!connected);
+    $(part + "-light").classList.toggle("bad", !connected);
+  }
+  $("mission-status").textContent = {READY: "Pronto", RUNNING: "Em andamento", STOPPING: "Salvando", COMPLETED: "Encerrada", FAULT: "Falha"}[status.state] || status.state;
+  $("reading-age").textContent = snapshot.reading_age_s == null ? "—" : `${snapshot.reading_age_s.toFixed(1)} s`;
+  $("record-light").classList.toggle("recording", running);
+  $("record-label").textContent = running ? "Registrando com timestamp" : (status.mission_id ? "Registro salvo" : "Registro aguardando início");
+  $("mission-lock").textContent = running ? "· Entradas bloqueadas durante a missão" : "· Entradas editáveis";
+  $("operation-mode").disabled = running || actionPending;
+  for (const id of ["source-x", "source-y", "source-strength", "mission-duration", "apply-mode"]) $(id).disabled = running || actionPending;
+  $("start-button").disabled = running || actionPending || !snapshot.robot.conectado || !snapshot.radiation.conectado || (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3));
+  $("start-button").textContent = running ? "Mapeamento em andamento" : "Iniciar mapeamento";
+  $("finish-button").disabled = !running || actionPending;
+  $("enable-control").disabled = !running || snapshot.control_enabled || actionPending;
+  $("enable-control").textContent = snapshot.control_enabled ? "Controle habilitado" : "Habilitar controle";
+  $("physical-ack-row").hidden = !realRobot;
+  $("control-title").textContent = realRobot ? "Go2 real" : "Go2 simulado";
+  $("control-state").textContent = snapshot.control_enabled ? "Controle ativo · watchdog 0,5 s" : "Controle bloqueado";
+  document.querySelectorAll("[data-direction]").forEach(button => {button.disabled = !running || !snapshot.control_enabled;});
+  const r = status.radiation;
+  $("cps-reading").textContent = r?.cps == null ? "—" : formatNumber(r.cps, 0);
+  $("cpm-reading").textContent = r?.cpm == null ? "—" : formatNumber(r.cpm, 0);
+  if (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3)) $("dose-rate").textContent = "—";
+  $("data-origin").textContent = realRadiation ? "USB REAL · taxa de dose provisória; comparar com o visor. CPM = 60 × CPS." : "RADIAÇÃO SIMULADA · para treinamento";
+  $("spatial-note").textContent = realRobot
+    ? (realRadiation ? "Posição em odometria local. Offset e latência devem ser conferidos no ensaio real." : "Robô real com radiação sintética. Este modo testa comunicação, movimento e sincronização.")
+    : (realRadiation ? "Posição simulada: este mapa testa o software e não representa a distribuição física da radiação." : "Ambiente de treinamento com fonte e posição virtuais.");
+  $("frame-label").textContent = snapshot.mode === "simulation" ? "Mundo simulado" : "Odometria local (odom)";
+  $("map-title").textContent = realRadiation ? "Mapa de contagens pelas medições" : "Mapa construído pelas medições";
+  document.querySelector(".public-reference").textContent = realRadiation ? "Cores: contagens relativas · escala em CPS" : "Cores: intensidade relativa · referências CNEN no cursor";
+  $("mission-id").textContent = status.mission_id || "—";
+  $("elapsed").textContent = elapsedLabel(status.simulation_time_ns / 1e9);
+  $("pose-reading").textContent = status.pose ? `${formatNumber(status.pose.x_m, 2)} / ${formatNumber(status.pose.y_m, 2)} m` : "—";
+  $("download-button").setAttribute("aria-disabled", String(!status.mission_id || running));
+  const errors = [snapshot.robot.erro, snapshot.radiation.erro, snapshot.teleop_error].filter(Boolean);
+  $("diagnostic-text").textContent = errors.length ? errors.join(" · ") : "Nenhuma falha reportada.";
+  $("clock").textContent = new Date().toLocaleTimeString("pt-BR", {hour12: false});
+  // Polls report connectivity and pose; only the original map events provide
+  // the dose anchor. An older HTTP snapshot must not roll the dose backward.
+  const {exposure, ...telemetryStatus} = status;
+  updateStatus(telemetryStatus);
+  $("sample-count").textContent = String(status.counts?.mapped || 0);
+}
+
+async function reloadScenario() {
+  state.scenario = await api("/scenario");
+  state.configuredSource = initialSourceFromScenario();
+  state.pose = null; state.displayPose = null; state.viewBox = null;
+  state.mapped = []; state.map = null; state.radiation = null;
+  state.missionId = null; state.accumulatedDose = 0;
+  state.pressedKeys.clear(); state.lastCommand = null;
+  acceptPose(fallbackPose(), true);
+  updateReadings(); scheduleRender();
+}
+
+async function applyInputs() {
+  const setup = readSetup();
+  const result = await consoleApi("/configure", setup);
+  configuredFingerprint = JSON.stringify(setup);
+  $("physical-ack").checked = false;
+  await reloadScenario();
+  paintConsole(result);
+  setMessage(result.message);
+}
+
+async function perform(action) {
+  if (actionPending) return;
+  actionPending = true;
+  if (consoleSnapshot) paintConsole(consoleSnapshot);
+  try {await action();}
+  catch (error) {setMessage(error.message, true);}
+  finally {
+    actionPending = false;
+    await pollConsole();
+  }
+}
+
+startSimulation = async function () {
+  await perform(async () => {
+    if (configuredFingerprint !== JSON.stringify(readSetup())) await applyInputs();
+    await consoleApi("/start", {});
+    state.scenario = await api("/scenario");
+    state.configuredSource = initialSourceFromScenario();
+    state.mapped = []; state.map = null; state.accumulatedDose = 0;
+    state.viewBox = null; state.pressedKeys.clear();
+    paintConsole(await consoleApi("/state"));
+    if (consoleSnapshot.inputs.robot === "simulated") {
+      await consoleApi("/enable-control", {client: sessionId});
+      paintConsole(await consoleApi("/state"));
+    }
+    setMessage("Missão iniciada. As entradas ficam bloqueadas até encerrar e salvar.");
+  });
+};
+
+sendCurrentCommand = async function (force = false) {
+  if (!consoleSnapshot?.control_enabled || state.missionState !== "RUNNING") return;
+  const command = currentCommand();
+  const signature = `${command.linear_m_s}:${command.yaw_rate_rad_s}`;
+  if (!force && signature === state.lastCommand) return;
+  state.lastCommand = signature;
+  try {await consoleApi("/control", {...command, client: sessionId});}
+  catch (error) {state.lastCommand = null; setMessage(`Controle: ${error.message}`, true);}
+};
+
+async function brake() {
+  state.pressedKeys.clear(); state.lastCommand = null;
+  if (!consoleSnapshot?.control_enabled) return;
+  await consoleApi("/brake", {});
+  await pollConsole();
+  setMessage("Parada solicitada e controle bloqueado. Habilite o controle para voltar a mover.");
+}
+
+// Existing keyup sends zero. Losing browser focus also revokes the motion enable.
+window.addEventListener("blur", () => void brake().catch(() => {}));
+window.addEventListener("pagehide", () => {
+  navigator.sendBeacon("/api/console/brake", new Blob(["{}"], {type: "application/json"}));
+});
+document.addEventListener("visibilitychange", () => {if (document.hidden) void brake().catch(() => {});});
+window.addEventListener("keydown", event => {
+  if (event.key === "Escape") void brake().catch(() => {});
+});
+
+$("apply-mode").addEventListener("click", () => void perform(applyInputs));
+$("operation-mode").addEventListener("change", showModeChoice);
+$("finish-button").addEventListener("click", () => void perform(async () => {
+  state.pressedKeys.clear(); state.lastCommand = null;
+  await consoleApi("/stop", {});
+  setMessage("Missão encerrada e salva. Você pode baixar os dados ou trocar as entradas.");
+}));
+$("enable-control").addEventListener("click", () => void perform(async () => {
+  await consoleApi("/enable-control", {client: sessionId, acknowledge_physical_robot: $("physical-ack").checked});
+  setMessage("Controle habilitado. Solte as setas para parar.");
+}));
+$("brake-button").addEventListener("click", () => void perform(async () => {
+  state.pressedKeys.clear(); state.lastCommand = null;
+  await consoleApi("/brake", {});
+  setMessage("Parada solicitada e controle bloqueado. A missão continua registrando.");
+}));
+$("global-brake-button").addEventListener("click", () => {
+  state.pressedKeys.clear(); state.lastCommand = null;
+  void consoleApi("/brake", {}).then(() => {
+    setMessage("Parada solicitada e controle bloqueado.");
+    return pollConsole();
+  }).catch(error => setMessage(`Parada: ${error.message}`, true));
+});
+$("download-button").addEventListener("click", event => {
+  if ($("download-button").getAttribute("aria-disabled") === "true") event.preventDefault();
+});
+document.querySelectorAll("[data-direction]").forEach(button => {
+  button.addEventListener("pointerdown", event => {
+    if (!consoleSnapshot?.control_enabled) return;
+    event.preventDefault(); button.setPointerCapture(event.pointerId);
+    state.pressedKeys.add(button.dataset.direction);
+    void sendCurrentCommand(true);
+  });
+  for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    button.addEventListener(name, () => {
+      state.pressedKeys.delete(button.dataset.direction);
+      void sendCurrentCommand(true);
+    });
+  }
+});
+
+async function pollConsole() {
+  if (pollPending) return;
+  pollPending = true;
+  try {
+    const value = await consoleApi("/state");
+    if (!consoleStarted) {
+      consoleStarted = true;
+      $("operation-mode").value = value.mode;
+      $("mission-duration").value = String(value.setup.duration_s);
+      configuredFingerprint = JSON.stringify(value.setup);
+      showModeChoice();
+    }
+    paintConsole(value);
+  } catch (error) {$("diagnostic-text").textContent = `Console indisponível: ${error.message}`;}
+  finally {pollPending = false;}
+}
+setInterval(() => void pollConsole(), 1000);
+void pollConsole();

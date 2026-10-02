@@ -1,5 +1,13 @@
 # ARES Radiation Mapper V0.4.10 — FS-5000 e Radiacode 110
 
+## Console unificado de operação
+
+Execute `bash ares-console iniciar` e abra http://127.0.0.1:8001. A interface
+permite selecionar simulação completa, USB real com robô virtual, Go2 real com
+fonte simulada ou ambos reais. O mapa aprovado v4 permanece intacto.
+Veja [LEIA_PRIMEIRO_CONSOLE.md](LEIA_PRIMEIRO_CONSOLE.md) para operação,
+compatibilidade com os pipelines independentes e limites do ensaio.
+
 O ARES combina a posição do Unitree Go2 com as leituras do FS-5000 e gera, em
 tempo real, o percurso do robô, o gradiente radiológico do ambiente e a região
 provável da fonte. A interface é acessada pelo navegador em
@@ -245,4 +253,3 @@ FS-5000 no robô, dos timestamps e da qualidade da localização do Go2. O model
 atual considera uma fonte pontual estática em ambiente 2D simples.
 
 Documentação técnica adicional está em [`docs/`](docs/).
-

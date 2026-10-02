@@ -1,0 +1,86 @@
+/* Operator shell only. No canvas, gradient, palette or map-stage rules. */
+.operator-console {--accent:#7bdacb;--panel:#111c29;--line:#304151;font-size:14px;display:flex;flex-direction:column;background:#080f18}
+[hidden] {display:none!important}
+.console-header {height:88px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid #2b3c4d;background:#0c1621;gap:20px}
+.identity,.header-status {display:flex;align-items:center;gap:20px}
+.logo-crop {width:160px;height:60px;overflow:hidden;background:white;border-radius:3px;position:relative;flex:none}
+.logo-crop img {width:178px;height:178px;max-width:none;position:absolute;left:-11px;top:-64px}
+.identity-text h1 {font-size:21px;font-weight:650;margin:5px 0 0;letter-spacing:-.03em}
+.identity-text .kicker {color:#93a7ba;font-size:10px}
+.mode-banner {border:1px solid #796231;color:#efd28c;background:#342c1a;padding:7px 10px;letter-spacing:.09em;font-size:10px;font-weight:800;border-radius:3px}
+.mode-banner.physical {background:#352122;border-color:#a16a58;color:#ffc1a4}
+.header-status time {font:12px ui-monospace,monospace;color:#c1ced9;white-space:nowrap}
+.global-brake {min-height:38px;padding:8px 12px;color:#ffd6c9;background:#442d2a;border:1px solid #cb8a79;border-radius:3px;font-size:10px;letter-spacing:.06em;font-weight:800;cursor:pointer;white-space:nowrap}
+.global-brake:hover {background:#623b32}
+.system-strip {display:flex;gap:24px;padding:12px 24px;align-items:center;border-bottom:1px solid #293b4c;background:#101d29;flex:none;font-size:11px;min-height:42px;flex-wrap:wrap}
+.system-strip>div {display:flex;align-items:center;gap:8px}
+.system-strip b {color:#849aad;font-size:10px;letter-spacing:.12em}
+.system-strip span {color:#d6e1e9}
+.status-light {width:7px;height:7px;background:#7d8b98;border-radius:50%;display:inline-block;flex:none}
+.status-light.ok {background:#7bdacb}
+.status-light.bad {background:#ff9c75}
+.status-light.recording {background:#ee8582}
+.system-strip .record-state {margin-left:auto}
+.console-grid {flex:1;min-height:0;display:grid;grid-template-columns:280px minmax(380px,1fr) 270px;gap:14px;padding:16px 20px}
+.operation-sidebar,.telemetry-sidebar {display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;padding-bottom:2px}
+.operator-console .panel {border-radius:5px;box-shadow:none}
+.operator-console .setup-panel,.operator-console .control-panel,.operator-console .telemetry-panel,.mission-panel,.diagnostic-panel {padding:19px}
+.operator-console .section-heading h2,.operator-console .control-panel h2 {font-size:17px;font-weight:650;margin-top:7px}
+.operator-console .kicker {font-size:9px;letter-spacing:.15em}
+.mode-label {display:block!important;font-size:12px;color:#afc0ce;margin:18px 0 8px}
+.operator-console select {width:100%;min-height:40px;border:1px solid #455767;border-radius:3px;background:#0b1520;color:#eef5fa;padding:8px;font-size:12px;outline:none;cursor:pointer}
+.operator-console select:focus,.operator-console input:focus {border-color:#7bdacb;outline:2px solid #7bdacb55}
+.input-explanation {font-size:12px;line-height:1.6;color:#a8bdcc;margin:10px 0 17px;border-left:2px solid #607588;padding:2px 0 2px 10px}
+.subheading {display:flex;justify-content:space-between;color:#aebfcd;font-size:9px;letter-spacing:.08em;gap:6px}
+.subheading small {font-size:10px;color:#829aab;letter-spacing:0}
+.operator-console .coordinate-grid {margin-top:12px;gap:10px}
+.operator-console .setup-panel label {font-size:11px;gap:6px}
+.operator-console .dose-input {margin-top:13px}
+.operator-console .input-unit input {font-size:14px;height:40px;padding:8px 34px 8px 10px}
+.operator-console .input-unit b {font-size:10px}
+.duration-label {margin:16px 0;display:grid;gap:7px}
+.secondary-button {display:flex;align-items:center;justify-content:center;text-align:center;gap:8px;width:100%;padding:10px 12px;min-height:40px;background:#172838;border:1px solid #405868;border-radius:3px;color:#dfeaf2;font-size:12px;font-weight:650;text-decoration:none;cursor:pointer}
+.secondary-button:hover:not(:disabled) {background:#223a4b;border-color:#7697a9}
+.operator-console .start-button {font-size:13px;margin:10px 0;min-height:44px;background:#83dacb;color:#09221f;border-radius:3px}
+button:disabled,[aria-disabled=true] {opacity:.45;cursor:not-allowed}
+.operator-console .status-message {font-size:11px;line-height:1.5;min-height:30px;margin-bottom:0}
+.check-row {display:flex;align-items:flex-start;gap:8px;font-size:11px;line-height:1.5;margin:12px 0;color:#edc194}
+.check-row input {margin-top:3px;flex:none}
+.operator-console .control-panel .secondary-button {margin-top:13px}
+.direction-pad {display:grid;grid-template-columns:repeat(3,38px);gap:6px;justify-content:center;margin:16px 0 10px}
+.direction-pad button {height:34px;touch-action:none;border:1px solid #4b6072;background:#1a2b3b;border-radius:3px;font-size:17px;color:#e3eef7;cursor:pointer;user-select:none}
+.direction-pad button:first-child {grid-column:2}
+.direction-pad button:nth-child(2) {grid-column:1}
+.direction-pad button:active {border-color:#7bdacb;background:#21443f}
+.operator-console .control-panel>p {font-size:11px;line-height:1.5;color:#93aaba;text-align:center}
+.operator-console .control-panel {display:block}
+.brake-button {width:100%;min-height:45px;font-size:12px;letter-spacing:.06em;font-weight:800;border:1px solid #d58a7a;color:#ffd7cc;background:#442d2a;border-radius:3px;cursor:pointer;margin-top:15px}
+.brake-button:hover {background:#613b34}
+.control-state {margin-top:8px!important;color:#d3b77c!important}
+.operator-console .primary-reading {padding:22px 0 18px;margin:0}
+.operator-console .primary-reading strong {font-size:42px;letter-spacing:-.04em;line-height:1.2;font-family:ui-monospace,monospace}
+.operator-console .primary-reading small {font-size:13px}
+.operator-console .primary-reading>span {font-size:12px}
+.operator-console .secondary-readings {gap:13px;padding-top:15px;display:flex;flex-direction:column}
+.operator-console .secondary-readings article {padding:0;background:transparent;border:0;display:grid;grid-template-columns:1fr auto;column-gap:7px}
+.operator-console .secondary-readings article>span {grid-column:1/-1;margin-bottom:7px;font-size:11px}
+.operator-console .secondary-readings strong {font:23px ui-monospace,monospace}
+.operator-console .secondary-readings small {align-self:end;font-size:10px}
+.count-readings {display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid #2e4253}
+.count-readings article {display:flex;flex-direction:column;gap:7px}
+.count-readings span {color:#859eaf;font-size:10px;letter-spacing:.1em}
+.count-readings strong {font:21px ui-monospace,monospace}
+.data-origin {font-size:10px;line-height:1.6;letter-spacing:.03em;margin:18px 0 0;padding:9px 10px;border:1px solid #475442;color:#d9d09a;background:#24291f}
+.mission-panel dl {margin:16px 0}
+.mission-panel dl>div {margin-bottom:14px}
+.mission-panel dt {color:#8da5b7;font-size:11px;margin-bottom:5px}
+.mission-panel dd {margin:0;font:12px ui-monospace,monospace;color:#dbe7ef;overflow-wrap:anywhere}
+.mission-panel .section-description,.diagnostic-panel .section-description {font-size:11px}
+.diagnostic-panel>p:not(.kicker) {font-size:12px;line-height:1.6;color:#b3c6d5;margin-bottom:0;overflow-wrap:anywhere}
+.console-footer {padding:0 22px 10px;display:flex;justify-content:space-between;color:#6e899e;font-size:10px;gap:14px;flex:none}
+.console-footer b {font-weight:400;color:#96acb9}
+/* Only the map's frame participates in the shell; renderer and map area unchanged. */
+.operator-console .map-panel {min-width:0;min-height:0}
+@media(max-width:1320px) {.console-grid{grid-template-columns:250px minmax(340px,1fr) 235px;padding:12px;gap:10px}.operator-console .setup-panel,.operator-console .control-panel,.operator-console .telemetry-panel,.mission-panel,.diagnostic-panel{padding:15px}.identity-text h1{font-size:17px}.header-status{gap:12px}.system-strip{gap:16px}.console-header{padding:0 16px}.operator-console .primary-reading strong{font-size:35px}}
+@media(max-width:1050px) {.operator-console{height:auto;min-height:100vh;overflow:auto}.console-grid{grid-template-columns:250px minmax(300px,1fr);min-height:760px}.telemetry-sidebar{grid-column:1/-1;flex-direction:row;overflow:visible;flex-wrap:wrap}.telemetry-sidebar>.panel{flex:1;min-width:220px}.operation-sidebar{overflow:visible}.operator-console .map-panel{height:760px}.identity-text{display:none}.system-strip .record-state{margin-left:0}.header-status time{display:none}.console-footer{margin-top:10px}}
+@media(max-width:650px) {.console-header{height:auto;min-height:76px;flex-wrap:wrap;padding:12px;gap:10px}.header-status{gap:10px;flex-wrap:wrap}.mode-banner{font-size:9px}.system-strip{padding:10px 12px;gap:12px}.console-grid{display:flex;flex-direction:column}.operation-sidebar{display:grid;grid-template-columns:1fr}.operator-console .map-panel{min-height:540px;height:540px}.telemetry-sidebar{flex-direction:column}.console-footer{flex-direction:column;padding-left:12px}.console-grid{min-height:0}}
