@@ -8,7 +8,7 @@ const shell = fs.readFileSync(__dirname+'/static/console.js','utf8');
 test('the new shell cannot replace map or palette functions', () => {
   for (const name of ['drawHeatmap','drawGridAndAxes','drawMeasuredPath','drawSource','drawRobot',
     'radiationColor','radiationStops','colorFractionForTotalRate','colorMaximum','colorMinimum',
-    'viewBounds','renderMapNow','mapValueAt','updateMap']) {
+    'viewBounds','renderMapNow','mapValueAt','updateMap','calculatePlotGeometry','resizeCanvas','drawColorBar']) {
     assert.equal(new RegExp(`\\b${name}\\s*=`).test(shell), false, name);
     assert.equal(new RegExp(`function\\s+${name}\\b`).test(shell), false, name);
   }
@@ -30,9 +30,13 @@ test('operator shell exposes four distinct inputs and an always available stop',
   for (const mode of ['simulation','usb_simulated_robot','robot_simulated_source','hardware']) {
     assert.ok(html.includes(`value="${mode}"`));
   }
-  assert.ok(html.includes('id="brake-button"'));
+  assert.ok(html.includes('id="global-brake-button"'));
   assert.ok(html.includes('id="physical-ack"'));
   assert.ok(html.includes('ares-logo.png'));
+  assert.ok(html.includes('<dialog id="config-dialog"'));
+  assert.ok(html.includes('id="expand-map"'));
+  assert.equal(html.includes('data-direction='), false);
+  assert.equal(html.includes('class="control-panel"'), false);
 });
 
 test('real count samples never turn CPS into cumulative dose', () => {
@@ -59,4 +63,25 @@ test('missing real dose is displayed as unavailable instead of CPS labeled as do
     state.radiation={dose_rate_uSv_h:null,cps:100};
     state.mapped=[{dose_rate_uSv_h_filtered:100}]; updateReadings();`);
   assert.equal(ui.element('dose-rate').textContent, '—');
+});
+
+test('positioned mission total is independent of the 5000 point drawing buffer and stale snapshots', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};`);
+  ui.run(shell);
+  ui.run(`state.missionId='mission-one';
+    acceptPositionedCount('mission-one', 6001);
+    state.mapped=new Array(5000).fill({dose_rate_uSv_h_filtered:1});
+    updateReadings();
+    acceptPositionedCount('mission-one', 6000);`);
+  assert.equal(ui.element('sample-count').textContent, '6001');
+  ui.run(`handleEnvelope({type:'mapped_sample',payload:{mission_id:'mission-one',
+    mapped_sequence:6002,dose_rate_uSv_h_filtered:1,integration_time_s:1}});`);
+  assert.equal(ui.element('sample-count').textContent, '6002');
+  assert.equal(ui.run('state.mapped.length'), 5000);
+  ui.run(`state.missionId='mission-two'; state.map=null;
+    acceptPositionedCount('mission-two', 0); updateReadings();
+    handleEnvelope({type:'mapped_sample',payload:{mission_id:'mission-one',mapped_sequence:7000}});`);
+  assert.equal(ui.element('sample-count').textContent, '0');
 });

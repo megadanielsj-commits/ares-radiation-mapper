@@ -1,10 +1,14 @@
 # ARES Radiation Mapper V0.4.10 — FS-5000 e Radiacode 110
 
-## Console unificado de operação
+## Console unificado de operação v2
 
 Execute `bash ares-console iniciar` e abra http://127.0.0.1:8001. A interface
 permite selecionar simulação completa, USB real com robô virtual, Go2 real com
 fonte simulada ou ambos reais. O mapa aprovado v4 permanece intacto.
+O layout concentra a telemetria em uma coluna, amplia o mapa e usa a logo branca.
+As entradas ficam em **Configurar**; **Ampliar mapa** recolhe a coluna lateral.
+![Console ARES v2 em simulação completa](docs/images/operator-console-v2.png)
+
 Veja [LEIA_PRIMEIRO_CONSOLE.md](LEIA_PRIMEIRO_CONSOLE.md) para operação,
 compatibilidade com os pipelines independentes e limites do ensaio.
 

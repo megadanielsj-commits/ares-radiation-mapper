@@ -1,8 +1,15 @@
-# ARES — console de operação
+# ARES — console de operação v2
 
 O mapa, as cores, o gradiente, o desenho do Go2 e a interpolação da versão v4
 aprovada foram preservados. A modernização se limita à interface de operação e
 à seleção de entradas. O console é uma versão candidata; a v4 continua incluída.
+
+Nesta revisão o mapa ocupa a área principal, com uma única coluna de telemetria.
+A logo é exibida em branco, sem fundo branco, por CSS sobre a imagem original.
+O bloco de setas foi removido. O teclado mantém o controle já existente.
+A contagem de medições posicionadas usa o total da missão, e não o tamanho do
+buffer de até 5.000 pontos usado no desenho. A apresentação dos valores não
+depende da altura disponível nos antigos cartões de telemetria.
 
 ## Iniciar
 
@@ -13,12 +20,18 @@ bash ares-console iniciar
 ```
 
 Abra http://127.0.0.1:8001. O sistema abre em simulação completa e não acessa
-automaticamente o USB ou o Go2. Escolha o modo, clique em **Aplicar entradas**,
+automaticamente o USB ou o Go2. Clique em **Configurar**, escolha o modo e a
+duração da missão e clique em **Aplicar entradas**,
 espere os componentes ficarem online e clique em **Iniciar mapeamento**.
 No robô simulado o controle é habilitado ao iniciar. Com robô real, confirme a
-área livre e habilite o controle. Setas ou botões mantidos pressionados movem o
+área livre e habilite o teclado. Setas mantidas pressionadas movem o
 robô; soltar envia zero, perder o foco revoga o controle. **Parar movimento**
 interrompe o movimento e mantém o registro; **Encerrar e salvar** termina a missão.
+**Ampliar mapa** oculta a coluna lateral e **Restaurar painel** a traz de volta.
+A ampliação altera somente o espaço da interface; o mapa mantém sua proporção
+espacial, as cores, a escala e o algoritmo de interpolação. Em telas de telefone,
+a área de desenho pode ser deslizada lateralmente para manter os eixos legíveis.
+Fechar a configuração sem aplicar descarta os ajustes que ainda não foram salvos.
 O iniciador encerra o contêiner anterior da fonte simulada, se estiver ativo,
 e preserva os resultados dele antes de abrir o console.
 
