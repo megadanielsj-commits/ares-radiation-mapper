@@ -6,16 +6,21 @@
   <meta name="theme-color" content="#090e14">
   <title>ARES · Console de operação</title>
   <style>{{CLASSIC_CSS}}</style>
-  <link rel="stylesheet" href="/console-static/console.css?v=20261002-r2">
+  <link rel="stylesheet" href="/console-static/console.css?v=20261002-r3">
 </head>
 <body class="operator-console">
   <header class="console-header">
     <div class="identity">
       <div class="logo-crop"><img src="/console-static/ares-logo.png" alt="A.R.E.S. — Autonomous Radiological Emergency System"></div>
-      <div class="identity-text"><p>CONSOLE DE OPERAÇÃO</p><h1>Reconhecimento radiológico</h1></div>
+      <div class="identity-text"><p>CONSOLE DE OPERAÇÃO</p><h1>Levantamento Radiométrico</h1></div>
     </div>
     <div class="header-status">
-      <span id="mode-banner" class="mode-banner">SIMULAÇÃO COMPLETA</span>
+      <select id="operation-mode" class="mode-banner" aria-label="Modo de operação">
+        <option value="simulation">Simulação completa</option>
+        <option value="usb_simulated_robot">Robô simulado</option>
+        <option value="robot_simulated_source">Detector simulado</option>
+        <option value="hardware">Equipamentos reais</option>
+      </select>
       <div class="connection"><i id="connection-dot"></i><span id="connection-label">Conectando</span></div>
       <time id="clock">—</time>
       <nav class="header-tools" aria-label="Ferramentas de operação">
@@ -65,7 +70,7 @@
         <div class="rail-heading"><h2>Leitura radiológica</h2><span id="mission-status" class="mission-badge">Pronto</span></div>
         <article class="primary-reading"><span>Taxa de dose atual</span><div><strong id="dose-rate">—</strong><small id="dose-rate-unit">mSv/h</small></div></article>
         <div class="secondary-readings">
-          <article><span>Dose integrada na missão</span><strong id="dose-total">0,00000</strong><small id="dose-total-unit">µSv</small></article>
+          <article><span>Dose integrada na missão</span><strong id="dose-total">0,00</strong><small id="dose-total-unit">µSv</small></article>
           <article><span>Medições posicionadas</span><strong id="sample-count">0</strong><small>amostras sincronizadas</small></article>
         </div>
         <div class="count-readings">
@@ -97,6 +102,18 @@
         </div>
         <p id="action-message" class="status-message" role="status">Pronto para iniciar a simulação.</p>
       </section>
+      <details id="source-details" class="rail-details source-details">
+        <summary>Fonte simulada</summary>
+        <div id="source-setup" class="source-settings">
+          <div class="subheading"><span>Local no mapa</span><small>X / Y em metros</small></div>
+          <div class="coordinate-grid">
+            <label><span>Coordenada X</span><div class="input-unit"><input id="source-x" type="number" step="0.01" value="7.50"><b>m</b></div></label>
+            <label><span>Coordenada Y</span><div class="input-unit"><input id="source-y" type="number" step="0.01" value="5.50"><b>m</b></div></label>
+          </div>
+          <label class="dose-input"><span>Taxa da fonte a 1 metro</span><div class="input-unit"><input id="source-strength" type="number" step="0.01" min="0.000001" max="10000" value="10.00"><b>mSv/h</b></div></label>
+          <button id="apply-source" class="secondary-button" type="button">Aplicar fonte</button>
+        </div>
+      </details>
       <details class="rail-details">
         <summary>Registro e diagnóstico</summary>
         <dl><div><dt>Missão</dt><dd id="mission-id">—</dd></div><div><dt>Duração prevista</dt><dd id="duration-reading">1 hora</dd></div><div><dt>Dados locais</dt><dd>resultados/console</dd></div></dl>
@@ -110,28 +127,13 @@
   <dialog id="config-dialog" class="config-dialog" aria-labelledby="config-title">
     <header class="dialog-heading"><div><p class="kicker">PREPARAÇÃO DA MISSÃO</p><h2 id="config-title">Configurar entradas</h2></div><button id="close-config" class="close-dialog" type="button" aria-label="Fechar configuração">×</button></header>
     <div class="setup-panel">
-      <label class="mode-label" for="operation-mode">Modo de operação</label>
-      <select id="operation-mode">
-        <option value="simulation">Simulação completa</option>
-        <option value="usb_simulated_robot">Radiacode real · robô simulado</option>
-        <option value="robot_simulated_source">Go2 real · fonte simulada</option>
-        <option value="hardware">Go2 e Radiacode reais</option>
-      </select>
       <div id="input-explanation" class="input-explanation">Fonte, detector e robô simulados. Nenhum equipamento é acessado.</div>
-      <div id="source-setup" class="source-settings">
-        <div class="subheading"><span>Fonte simulada</span><small>Posição no mapa</small></div>
-        <div class="coordinate-grid">
-          <label><span>Coordenada X</span><div class="input-unit"><input id="source-x" type="number" step="0.1" value="7.5"><b>m</b></div></label>
-          <label><span>Coordenada Y</span><div class="input-unit"><input id="source-y" type="number" step="0.1" value="5.5"><b>m</b></div></label>
-        </div>
-        <label class="dose-input"><span>Taxa da fonte a 1 metro</span><div class="input-unit"><input id="source-strength" type="number" step="0.1" min="0.000001" max="10000" value="10"><b>mSv/h</b></div></label>
-      </div>
       <label class="duration-label"><span>Duração da missão</span><select id="mission-duration"><option value="600">10 minutos</option><option value="1800">30 minutos</option><option value="3600" selected>1 hora</option><option value="7200">2 horas</option></select></label>
       <p id="config-message" class="config-message" role="status" hidden></p>
     </div>
     <footer class="dialog-foot"><p>As entradas ficam bloqueadas durante o mapeamento.</p><button id="apply-mode" class="secondary-button" type="button">Aplicar entradas</button></footer>
   </dialog>
   <script>{{CLASSIC_JS}}</script>
-  <script src="/console-static/console.js?v=20261002-r2"></script>
+  <script src="/console-static/console.js?v=20261002-r3"></script>
 </body>
 </html>

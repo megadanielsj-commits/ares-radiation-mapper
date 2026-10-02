@@ -18,4 +18,7 @@ def check():
 
 if __name__ == "__main__":
     lock = check()
-    print(f"Mapa v4 e núcleo de aquisição/sincronização intactos: {len(lock['files'])} arquivos.")
+    count = len(lock["files"])
+    fixes = len(lock.get("approved_stationary_fix", {}).get("files", {}))
+    print(f"Mapa e núcleo de aquisição/sincronização verificados: {count} arquivos; "
+          f"correção pontual de permanência: {fixes} arquivos.")

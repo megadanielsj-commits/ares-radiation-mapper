@@ -50,8 +50,25 @@ test('real count samples never turn CPS into cumulative dose', () => {
       sensor_x_m:0,sensor_y_m:0,integration_time_s:1}});`);
   assert.equal(ui.run('state.accumulatedDose'), .01);
   assert.equal(ui.run('state.mapped[0].dose_rate_uSv_h_filtered'), 100);
-  assert.equal(ui.run('formatRateWithUnit(100)'), '100,0 CPS');
+  assert.equal(ui.run('formatRateWithUnit(100)'), '100,00 CPS');
   assert.equal(ui.run('regulatoryBandForExcessRate(100)'), 'Contagens · sem conversão CPS para dose');
+});
+
+test('measurement labels have two decimals without rounding stored dose or rates', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};`);
+  ui.run(shell);
+  ui.run(`state.radiation={dose_rate_uSv_h:.224567};
+    state.accumulatedDose=.017654; updateReadings();`);
+  assert.equal(ui.element('dose-rate').textContent, '0,22');
+  assert.equal(ui.element('dose-total').textContent, '0,02');
+  assert.equal(ui.run('formatRateWithUnit(10456)'), '10,46 mSv/h');
+  assert.equal(ui.run('formatAxisValue(5, 1)'), '5,00');
+  assert.equal(ui.run('state.radiation.dose_rate_uSv_h'), .224567);
+  assert.equal(ui.run('state.accumulatedDose'), .017654);
+  assert.equal(ui.run('setupNumber(3.5)'), '3.50');
+  assert.equal(ui.run('setupNumber(.000001)'), '0.000001');
 });
 
 test('missing real dose is displayed as unavailable instead of CPS labeled as dose', () => {

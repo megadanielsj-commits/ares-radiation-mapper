@@ -1,10 +1,13 @@
-# ARES — console de operação v2
+# ARES — console de operação v3
 
 O mapa, as cores, o gradiente, o desenho do Go2 e a interpolação da versão v4
-aprovada foram preservados. A modernização se limita à interface de operação e
-à seleção de entradas. O console é uma versão candidata; a v4 continua incluída.
+aprovada foram preservados. Esta revisão aplica os ajustes pedidos na interface
+e uma correção pontual na inferência durante a permanência sobre a fonte.
+O console é uma versão candidata; a v4 continua incluída.
 
-Nesta revisão o mapa ocupa a área principal, com uma única coluna de telemetria.
+Nesta revisão o mapa ocupa a área principal e a coluna de telemetria fica à esquerda.
+O título é **Levantamento Radiométrico**. As medidas exibidas têm duas casas decimais;
+os registros mantêm a precisão original. A quantidade de amostras permanece inteira.
 A logo é exibida em branco, sem fundo branco, por CSS sobre a imagem original.
 O bloco de setas foi removido. O teclado mantém o controle já existente.
 A contagem de medições posicionadas usa o total da missão, e não o tamanho do
@@ -20,9 +23,12 @@ bash ares-console iniciar
 ```
 
 Abra http://127.0.0.1:8001. O sistema abre em simulação completa e não acessa
-automaticamente o USB ou o Go2. Clique em **Configurar**, escolha o modo e a
-duração da missão e clique em **Aplicar entradas**,
-espere os componentes ficarem online e clique em **Iniciar mapeamento**.
+automaticamente o USB ou o Go2. Escolha o modo no menu **Simulação completa**
+do cabeçalho; a seleção aplica a combinação de entradas. Para ajustar a duração,
+clique em **Configurar** e em **Aplicar entradas**. Nos modos **Simulação completa**
+e **Detector simulado**, abra **Fonte simulada** na coluna esquerda, defina X/Y e
+a taxa de dose a 1 metro em mSv/h, e clique em **Aplicar fonte**.
+Espere os componentes ficarem online e clique em **Iniciar mapeamento**.
 No robô simulado o controle é habilitado ao iniciar. Com robô real, confirme a
 área livre e habilite o teclado. Setas mantidas pressionadas movem o
 robô; soltar envia zero, perder o foco revoga o controle. **Parar movimento**
@@ -38,9 +44,9 @@ e preserva os resultados dele antes de abrir o console.
 | Modo | Posição | Radiação | O que conectar |
 |---|---|---|---|
 | Simulação completa | Virtual | Sintética | Nada |
-| Radiacode real · robô simulado | Virtual | USB real | Radiacode neste computador |
-| Go2 real · fonte simulada | Go2 via Wi-Fi | Sintética | Wi-Fi LocalAP do Go2 |
-| Go2 e Radiacode reais | Go2 via Wi-Fi | USB real | Wi-Fi do Go2 e Radiacode no USB |
+| Robô simulado | Virtual | USB real | Radiacode neste computador |
+| Detector simulado | Go2 via Wi-Fi | Sintética | Wi-Fi LocalAP do Go2 |
+| Equipamentos reais | Go2 via Wi-Fi | USB real | Wi-Fi do Go2 e Radiacode no USB |
 
 As entradas e a fonte ficam bloqueadas durante a missão. Encerre antes de mudar
 o modo. A missão termina sozinha após a duração selecionada. Fechar a página
@@ -101,11 +107,23 @@ teleop e sincronização; não mede o ambiente.
 
 ## Compatibilidade e retorno
 
+Durante a permanência no mesmo ponto, todas as leituras continuam sendo usadas
+e registradas. O diagnóstico de geometria mantém posições independentes, para que
+a repetição não apague o trajeto do histórico. A reamostragem continua ativa, mas
+não injeta novas hipóteses espaciais do prior durante a permanência. A exploração
+espacial é retomada ao movimentar o detector. Picos da estimativa só são
+considerados locais distintos quando separados por pelo menos uma célula de
+observação em metros, evitando falsos alarmes ao concentrar a localização.
+Essa correção não congela as cores
+ou o mapa e não impede o diagnóstico existente de inconsistência das leituras.
+
 O núcleo do Werik foi incluído da revisão `4048f7c` da adaptação Go2, baseada
 na branch original `ares-wifi`. Orquestrador, sincronizador, teleop, drivers e
 persistência não foram editados. Uma subclasse troca apenas a publicação do mapa
 para o `MapService` v4. A simulação completa chama o `MissionController` v4 sem
-adaptação. `map.lock.json` protege os arquivos por SHA-256 na construção da imagem.
+adaptação. `map.lock.json` protege os arquivos por SHA-256 na construção da imagem
+e documenta os dois arquivos da correção autorizada de permanência. Os demais
+54 arquivos protegidos têm os mesmos hashes da v2.
 
 Para voltar ao painel anterior, pare o console e execute `bash simulacao iniciar`
 na pasta v4. Nenhum resultado antigo é apagado. Esta versão não substitui
@@ -119,7 +137,7 @@ do console recebe uma construção e um teste de inicialização próprios no CI
 ## Verificação de desenvolvimento
 
 ```bash
-PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tools/operator_console/test_console.py tools/source_simulation/test_demo.py tests/unit tests/integration
+PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py tests/unit tests/integration
 node --test tools/source_simulation/dashboard.test.cjs tools/operator_console/console.test.cjs
 python -m tools.operator_console.check_map_lock
 ```

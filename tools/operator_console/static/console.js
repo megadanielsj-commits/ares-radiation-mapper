@@ -25,19 +25,23 @@ function acceptPositionedCount(mission, value) {
 
 // Units and telemetry only: the original map geometry, gradient and numeric
 // color transform stay untouched. Real bins are CPS, not FS-5000 dose units.
-const originalRateLabel = formatRateWithUnit;
 const originalReferenceLabel = regulatoryBandForExcessRate;
 const originalEnvelope = handleEnvelope;
 const originalReadings = updateReadings;
 const countsMap = () => consoleSnapshot?.inputs.radiation === "real";
-formatRateWithUnit = function (value, compact = false) {
-  return countsMap() ? `${formatNumber(value, compact ? 0 : 1)} CPS` : originalRateLabel(value, compact);
+formatRateWithUnit = function (value) {
+  if (countsMap()) return `${formatNumber(value, 2)} CPS`;
+  const scaled = scaledDoseRate(value);
+  return Number.isFinite(scaled.value) ? `${formatNumber(scaled.value, 2)} ${scaled.unit}` : "—";
 };
+formatDoseRate = function (value) {return formatNumber(scaledDoseRate(value).value, 2);};
+formatAxisValue = function (value) {return formatNumber(value, 2);};
 regulatoryBandForExcessRate = function (value) {
   return countsMap() ? "Contagens · sem conversão CPS para dose" : originalReferenceLabel(value);
 };
 updateReadings = function () {
   originalReadings();
+  $("dose-total").textContent = formatNumber(scaledDose(state.accumulatedDose).value, 2);
   if (countsMap() && state.radiation?.dose_rate_uSv_h == null) {
     $("dose-rate").textContent = "—";
     $("dose-rate-unit").textContent = "µSv/h";
@@ -91,8 +95,9 @@ function modeDescription(mode) {
 function showModeChoice() {
   const mode = $("operation-mode").value;
   const synthetic = mode === "simulation" || mode === "robot_simulated_source";
-  $("source-setup").hidden = !synthetic;
+  $("source-details").hidden = !synthetic;
   $("input-explanation").textContent = modeDescription(mode);
+  $("operation-mode").title = modeDescription(mode);
 }
 
 function elapsedLabel(seconds) {
@@ -101,14 +106,25 @@ function elapsedLabel(seconds) {
     .map(part => String(part).padStart(2, "0")).join(":");
 }
 
+function setupNumber(value) {
+  if (value === "") return value;
+  const number = Number(value);
+  // Show two decimals where exact; retain finer operator-entered settings.
+  return Number.isFinite(number) && number === Number(number.toFixed(2))
+    ? number.toFixed(2) : String(value);
+}
+
 function paintConsole(snapshot) {
   consoleSnapshot = snapshot;
   const status = snapshot.status;
   const running = status.state === "RUNNING" || status.state === "STOPPING";
   const realRobot = snapshot.inputs.robot === "real";
   const realRadiation = snapshot.inputs.radiation === "real";
-  $("mode-banner").textContent = snapshot.inputs.name.toUpperCase();
-  $("mode-banner").classList.toggle("physical", realRobot || realRadiation);
+  if (!actionPending) {
+    $("operation-mode").value = snapshot.mode;
+    showModeChoice();
+  }
+  $("operation-mode").classList.toggle("physical", realRobot || realRadiation);
   for (const [part, connected, label] of [
     ["robot", snapshot.robot.conectado, realRobot ? "Go2 real" : "Simulado"],
     ["detector", snapshot.radiation.conectado, realRadiation ? "Radiacode USB" : "Simulada"],
@@ -119,13 +135,17 @@ function paintConsole(snapshot) {
   }
   $("mission-status").textContent = {READY: "Pronto", RUNNING: "Em andamento", STOPPING: "Salvando", COMPLETED: "Encerrada", FAULT: "Falha"}[status.state] || status.state;
   $("mission-status").classList.toggle("recording", running);
-  $("reading-age").textContent = snapshot.reading_age_s == null ? "—" : `${snapshot.reading_age_s.toFixed(1)} s`;
+  $("reading-age").textContent = snapshot.reading_age_s == null ? "—" : `${formatNumber(snapshot.reading_age_s, 2)} s`;
   $("record-light").classList.toggle("recording", running);
   $("record-label").textContent = running ? "Registrando" : (status.mission_id ? "Registro salvo" : "Aguardando início");
   $("mission-lock").textContent = running ? "· Entradas bloqueadas durante a missão" : "· Entradas editáveis";
   $("operation-mode").disabled = running || actionPending;
   $("configure-button").disabled = running || actionPending;
-  for (const id of ["source-x", "source-y", "source-strength", "mission-duration", "apply-mode"]) $(id).disabled = running || actionPending;
+  for (const id of ["source-x", "source-y", "source-strength", "mission-duration", "apply-mode", "apply-source"]) $(id).disabled = running || actionPending;
+  for (const id of ["source-x", "source-y", "source-strength"]) {
+    const input = $(id);
+    if (document.activeElement !== input) input.value = setupNumber(input.value);
+  }
   $("start-button").disabled = running || actionPending || !snapshot.robot.conectado || !snapshot.radiation.conectado || (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3));
   $("start-button").textContent = running ? "Mapeamento em andamento" : "Iniciar mapeamento";
   $("finish-button").disabled = !running || actionPending;
@@ -136,8 +156,8 @@ function paintConsole(snapshot) {
   $("physical-ack-row").hidden = !realRobot || snapshot.control_enabled;
   $("control-state").textContent = snapshot.control_enabled ? "Setas do teclado · solte para parar · Esc interrompe." : "Teclado bloqueado. Habilite para movimentar.";
   const r = status.radiation;
-  $("cps-reading").textContent = r?.cps == null ? "—" : formatNumber(r.cps, 0);
-  $("cpm-reading").textContent = r?.cpm == null ? "—" : formatNumber(r.cpm, 0);
+  $("cps-reading").textContent = r?.cps == null ? "—" : formatNumber(r.cps, 2);
+  $("cpm-reading").textContent = r?.cpm == null ? "—" : formatNumber(r.cpm, 2);
   if (realRadiation && (snapshot.reading_age_s == null || snapshot.reading_age_s > 3)) $("dose-rate").textContent = "—";
   $("data-origin").textContent = realRadiation ? "USB real · dose provisória · CPM = 60 × CPS" : "Radiação simulada · treinamento";
   $("spatial-note").textContent = realRobot
@@ -173,8 +193,7 @@ async function reloadScenario() {
   updateReadings(); scheduleRender();
 }
 
-async function applyInputs() {
-  const setup = readSetup();
+async function applyInputs(setup = readSetup()) {
   const result = await consoleApi("/configure", setup);
   configuredFingerprint = JSON.stringify(setup);
   $("physical-ack").checked = false;
@@ -249,23 +268,23 @@ window.addEventListener("keydown", event => {
 
 function fillSetup(setup) {
   $("operation-mode").value = setup.mode;
-  $("source-x").value = String(setup.x_m);
-  $("source-y").value = String(setup.y_m);
-  $("source-strength").value = String(setup.dose_rate_at_1m_uSv_h / 1000);
+  $("source-x").value = setupNumber(setup.x_m);
+  $("source-y").value = setupNumber(setup.y_m);
+  $("source-strength").value = setupNumber(setup.dose_rate_at_1m_uSv_h / 1000);
   $("mission-duration").value = String(setup.duration_s);
   showModeChoice();
 }
 $("configure-button").addEventListener("click", () => {
-  if (consoleSnapshot) fillSetup(consoleSnapshot.setup);
+  if (consoleSnapshot) $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
   $("config-message").hidden = true;
   $("config-dialog").showModal();
 });
 $("close-config").addEventListener("click", () => {
-  if (consoleSnapshot) fillSetup(consoleSnapshot.setup);
+  if (consoleSnapshot) $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
   $("config-dialog").close();
 });
 $("config-dialog").addEventListener("close", () => {
-  if (consoleSnapshot) fillSetup(consoleSnapshot.setup);
+  if (consoleSnapshot) $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
 });
 $("apply-mode").addEventListener("click", () => void perform(async () => {
   await applyInputs();
@@ -277,7 +296,11 @@ $("expand-map").addEventListener("click", () => {
   $("expand-map-label").textContent = expanded ? "Restaurar painel" : "Ampliar mapa";
   scheduleRender();
 });
-$("operation-mode").addEventListener("change", showModeChoice);
+$("operation-mode").addEventListener("change", () => {
+  const setup = readSetup();
+  void perform(() => applyInputs(setup));
+});
+$("apply-source").addEventListener("click", () => void perform(() => applyInputs()));
 $("finish-button").addEventListener("click", () => void perform(async () => {
   state.pressedKeys.clear(); state.lastCommand = null;
   await consoleApi("/stop", {});

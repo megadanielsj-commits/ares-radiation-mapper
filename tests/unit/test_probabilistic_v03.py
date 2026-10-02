@@ -31,6 +31,7 @@ from ares_mapper.domain.models import (
     RadiationSample,
 )
 from ares_mapper.fusion.trajectory import quadrature_weights
+from ares_mapper.inference.identifiability import IdentifiabilityMonitor
 from ares_mapper.inference.observation import RadiationObservationModel
 from ares_mapper.inference.particle_filter import (
     RegularizedParticleFilter,
@@ -168,6 +169,28 @@ def test_irregular_quadrature_preserves_exact_duration() -> None:
     weights = quadrature_weights([0, 100_000_000, 400_000_000, 1_000_000_000])
     assert weights == pytest.approx([0.05, 0.2, 0.45, 0.3])
     assert sum(weights) == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize(
+    ("separation_m", "expected"),
+    [(0.04, IdentifiabilityState.STABLE), (1.0, IdentifiabilityState.MULTIMODAL)],
+)
+def test_localization_peaks_need_physical_separation(
+    separation_m: float, expected: IdentifiabilityState
+) -> None:
+    monitor = IdentifiabilityMonitor(InferenceConfig(), cell_size_m=.25)
+    for sequence, angle in enumerate(np.linspace(0, 2 * math.pi, 8, endpoint=False), 1):
+        monitor.add(_window(sequence, 5 + 3 * math.cos(angle), 5 + 3 * math.sin(angle), 1), .1)
+    rng = np.random.default_rng(42)
+    particles = np.concatenate([
+        rng.normal((5 - separation_m / 2, 5), .0005, (1000, 2)),
+        rng.normal((5 + separation_m / 2, 5), .0005, (1000, 2)),
+    ])
+    state, diagnostics = monitor.evaluate(
+        particles, np.full(2000, 1 / 2000), (5, 5), .1, .999
+    )
+    assert state == expected
+    assert diagnostics["multimodal"] == (expected == IdentifiabilityState.MULTIMODAL)
 
 
 def test_log_weight_normalization_and_ess_are_finite() -> None:

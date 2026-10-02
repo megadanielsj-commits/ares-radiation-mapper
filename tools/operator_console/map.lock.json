@@ -5,9 +5,9 @@
     "config/scenarios/static_source.yaml": "d902817b0b9dc20418b18f95b0d4f4ba1c340364457b4621d7a559bab297c610",
     "src/ares_mapper/core/mission_controller.py": "0c7d9f81b7a551a8ab715adc1c41ae21659efbcafb9ef97cf3aecb06968dc9d4",
     "src/ares_mapper/inference/__init__.py": "0db16e797539e3e9fff7e1be4a87eec072c720894bb90aeb28b22ca57267f033",
-    "src/ares_mapper/inference/identifiability.py": "0d7a4f3e71499900e6587a55f883ffe222a0453c760a26018fec0cc197f62699",
+    "src/ares_mapper/inference/identifiability.py": "cf15f975591c605af987a6db24d0282432077e3a25a83194e112af7d0e1bfb83",
     "src/ares_mapper/inference/observation.py": "3d9caff95b6d65d95139ccfad8bcd1d7c0cfaa747da67279443f64b8c66382f4",
-    "src/ares_mapper/inference/particle_filter.py": "fd8a251d91f3cec0314213a491d82ac93c49ac05860f974f6bc5151c47243986",
+    "src/ares_mapper/inference/particle_filter.py": "2fac288b96085e843cb9d84b53bf229eadd01cda50388bfbd73eb59e986203a5",
     "src/ares_mapper/inference/source_existence.py": "98ae658d325cad6a246fa931c14731e2d68b11aab1ea4e7a7dfb7d21c6627c5e",
     "src/ares_mapper/mapping/__init__.py": "c3c165fc4bce8e103b69df3130ee2dbe1790d9ca92151451fb8c20b3cb9780ca",
     "src/ares_mapper/mapping/confidence.py": "d91ad5b89622314a305ebef41703e637d734d52f8a18f7da9acec833d01af6a9",
@@ -58,5 +58,18 @@
     "vendor/go2_runtime/src/ares/simulacao/robo.py": "2f0d9fcad12132d42c7b30df47052d91033e1c096c1be1f52c7c7ad788781f36",
     "vendor/go2_runtime/src/ares/sincronizacao.py": "cff28f98194fc858d4fd8f334df93235962d9db3a728eff3c933f21e7054e0b2",
     "vendor/go2_runtime/src/ares/teleop.py": "d5cf960ad4794a1bc623944a609a02523d1c221a93e391cc0255ae8aa10a8baf"
+  },
+  "approved_stationary_fix": {
+    "reason": "Requested stationary-source correction: retain independent spatial geometry, prevent repeated fresh spatial priors, and require physically distinct peaks before declaring the concentrated posterior multimodal.",
+    "files": {
+      "src/ares_mapper/inference/identifiability.py": {
+        "reference_sha256": "0d7a4f3e71499900e6587a55f883ffe222a0453c760a26018fec0cc197f62699",
+        "sha256": "cf15f975591c605af987a6db24d0282432077e3a25a83194e112af7d0e1bfb83"
+      },
+      "src/ares_mapper/inference/particle_filter.py": {
+        "reference_sha256": "fd8a251d91f3cec0314213a491d82ac93c49ac05860f974f6bc5151c47243986",
+        "sha256": "2fac288b96085e843cb9d84b53bf229eadd01cda50388bfbd73eb59e986203a5"
+      }
+    }
   }
 }

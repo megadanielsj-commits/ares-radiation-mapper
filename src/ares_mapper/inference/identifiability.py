@@ -22,13 +22,12 @@ class IdentifiabilityMonitor:
 
     def add(self, window: ObservationWindow, standardized_residual: float) -> None:
         x_m, y_m, _ = window.representative_xyz
-        self._positions.append((x_m, y_m))
-        self._independent_cells.add(
-            (
-                math.floor(x_m / self.cell_size_m),
-                math.floor(y_m / self.cell_size_m),
-            )
-        )
+        cell = (math.floor(x_m / self.cell_size_m), math.floor(y_m / self.cell_size_m))
+        # Geometry is supported by independent locations, not dwell duration.
+        # Repeating one position must not evict the trajectory from the buffer.
+        if cell not in self._independent_cells:
+            self._positions.append((x_m, y_m))
+            self._independent_cells.add(cell)
         if math.isfinite(standardized_residual):
             self._standardized_residuals.append(standardized_residual)
 
@@ -112,11 +111,10 @@ class IdentifiabilityMonitor:
         probabilities = histogram[histogram > 0]
         return float(-np.sum(probabilities * np.log(probabilities)))
 
-    @staticmethod
-    def _is_multimodal(particles_xy: np.ndarray, weights: np.ndarray) -> bool:
+    def _is_multimodal(self, particles_xy: np.ndarray, weights: np.ndarray) -> bool:
         if len(particles_xy) < 8:
             return False
-        histogram, _, _ = np.histogram2d(
+        histogram, x_edges, y_edges = np.histogram2d(
             particles_xy[:, 0],
             particles_xy[:, 1],
             bins=16,
@@ -139,12 +137,26 @@ class IdentifiabilityMonitor:
             return False
         peaks.sort(reverse=True)
         leading = peaks[0]
+        x_centers = (x_edges[:-1] + x_edges[1:]) / 2.0
+        y_centers = (y_edges[:-1] + y_edges[1:]) / 2.0
         for candidate in peaks[1:]:
             separation = math.hypot(
                 candidate[1] - leading[1],
                 candidate[2] - leading[2],
             )
-            if separation >= 3.0 and candidate[0] >= 0.55 * leading[0] and candidate[0] >= 0.04:
+            # Histogram bins shrink as the posterior concentrates. Two bumps
+            # a few millimetres apart are one location at the map's resolution,
+            # not separate sources that should revoke the established field.
+            separation_m = math.hypot(
+                x_centers[candidate[1]] - x_centers[leading[1]],
+                y_centers[candidate[2]] - y_centers[leading[2]],
+            )
+            if (
+                separation >= 3.0
+                and separation_m >= self.cell_size_m
+                and candidate[0] >= 0.55 * leading[0]
+                and candidate[0] >= 0.04
+            ):
                 return True
         return False
 

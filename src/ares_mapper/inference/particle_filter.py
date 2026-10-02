@@ -121,6 +121,7 @@ class RegularizedParticleFilter:
         self.h0_log_weights = np.full(count, -math.log(count), dtype=float)
         self.update_sequence = 0
         self.last_posterior: SourcePosterior | None = None
+        self._prior_refresh_positions: dict[str, np.ndarray] = {}
         self.identifiability = IdentifiabilityMonitor(config, grid_config.observation_cell_m)
 
     @property
@@ -132,6 +133,7 @@ class RegularizedParticleFilter:
         return float(np.sum(expected * self.weights))
 
     def update(self, window: ObservationWindow) -> SourcePosterior:
+        refresh_prior = self._spatially_new_window(window)
         prior_weights = self.log_weights.copy()
         prior_h0_weights = self.h0_log_weights.copy()
         log_likelihood_h1 = self.observation_model.log_likelihood_h1(self.particles, window)
@@ -144,7 +146,7 @@ class RegularizedParticleFilter:
         ess_before = effective_sample_size(self.log_weights)
         resampled = ess_before < self.config.resample_ess_fraction * len(self.particles)
         if resampled:
-            self._resample_h1()
+            self._resample_h1(refresh_prior=refresh_prior)
         h0_ess = effective_sample_size(self.h0_log_weights)
         if h0_ess < self.config.resample_ess_fraction * len(self.h0_log_background):
             self._resample_h0()
@@ -165,7 +167,26 @@ class RegularizedParticleFilter:
         self.last_posterior = posterior
         return posterior
 
-    def _resample_h1(self) -> None:
+    def _spatially_new_window(self, window: ObservationWindow) -> bool:
+        """Explore new spatial hypotheses when the detector changes position.
+
+        Repeated stationary observations still update every likelihood. Drawing
+        fresh prior particles during a dwell would give them no evidence from
+        earlier positions and let one near-source point erase that evidence.
+        """
+        previous = self._prior_refresh_positions.get(window.sensor_id)
+        position = np.asarray(window.representative_xyz, dtype=float)
+        tolerance = max(1e-6, self.grid_config.observation_cell_m / 4.0)
+        moved = previous is None or any(
+            np.linalg.norm(np.asarray((point.x_m, point.y_m, point.z_m)) - previous)
+            > tolerance
+            for point in window.detector_path
+        )
+        if moved:
+            self._prior_refresh_positions[window.sensor_id] = position
+        return moved
+
+    def _resample_h1(self, *, refresh_prior: bool = True) -> None:
         indexes = systematic_resample(self.weights, self.rng)
         resampled = self.particles[indexes].copy()
         if self.config.rejuvenation == "liu_west":
@@ -187,7 +208,10 @@ class RegularizedParticleFilter:
             math.log(self.config.background_min_uSv_h),
             math.log(self.config.background_max_uSv_h),
         )
-        refresh_count = int(round(len(resampled) * self.config.prior_refresh_fraction))
+        refresh_count = (
+            int(round(len(resampled) * self.config.prior_refresh_fraction))
+            if refresh_prior else 0
+        )
         if refresh_count:
             refresh_indexes = self.rng.choice(len(resampled), size=refresh_count, replace=False)
             resampled[refresh_indexes] = self._draw_prior(refresh_count)
