@@ -19,7 +19,7 @@ with socket.socket() as probe:
     except OSError:
         raise SystemExit('Porta 8001 ocupada. Pare o ensaio USB antes de iniciar a simulação.')
 PORT_CHECK
-    if ! docker image inspect ares-source-simulation:classic-20261001-r2 >/dev/null 2>&1; then
+    if ! docker image inspect ares-source-simulation:classic-20261001-r1 >/dev/null 2>&1; then
       "${compose[@]}" build simulation
     fi
     if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 45; then

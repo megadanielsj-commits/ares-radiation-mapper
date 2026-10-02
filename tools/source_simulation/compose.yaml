@@ -1,7 +1,7 @@
 name: ares-source-simulation
 services:
   simulation:
-    image: ares-source-simulation:classic-20261001-r2
+    image: ares-source-simulation:classic-20261001-r1
     build:
       context: ${ARES_SIMULATION_ROOT}
       dockerfile: Dockerfile
