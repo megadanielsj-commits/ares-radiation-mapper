@@ -21,7 +21,9 @@ do canal `R/h` conhecido. Contagens e timestamps da taxa permanecem separados.
 Dados brutos, CSV, JSONL, WebSocket e cálculos conservam sua precisão original.
 ![Interface aprovada do ARES Console, preservada na revisão 1.0.2](docs/images/operator-console-1.0.0.png)
 
-Veja [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação e ensaio de 08/10/2026.
+Veja [ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md) para a reunião, a comparação
+com o framework do Werik e a sequência do ensaio de 08/10/2026.
+Veja [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação e preparação da imagem.
 Veja [LEIA_PRIMEIRO_CONSOLE.md](LEIA_PRIMEIRO_CONSOLE.md) para operação,
 compatibilidade com os pipelines independentes e limites do ensaio.
 
@@ -35,13 +37,16 @@ provável da fonte. A interface é acessada pelo navegador em
 
 ## Radiacode na estrutura da integração Go2
 
-O ensaio com USB independente e entrada WebSocket compatível com o sistema
-`ares-wifi` está preparado em [LEIA_PRIMEIRO_INTEGRACAO.md](LEIA_PRIMEIRO_INTEGRACAO.md).
-Use `bash ensaio preparar`, depois `bash ensaio usb-simulado` para verificar USB
-real com posição simulada, usando o visual antigo na porta 8001.
-Para o Go2 físico pelo Wi-Fi, use `bash ensaio usb-robo` no laboratório.
-A adaptação Go2/WebRTC está na branch `feat/radiacode-go2-wifi`, incluída no pacote
-de ensaio e no bundle; o código original do Werik está em `ares-wifi`.
+O console atual usa o driver Go2/WebRTC, o sincronizador, a teleoperação e o
+watchdog da referência `ares-wifi`, com aquisição USB independente por WebSocket.
+A integração e seus testes estão em `vendor/go2_runtime`; a interface aprovada
+está em `tools/operator_console`. Execute `bash ares-console iniciar` e escolha
+as entradas no painel. A taxa reportada pelo Radiacode alimenta o mapa; CPS e
+CPM permanecem separados, sem calibração CPS→dose.
+
+Os iniciadores `ensaio` e a branch `feat/radiacode-go2-wifi` documentam o estudo
+anterior. [LEIA_PRIMEIRO_INTEGRACAO.md](LEIA_PRIMEIRO_INTEGRACAO.md) é um registro
+histórico, com painel e semântica de mapa anteriores; não é o roteiro desta versão.
 
 ## Modos de execução
 
@@ -228,6 +233,8 @@ pytest
 node --test tests/radiacode/dashboard_usb.test.cjs
 ruff check src tests
 mypy src
+# Regressão do runtime Go2; instalar previamente suas dependências de desenvolvimento.
+PYTHONPATH=vendor/go2_runtime/src python -m pytest -q vendor/go2_runtime/tests
 ```
 
 O workflow em `.github/workflows/ci.yml` executa esses testes e também constrói
@@ -235,15 +242,15 @@ as imagens de simulação e hardware a cada `push` ou `pull request`.
 
 ## Publicar a preparação no GitHub
 
-No pacote completo do ensaio, o bundle e o script de publicação estão incluídos:
+No pacote atual, o bundle da versão e o script de publicação estão incluídos:
 
 ```bash
-bash publicar_no_github.sh
+bash PUBLICAR_CONSOLE_GITHUB.sh
 ```
 
-O comando publica `feat/radiacode-independent` (aquisição USB e serviço) e
-`feat/radiacode-go2-wifi` (consumidor Go2/WebRTC e painel), sem merge automático
-em `main` ou `ares-wifi`. Veja [LEIA_PRIMEIRO_INTEGRACAO.md](LEIA_PRIMEIRO_INTEGRACAO.md).
+O comando publica `release/ares-console-1.0.2`, sem merge automático em `main`
+ou `ares-wifi`. Veja [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md).
+`publicar_no_github.sh` pertence aos pacotes do estudo anterior.
 Arquivos em `resultados/` e ambientes Python ficam fora do Git.
 
 ## Estrutura principal

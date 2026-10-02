@@ -1,5 +1,11 @@
 # Radiacode 110 + Go2 — preparação e teste USB
 
+> **Registro do estudo anterior (kit v4, 30/09/2026).** Para o ARES Console
+> 1.0.2, use [ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md) e `bash ares-console iniciar`.
+> O painel, os iniciadores e o mapa por contagens descritos abaixo pertencem
+> à etapa anterior. O console atual usa a taxa reportada pelo Radiacode,
+> sem calibração CPS→dose. Não configure `ARES_RADIACODE_CPS_POR_USVH` para ele.
+
 Este pacote contém um leitor USB independente e a adaptação do projeto
 `ares-wifi` para receber suas contagens por WebSocket. Para o teste atual,
 somente o Radiacode precisa estar conectado. A posição e o movimento do robô

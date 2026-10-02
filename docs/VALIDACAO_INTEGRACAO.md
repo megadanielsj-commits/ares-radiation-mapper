@@ -1,5 +1,10 @@
 # Validação da preparação Radiacode + Go2 — 30/09/2026
 
+> **Relatório histórico do kit anterior.** A preparação do ARES Console 1.0.2
+> está em [ROTEIRO_ENSAIO_GO2.md](../ROTEIRO_ENSAIO_GO2.md). As contagens,
+> o painel e as condições de calibração abaixo descrevem aquela revisão.
+> O mapa atual usa taxa reportada, sem converter CPS em dose.
+
 ## Resultado e correção do pacote
 
 A aquisição independente e a integração em software estão preparadas para

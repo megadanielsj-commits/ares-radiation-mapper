@@ -9,7 +9,10 @@ software não validam o rádio, a montagem ou a resposta temporal do detector.
 ## Preparar no computador do teste, com internet
 
 Use Linux e o Docker Engine/Compose já utilizados nos ensaios anteriores.
-Extraia `ARES_Console_Oficial_1.0.2.zip`. Na pasta extraída:
+Extraia `ARES_Console_1.0.2_Ensaio.zip` (ou o pacote oficial 1.0.2 já instalado).
+A preparação para a reunião contém o mesmo programa de operação e acrescenta
+documentação/testes/CI. Ela extrai para `ARES_Console_Oficial_1.0.2`.
+Veja também [ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md). Na pasta extraída:
 
 ```bash
 bash ares-console iniciar
@@ -78,16 +81,18 @@ Verifique os checks de **Actions** dessa branch. O CI executa testes em Python
 Depois abra:
 https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.2?expand=1
 
-Título sugerido: `ARES Console 1.0.2: unidades automáticas de dose na interface`.
+Título sugerido: `ARES Console 1.0.2: aquisição de dose e operação Go2/Radiacode`.
 Descrição sugerida:
 
-> Mantém a aquisição de dose da 1.0.1 e apresenta dose/taxa com prefixos SI
-> automáticos, normalmente com duas casas e sem notação científica. A mudança
-> ocorre somente nos rótulos; dados, mapa, layout e integração são preservados.
-> Validação desta revisão: 13 testes JavaScript, hashes protegidos e quatro modos
-> no navegador com substitutos de hardware. As suítes Python da 1.0.1 continuam
-> como referência do backend inalterado. O build Docker/CI e o ensaio conjunto
-> com Go2 devem ser confirmados no computador de operação.
+> Acrescenta operação unificada para os quatro modos, mantendo o driver Go2,
+> o sincronizador e a teleoperação/watchdog da referência ares-wifi. O Radiacode
+> permanece em aquisição USB independente; a taxa reportada alimenta o mapa,
+> CPS/CPM continuam separados e os registros conservam a precisão original.
+> A interface aprovada usa prefixos SI para dose/taxa. Inclui roteiro do ensaio
+> e regressões de compatibilidade no CI. Validação: 144 testes Python do pacote,
+> 209 do runtime, 19 JavaScript e 56 arquivos protegidos; quatro modos no navegador
+> com substitutos de hardware. O build Docker/CI e o ensaio conjunto com Go2
+> devem ser confirmados no computador de operação.
 
 Após revisão e checks verdes, o merge torna essa versão visível na branch
 principal. Até lá, a equipe deve usar o link da branch de release, pois a página

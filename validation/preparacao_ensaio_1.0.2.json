@@ -1,0 +1,145 @@
+{
+  "version": "ARES Console 1.0.2",
+  "checked_at_utc": "2026-10-02T21:32:19.245344+00:00",
+  "target_trial_date": "2026-10-08",
+  "scope": "Go2 framework compatibility and meeting handover; documentation/tests/CI only",
+  "unchanged_product_commit": "28acf85aff49ed799b59e69ab0d737fa000b8755",
+  "unchanged_product_files": 159,
+  "original_werik_commit": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+  "adapted_runtime_commit": "4048f7c8b4ffe2cc0f604a8bae1b89d4763aa4f2",
+  "original_core_files": [
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/go2.py",
+      "identical_to_original": true,
+      "sha256": "3c4a446d42defb5d879e71bbafff939ab7392b7cf8ffe5ecd9808813108314fc"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/_compat.py",
+      "identical_to_original": true,
+      "sha256": "d8cde26558d4f821a9bc9e866c40b17537787e81a65863b13c5247983444591d"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/base.py",
+      "identical_to_original": true,
+      "sha256": "65ac8b318927d2e236823ff0bf0de0d8568098828cb2a199f98613947f6973a7"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/sincronizacao.py",
+      "identical_to_original": true,
+      "sha256": "cff28f98194fc858d4fd8f334df93235962d9db3a728eff3c933f21e7054e0b2"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/teleop.py",
+      "identical_to_original": true,
+      "sha256": "d5cf960ad4794a1bc623944a609a02523d1c221a93e391cc0255ae8aa10a8baf"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/radiacao/base.py",
+      "identical_to_original": true,
+      "sha256": "c3151edc3b522c1812fa7a3bceb3463c30f789bee808f85539363f36386c2612"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/radiacao/fs5000.py",
+      "identical_to_original": true,
+      "sha256": "0c35dba377ba1bd6ded999a1d5d03fd92ad38f345983f300f4763440a2810f04"
+    }
+  ],
+  "adapted_runtime_files_identical": 30,
+  "reference_tests_copied_without_changes": 16,
+  "method_comparison_against_original": {
+    "missao.py": {
+      "unchanged_methods": [
+        "fechar",
+        "registrar_pose",
+        "registrar_leitura",
+        "registrar_amostra",
+        "encerrar",
+        "_executar",
+        "listar",
+        "_amostras",
+        "exportar_csv"
+      ],
+      "changed_methods": [
+        "__init__",
+        "criar",
+        "obter",
+        "exportar_json"
+      ],
+      "added_methods": []
+    },
+    "orquestrador.py": {
+      "unchanged_methods": [
+        "__init__",
+        "assinar",
+        "cancelar",
+        "_emitir",
+        "iniciar",
+        "encerrar",
+        "_ao_receber_pose",
+        "_ao_receber_leitura",
+        "_laco_estimador",
+        "_laco_publicacao",
+        "_laco_estado",
+        "_verificar_estado",
+        "estado",
+        "_fonte_sim",
+        "snapshot",
+        "encerrar_missao",
+        "definir_fonte_simulada"
+      ],
+      "changed_methods": [
+        "_processar_amostras",
+        "_publicar_resultado",
+        "iniciar_missao"
+      ],
+      "added_methods": [
+        "_metadata_radiacode"
+      ]
+    }
+  },
+  "package_python_tests": {
+    "tests": 144,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "runtime_python_tests": {
+    "tests": 209,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "javascript_tests": {
+    "console_usb": 13,
+    "reference": 6,
+    "total": 19,
+    "failures": 0
+  },
+  "protected_map_core_files": 56,
+  "ruff": "passed",
+  "mypy": {
+    "result": "passed",
+    "modules": 76
+  },
+  "four_modes_browser_evidence": "validation/console_1.0.2.json",
+  "remote_heads": {
+    "refs/heads/ares-wifi": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+    "refs/heads/main": "fcf4377be8ccfd86f7d56343c58b0fc342fd3cdc"
+  },
+  "remote_release_present_at_check": false,
+  "github_pushed_here": false,
+  "docker_engine_available_here": false,
+  "docker_built_here": false,
+  "physical_usb_robot_tested_here": false,
+  "physical_combined_test_required": true,
+  "field_parameters_to_check": [
+    "Go2 firmware/AES",
+    "LocalAP and single controller",
+    "Radiacode rate/visor unit agreement",
+    "dose response latency",
+    "detector mounting offset",
+    "stop/watchdog",
+    "synchronization without progressive delay",
+    "export and USB reconnect"
+  ]
+}

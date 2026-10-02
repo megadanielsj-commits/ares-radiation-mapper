@@ -27,6 +27,17 @@ jobs:
       - name: Publish exact pytest errors as check annotations
         if: always()
         run: python tools/report_ci.py pytest-results.xml
+      - name: Install Go2 reference test dependencies
+        if: matrix.python-version == '3.12'
+        run: |
+          python -m pip install -r vendor/go2_runtime/requirements-go2-wifi.txt
+          python -m pip install --no-deps unitree_webrtc_connect==2.2.0
+      - name: Go2 runtime compatibility regression
+        if: matrix.python-version == '3.12'
+        run: PYTHONPATH=vendor/go2_runtime/src python -m pytest -q vendor/go2_runtime/tests --junitxml=pytest-go2-results.xml
+      - name: Publish Go2 pytest errors as check annotations
+        if: always() && matrix.python-version == '3.12'
+        run: python tools/report_ci.py pytest-go2-results.xml
       - uses: actions/setup-node@v4
         if: matrix.python-version == '3.12'
         with:
@@ -41,6 +52,9 @@ jobs:
       - name: Console rendering contracts
         if: matrix.python-version == '3.12'
         run: node --test tools/operator_console/console.test.cjs
+      - name: Go2 reference dashboard contracts
+        if: matrix.python-version == '3.12'
+        run: node --test vendor/go2_runtime/tests/approved_dashboard.test.cjs
       - name: Lint
         if: matrix.python-version == '3.12'
         run: ruff check src tests

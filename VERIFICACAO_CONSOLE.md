@@ -40,10 +40,14 @@ selecionados apenas na interface a partir dos valores numéricos em µSv/h.
   `ares-operator-console:1.0.2`, para aplicar os novos rótulos.
 - Sintaxe Bash/JavaScript, configuração YAML e `git diff --check` passaram.
 
-O resultado está em `validation/console_1.0.2.json`. As suítes de **144 testes Python
-do pacote e 209 do runtime** são as executadas na base 1.0.1, documentadas nos JSON/XML
-dessa versão. Não foram repetidas nesta mudança exclusivamente visual; nenhum
-arquivo Python do produto foi alterado.
+O resultado da mudança de rótulos está em `validation/console_1.0.2.json`.
+Na preparação posterior para a reunião, as suítes foram repetidas: **144 testes
+Python do pacote e 209 do runtime passaram**, além de 13 JavaScript do console/USB
+e 6 da referência. As fontes dos 209 testes foram incluídas em
+`vendor/go2_runtime/tests` e o CI passa a executá-las em Python 3.12.
+Nenhum arquivo executável do produto foi alterado nesta preparação.
+Veja `validation/preparacao_ensaio_1.0.2.json`, os XML correspondentes e
+[ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md) para a comparação com o Werik.
 
 ```bash
 node --test tools/operator_console/console.test.cjs tests/radiacode/dashboard_usb.test.cjs
