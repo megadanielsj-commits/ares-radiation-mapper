@@ -50,7 +50,7 @@ test('real dose samples do not double-count the server mission dose anchor', () 
       sensor_x_m:0,sensor_y_m:0,integration_time_s:1}});`);
   assert.equal(ui.run('state.accumulatedDose'), .01);
   assert.equal(ui.run('state.mapped[0].dose_rate_uSv_h_filtered'), .22);
-  assert.equal(ui.run('formatRateWithUnit(.22)'), '2,20E-4 mSv/h');
+  assert.equal(ui.run('formatRateWithUnit(.22)'), '220,00 nSv/h');
   assert.equal(ui.run('regulatoryBandForExcessRate(.22)'), 'Taxa reportada · conversão USB provisória');
 });
 
@@ -61,14 +61,16 @@ test('measurement labels have two decimals without rounding stored dose or rates
   ui.run(shell);
   ui.run(`state.radiation={dose_rate_uSv_h:.224567};
     state.accumulatedDose=.017654; updateReadings();`);
-  assert.equal(ui.element('dose-rate').textContent, '2,25E-1');
-  assert.equal(ui.element('dose-total').textContent, '1,77E-2');
+  assert.equal(ui.element('dose-rate').textContent, '224,57');
+  assert.equal(ui.element('dose-rate-unit').textContent, 'nSv/h');
+  assert.equal(ui.element('dose-total').textContent, '17,65');
+  assert.equal(ui.element('dose-total-unit').textContent, 'nSv');
   assert.equal(ui.run('formatRateWithUnit(10456)'), '10,46 mSv/h');
-  assert.equal(ui.run('formatRateWithUnit(.12)'), '1,20E-4 mSv/h');
-  assert.equal(ui.run('formatRateWithUnit(0)'), '0,00 mSv/h');
+  assert.equal(ui.run('formatRateWithUnit(.12)'), '120,00 nSv/h');
+  assert.equal(ui.run('formatRateWithUnit(0)'), '0,00 µSv/h');
   assert.equal(ui.run('formatRateWithUnit(NaN)'), '—');
   assert.equal(ui.run('formatRateWithUnit(null)'), '—');
-  assert.equal(ui.run('formatRateWithUnit(.00000123456789)'), '1,23E-9 mSv/h');
+  assert.equal(ui.run('formatRateWithUnit(.00000123456789)'), '1,23 pSv/h');
   assert.equal(ui.run('formatAxisValue(5, 1)'), '5,00');
   assert.equal(ui.run('state.radiation.dose_rate_uSv_h'), .224567);
   assert.equal(ui.run('state.accumulatedDose'), .017654);
@@ -115,8 +117,28 @@ test('a positive small mission dose stays visible and stored values keep full pr
   ui.run(shell);
   ui.run(`state.accumulatedDose=.000035144194043823516;
     state.radiation={dose_rate_uSv_h:.12651909855776466}; updateReadings();`);
-  assert.equal(ui.element('dose-total').textContent, '3,51E-5');
-  assert.equal(ui.element('dose-rate').textContent, '1,27E-1');
+  assert.equal(ui.element('dose-total').textContent, '35,14');
+  assert.equal(ui.element('dose-total-unit').textContent, 'pSv');
+  assert.equal(ui.element('dose-rate').textContent, '126,52');
+  assert.equal(ui.element('dose-rate-unit').textContent, 'nSv/h');
   assert.equal(ui.run('state.accumulatedDose'), .000035144194043823516);
   assert.equal(ui.run('state.radiation.dose_rate_uSv_h'), .12651909855776466);
+});
+
+test('SI prefixes cover small and large dose labels without changing map data or colors', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};
+    state.scenario={detectors:[{source_type:'simulated'}]};
+    state.configuredSource={enabled:true,dose_rate_at_1m_uSv_h:8,background_uSv_h:.1};
+    state.map={values_row_major:[.12651909855776466,1000,1000000,null]};`);
+  const original = ui.run('JSON.stringify([state.map.values_row_major, [.1,1,8,32].map(x=>radiationColor(x).rgb)])');
+  ui.run(shell);
+  for (const [value, expected] of [[1e-12,'1,00 aSv/h'], [1e-9,'1,00 fSv/h'],
+    [1e-6,'1,00 pSv/h'], [.001,'1,00 nSv/h'], [1,'1,00 µSv/h'],
+    [1000,'1,00 mSv/h'], [1000000,'1,00 Sv/h'], [10000000,'10,00 Sv/h']]) {
+    assert.equal(ui.run(`formatRateWithUnit(${value})`), expected);
+  }
+  assert.equal(ui.run('formatRateWithUnit(1e-20)'), '0,0000000100 aSv/h');
+  assert.equal(ui.run('JSON.stringify([state.map.values_row_major, [.1,1,8,32].map(x=>radiationColor(x).rgb)])'), original);
 });

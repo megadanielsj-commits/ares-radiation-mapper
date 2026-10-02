@@ -25,7 +25,7 @@ function acceptPositionedCount(mission, value) {
 
 // Units and telemetry only: the original map geometry, gradient and numeric
 // color transform stay untouched. The map uses reported dose; raw CPS remain
-// separate. Internal µSv/h are displayed in mSv/h with no count calibration.
+// separate. SI prefixes change labels only, with no count calibration.
 const originalReferenceLabel = regulatoryBandForExcessRate;
 const originalEnvelope = handleEnvelope;
 const originalReadings = updateReadings;
@@ -36,17 +36,30 @@ function formatRadiologicalValue(value) {
   if (!Number.isFinite(number)) return "—";
   const rounded = Number(number.toFixed(2));
   const error = number === 0 ? 0 : Math.abs((rounded - number) / number);
-  // Two decimal places are acceptable only below 0.5% presentation error.
-  // This formats a label; it never replaces a telemetry or map value.
-  return number !== 0 && (rounded === 0 || error > .005)
-    ? number.toLocaleString("pt-BR", {notation:"scientific", minimumFractionDigits:2, maximumFractionDigits:2})
-    : formatNumber(number, 2);
+  // Prefix selection keeps normal doses between 1 and 1000. For an unusually
+  // small value beyond the smallest prefix, retain decimal places instead of
+  // scientific notation or a false zero. Telemetry itself is never rounded.
+  const digits = number !== 0 && (rounded === 0 || error > .005)
+    ? Math.min(100, Math.max(2, 2 - Math.floor(Math.log10(Math.abs(number))))) : 2;
+  return formatNumber(number, digits);
 }
+function scaledSievert(value, suffix) {
+  if (value == null || value === "" || !Number.isFinite(Number(value))) {
+    return {value:NaN, unit:""};
+  }
+  const number = Number(value);
+  if (number === 0) return {value:0, unit:`µSv${suffix}`};
+  const prefixes = [[1e6,"Sv"], [1e3,"mSv"], [1,"µSv"], [1e-3,"nSv"],
+    [1e-6,"pSv"], [1e-9,"fSv"], [1e-12,"aSv"]];
+  const [factor, unit] = prefixes.find(([threshold]) => Math.abs(number) >= threshold)
+    || prefixes.at(-1);
+  return {value:number / factor, unit:`${unit}${suffix}`};
+}
+scaledDoseRate = function (value) {return scaledSievert(value, "/h");};
+scaledDose = function (value) {return scaledSievert(value, "");};
 formatRateWithUnit = function (value) {
-  if (value == null || value === "") return "—";
-  const rate = Number(value) / 1000;
-  if (!Number.isFinite(rate)) return "—";
-  return `${formatRadiologicalValue(rate)} mSv/h`;
+  const scaled = scaledDoseRate(value);
+  return Number.isFinite(scaled.value) ? `${formatRadiologicalValue(scaled.value)} ${scaled.unit}` : "—";
 };
 formatDoseRate = function (value) {return value == null ? "—" : formatRadiologicalValue(scaledDoseRate(value).value);};
 formatAxisValue = function (value) {return formatNumber(value, 2);};
@@ -179,7 +192,7 @@ function paintConsole(snapshot) {
     : (realRadiation ? "Posição simulada: este mapa testa o software e não representa a distribuição física da radiação." : "Ambiente de treinamento com fonte e posição virtuais.");
   $("frame-label").textContent = snapshot.mode === "simulation" ? "Mundo simulado" : "Odometria local (odom)";
   $("map-title").textContent = "Mapa de calor";
-  document.querySelector(".public-reference").textContent = realRadiation ? "Taxa de dose reportada · escala em mSv/h" : "Escala em mSv/h · referências CNEN no cursor";
+  document.querySelector(".public-reference").textContent = realRadiation ? "Taxa de dose reportada · unidades automáticas" : "Unidades automáticas · referências CNEN no cursor";
   $("mission-id").textContent = status.mission_id || "—";
   $("duration-reading").textContent = `${snapshot.setup.duration_s / 60} minutos`;
   $("elapsed").textContent = elapsedLabel(status.simulation_time_ns / 1e9);

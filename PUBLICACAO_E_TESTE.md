@@ -1,7 +1,7 @@
-# ARES Console 1.0.1 — publicação e ensaio de 08/10/2026
+# ARES Console 1.0.2 — publicação e ensaio de 08/10/2026
 
-Esta é a versão de referência do console aprovado. O mapa usa taxa de dose em
-mSv/h nos quatro modos. O canal USB permanece independente do robô e conserva
+Esta é a versão de referência do console aprovado. O mapa usa taxa de dose com
+prefixos automáticos nos quatro modos, sem notação científica. O canal USB permanece independente do robô e conserva
 contagens, taxa reportada, espectros disponíveis e timestamps em seus arquivos.
 O teste conjunto com Go2 físico ainda precisa ser realizado: os testes de
 software não validam o rádio, a montagem ou a resposta temporal do detector.
@@ -9,13 +9,13 @@ software não validam o rádio, a montagem ou a resposta temporal do detector.
 ## Preparar no computador do teste, com internet
 
 Use Linux e o Docker Engine/Compose já utilizados nos ensaios anteriores.
-Extraia `ARES_Console_Oficial_1.0.1.zip`. Na pasta extraída:
+Extraia `ARES_Console_Oficial_1.0.2.zip`. Na pasta extraída:
 
 ```bash
 bash ares-console iniciar
 ```
 
-Abra http://127.0.0.1:8001. O iniciador constrói a imagem `ares-operator-console:1.0.1`
+Abra http://127.0.0.1:8001. O iniciador constrói a imagem `ares-operator-console:1.0.2`
 se ela ainda não existir, espera o servidor ficar saudável e preserva dados do
 console anterior ao encerrá-lo. Faça isso **antes** de conectar ao Wi-Fi do Go2,
 que pode não oferecer internet. O modo inicial é Simulação completa.
@@ -27,7 +27,7 @@ que pode não oferecer internet. O modo inicial é Simulação completa.
 5. Compare a taxa do painel com o visor em Sv, usando a mesma unidade e considerando
    a média interna do aparelho. A unidade de visor `R` não bloqueia o canal bruto
    conhecido em `R/h`; escolher Sv serve para facilitar esta comparação.
-   A legenda do mapa usa mSv/h; 0,12 µSv/h equivale a `1,20E-4 mSv/h`.
+   Dose e legenda usam prefixos automáticos: 0,12 µSv/h aparece como `120,00 nSv/h`.
    A conversão do valor bruto do SDK permanece provisória até essa comparação.
 6. Inicie, percorra a trajetória, encerre, baixe o ZIP e verifique CPS e `dr_usvh`
    separados em `amostras.csv`. Não interprete as coordenadas virtuais como
@@ -48,13 +48,13 @@ necessário transferir para outro computador Linux compatível com a arquitetura
 da imagem, exporte-a antes, ainda no computador preparado:
 
 ```bash
-docker save ares-operator-console:1.0.1 | gzip > ARES_Console_1.0.1_imagem.tar.gz
+docker save ares-operator-console:1.0.2 | gzip > ARES_Console_1.0.2_imagem.tar.gz
 ```
 
 No outro computador, com Docker instalado e o pacote extraído:
 
 ```bash
-gunzip -c ARES_Console_1.0.1_imagem.tar.gz | docker load
+gunzip -c ARES_Console_1.0.2_imagem.tar.gz | docker load
 bash ares-console iniciar
 ```
 
@@ -67,27 +67,27 @@ bash PUBLICAR_CONSOLE_GITHUB.sh
 ```
 
 O script cria um checkout separado, importa o bundle e publica
-`release/ares-console-1.0.1`. Usa sua autenticação Git já existente e não faz
+`release/ares-console-1.0.2`. Usa sua autenticação Git já existente e não faz
 force push, não modifica `ares-wifi` e não envia registros de campo.
 
 Link para a equipe:
-https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.1
+https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.2
 
 Verifique os checks de **Actions** dessa branch. O CI executa testes em Python
 3.10/3.12, regressões do mapa, lint, tipos e construção/inicialização da imagem.
 Depois abra:
-https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.1?expand=1
+https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.2?expand=1
 
-Título sugerido: `ARES Console 1.0.1: canal USB de dose e precisão dos valores`.
+Título sugerido: `ARES Console 1.0.2: unidades automáticas de dose na interface`.
 Descrição sugerida:
 
-> Corrige o descarte da taxa de dose do Radiacode quando `get_alarm_limits()`
-> informa `R`, identificando a unidade do canal bruto separadamente. Preserva
-> a taxa reportada, CPS/CPM e precisão dos arquivos/cálculos; valores pequenos
-> aparecem em notação científica na interface. Mantém mapa, layout e integração
-> aprovados. Validação: 144 testes Python do pacote, 209 do runtime de referência,
-> 12 JavaScript e quatro modos no navegador com substitutos de hardware. O ensaio
-> físico USB/Go2 desta revisão e o build Docker/CI ainda precisam ser confirmados.
+> Mantém a aquisição de dose da 1.0.1 e apresenta dose/taxa com prefixos SI
+> automáticos, normalmente com duas casas e sem notação científica. A mudança
+> ocorre somente nos rótulos; dados, mapa, layout e integração são preservados.
+> Validação desta revisão: 13 testes JavaScript, hashes protegidos e quatro modos
+> no navegador com substitutos de hardware. As suítes Python da 1.0.1 continuam
+> como referência do backend inalterado. O build Docker/CI e o ensaio conjunto
+> com Go2 devem ser confirmados no computador de operação.
 
 Após revisão e checks verdes, o merge torna essa versão visível na branch
 principal. Até lá, a equipe deve usar o link da branch de release, pois a página
@@ -164,9 +164,10 @@ curl --fail --silent http://127.0.0.1:1098/health | python3 -m json.tool
 ```
 
 Exemplo de precisão: `0.12651909855776466` µSv/h deve continuar com esse valor
-numérico nos arquivos e mensagens. No painel aparece `1,27E-1 µSv/h`; na legenda
-do mapa, `1,27E-4 mSv/h`. A dose integrada de um intervalo pode aparecer como
-`3,51E-5 µSv`, em vez de `0,00`. Um zero efetivamente reportado continua zero;
+numérico nos arquivos e mensagens. No painel e na legenda aparece `126,52 nSv/h`.
+A dose integrada de um intervalo pode aparecer como `35,14 pSv`, em vez de `0,00`.
+Uma taxa de 10.000 µSv/h aparece como `10,00 mSv/h`; as taxas sempre mantêm `/h`.
+Um zero efetivamente reportado continua zero;
 taxa ausente permanece `null`/campo vazio/`—`, não é preenchida a partir de CPS.
 
 Aceite o ensaio quando os equipamentos reais fornecem pose e taxa recente,

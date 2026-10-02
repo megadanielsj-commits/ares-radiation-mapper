@@ -1,7 +1,7 @@
 name: ares-operator-console
 services:
   console:
-    image: ares-operator-console:1.0.1
+    image: ares-operator-console:1.0.2
     build:
       context: ${ARES_CONSOLE_ROOT:?Use bash ares-console iniciar}
       dockerfile: tools/operator_console/Dockerfile

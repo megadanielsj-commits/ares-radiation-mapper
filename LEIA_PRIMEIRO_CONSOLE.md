@@ -1,16 +1,19 @@
-# ARES Console 1.0.1 — versão de referência para o ensaio
+# ARES Console 1.0.2 — versão de referência para o ensaio
 
 O mapa, as cores, o gradiente, o desenho do Go2 e a interpolação da versão v4
 aprovada foram preservados. Esta revisão mantém a interface aprovada e a correção de permanência da v3.
-O título do mapa é **Mapa de calor** e sua legenda usa **mSv/h** nos quatro modos.
+O título do mapa é **Mapa de calor** e sua legenda usa unidades automáticas de
+taxa de dose (nSv/h, µSv/h, mSv/h ou Sv/h) nos quatro modos.
 O pacote é a referência de software para o ensaio de 08/10/2026; a validação conjunta
 com o Go2 físico continua dependente desse ensaio.
 
 Nesta revisão o mapa ocupa a área principal e a coluna de telemetria fica à esquerda.
-O título é **Levantamento Radiométrico**. A revisão 1.0.1 corrige o bloqueio indevido
-da taxa USB e a apresentação de valores pequenos. As medidas usam duas casas quando
-o erro relativo de apresentação não supera 0,5%; caso contrário, usam notação
-científica com duas casas na mantissa. Uma dose positiva pequena não vira zero.
+O título é **Levantamento Radiométrico**. A revisão 1.0.2 preserva as correções de
+aquisição da 1.0.1 e muda somente a apresentação das unidades. Dose e taxa usam
+o prefixo adequado à magnitude, normalmente com duas casas e sem notação
+científica. Para doses integradas muito pequenas, podem aparecer pSv ou fSv.
+Uma dose positiva pequena não vira zero. Além do menor prefixo disponível,
+são mantidas casas decimais suficientes para conservar o valor visível.
 Somente os rótulos são formatados; dados, registros e cálculos mantêm a precisão
 original. A quantidade de amostras permanece inteira.
 A logo é exibida em branco, sem fundo branco, por CSS sobre a imagem original.
@@ -94,9 +97,9 @@ ARES_LATENCIA_LEITURA_S=0.5 ARES_OFFSET_DETECTOR=0,0 bash ares-console iniciar
 ```
 
 O mapa real usa a **taxa de dose reportada pelo Radiacode**, não CPS convertido.
-O motor trabalha em µSv/h e a apresentação divide por 1.000 para exibir mSv/h.
-Exemplo: 0,12 µSv/h = 0,00012 mSv/h, exibido como `1,20E-4 mSv/h` para manter duas
-casas na mantissa sem mostrar zero. O algoritmo, a paleta e a interpolação permanecem
+O motor trabalha em µSv/h. Somente os rótulos escolhem a unidade adequada:
+0,12 µSv/h aparece como `120,00 nSv/h`; 1.000 µSv/h aparece como `1,00 mSv/h`;
+1.000.000 µSv/h aparece como `1,00 Sv/h`. O algoritmo, a paleta e a interpolação permanecem
 protegidos; a evidência que entra no mapa é o canal de dose. Os modos simulados
 mantêm o modelo sintético aprovado e usam a mesma unidade na legenda.
 
@@ -117,7 +120,9 @@ CPS e CPM continuam nos registros independentes e nas amostras posicionadas do
 Werik. CPM é 60×CPS, não uma janela medida de um minuto. A dose acumulada no painel
 é a integral da taxa dos intervalos posicionados aceitos de 1 s; não é o total do
 aparelho nem uma recuperação da dose perdida em interrupções. O JSON do mapa
-mantém µSv/h e informa a apresentação em mSv/h e o fator 0,001 nos modos mistos/reais.
+mantém µSv/h e seus metadados de apresentação de referência em mSv/h e fator 0,001
+nos modos mistos/reais. A interface calcula os prefixos apenas nos rótulos a partir
+dos valores em µSv/h; não modifica esses metadados ou os números exportados.
 Os CSV e o SQLite conservam nomes de campos, unidades e precisão originais.
 O protocolo FS-5000 permanece no runtime de referência, mas sua seleção não é
 oferecida neste console Radiacode.
@@ -150,11 +155,11 @@ Para voltar ao painel anterior, pare o console e execute `bash simulacao iniciar
 na pasta v4. Nenhum resultado antigo é apagado. Esta versão não substitui
 automaticamente as branches do ensaio físico no GitHub.
 
-O pacote inclui `ARES_Console_Oficial_1.0.1_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
-O script publica `release/ares-console-1.0.1`, sem force push e sem editar `ares-wifi`.
+O pacote inclui `ARES_Console_Oficial_1.0.2_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
+O script publica `release/ares-console-1.0.2`, sem force push e sem editar `ares-wifi`.
 Consulte [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação, preparação
 sem internet no campo, sequência dos testes e critérios de aceitação.
-A imagem Docker é `ares-operator-console:1.0.1`. O CI constrói a imagem e testa
+A imagem Docker é `ares-operator-console:1.0.2`. O CI constrói a imagem e testa
 início, encerramento e exportação em simulação completa.
 
 ## Verificação de desenvolvimento
