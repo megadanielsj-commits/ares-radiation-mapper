@@ -1,0 +1,1024 @@
+{
+  "version": "ARES Console 1.0.2",
+  "checked_at_utc": "2026-10-04T17:01:18.836543+00:00",
+  "published_release_commit": "8c9a4280ebcf085ddf7cde3b2809750968bb10d2",
+  "published_default_main_commit": "fcf4377be8ccfd86f7d56343c58b0fc342fd3cdc",
+  "werik_original_commit": "84f9148d1da6b7b3aa84b177b09a30d2631ecb8f",
+  "scope": "Published GitHub check, legacy entry-point removal, documentation and CI; active operating code unchanged",
+  "original_core_files_identical": [
+    "robo/go2.py",
+    "robo/_compat.py",
+    "robo/base.py",
+    "sincronizacao.py",
+    "teleop.py",
+    "radiacao/base.py",
+    "radiacao/fs5000.py"
+  ],
+  "active_files_unchanged_from_published": [
+    {
+      "file": "ares-console",
+      "sha256": "f7ab3cd5729e418ec7a50996dda667290acabe9d4a05b5a85c2764179254eb02"
+    },
+    {
+      "file": "config/app.yaml",
+      "sha256": "0160f3f41cfde030cfc5e72a3e9c804eafb3d0cf1ad22919a1bfd942cee17fba"
+    },
+    {
+      "file": "config/hardware/go2_fs5000.yaml",
+      "sha256": "5beaf22cbd27722e26e87b2c9af80bc05d29e215decf77ce52c6a1c215886023"
+    },
+    {
+      "file": "config/hardware/go2_only_simdetector.yaml",
+      "sha256": "f75e2d1972320aa2ada9a31e61f8c458601a64261a4dd0eac6ad3e458a7055af"
+    },
+    {
+      "file": "config/scenarios/background_only.yaml",
+      "sha256": "85faacbd8d8d8d31ce7fc03876c7a6ca53d18af18d8f592c6ef0faf77d284ac6"
+    },
+    {
+      "file": "config/scenarios/fs5000_replay.yaml",
+      "sha256": "d22e24bc5ed0428f56ef1763b05aee0047f48a11a0fc2c3e92f0181a56ae50d4"
+    },
+    {
+      "file": "config/scenarios/intensity_step.yaml",
+      "sha256": "f301fd17a3ee66a38362454c37970842a11cbbed8814f3953321dc67723e08f2"
+    },
+    {
+      "file": "config/scenarios/moving_source.yaml",
+      "sha256": "354ef73e64494a1e06bb761f7696a667eeb0348dc631d5695b216fc69922f092"
+    },
+    {
+      "file": "config/scenarios/odometry_drift.yaml",
+      "sha256": "8dca9000e3407351ae4eec74ac015807c0dfedff3399199d90cd1a22f29e2394"
+    },
+    {
+      "file": "config/scenarios/packet_loss.yaml",
+      "sha256": "7f617acc95a4fef1a0bf1bcb051c29f0d1c7b1b01663088eadc52f9d5a04fc2d"
+    },
+    {
+      "file": "config/scenarios/probabilistic_reference.yaml",
+      "sha256": "b0aa20ee58cbe027eab62a583f2917820b0a34314c5c3ebf83b1b8f1d9b511bc"
+    },
+    {
+      "file": "config/scenarios/static_source.yaml",
+      "sha256": "d902817b0b9dc20418b18f95b0d4f4ba1c340364457b4621d7a559bab297c610"
+    },
+    {
+      "file": "config/scenarios/two_detectors.yaml",
+      "sha256": "e834c284dcd3339cfaad43d6a991d4c75d51e4324bffcd6591884fb39d55d263"
+    },
+    {
+      "file": "pyproject.toml",
+      "sha256": "5627e294927c39af6a81b0b0b3bb528d0add383cc6a851420db667f2bbddcda1"
+    },
+    {
+      "file": "src/ares_mapper/__init__.py",
+      "sha256": "d1c95113361386b7e01b731c28d1e613f4d3bece1899555cd43bf78e5104e702"
+    },
+    {
+      "file": "src/ares_mapper/__main__.py",
+      "sha256": "9393c38cd8b21260432a339ad1d9e70492f4f7b960cd1da4e52093bb28743f64"
+    },
+    {
+      "file": "src/ares_mapper/adapters/__init__.py",
+      "sha256": "ccdbf546a08f8e8625f9a87ab1a889f181e664a79d9699c7525a7221124c48c5"
+    },
+    {
+      "file": "src/ares_mapper/adapters/fs5000/README.md",
+      "sha256": "d0b8ced84b77e6d237675e502270462c1afd7b8c33f012fda3ea43dfe6ec75ef"
+    },
+    {
+      "file": "src/ares_mapper/adapters/fs5000/__init__.py",
+      "sha256": "dfee350577f1c7e31b426dceb50ec4173c71a59fa2c19deda0e37419c8b91f00"
+    },
+    {
+      "file": "src/ares_mapper/adapters/fs5000/parser.py",
+      "sha256": "e0dc39612bf4f1c92001afcbaea5766e4665c4c3ac9eb2d58d3cf741541f4af7"
+    },
+    {
+      "file": "src/ares_mapper/adapters/fs5000/source.py",
+      "sha256": "368c7675392b189c73c0425504c850b73703097f9495f54bbcefa0c914492fb6"
+    },
+    {
+      "file": "src/ares_mapper/adapters/fs5000/vendor/fs5000.py",
+      "sha256": "3c90d9b433ef0be805926b7389229393c0a2f3256959634f399744d57a0436cc"
+    },
+    {
+      "file": "src/ares_mapper/adapters/radiacode_jsonl.py",
+      "sha256": "282792a1a5de6b6c17ad518e2acc5fcd51b560f9c6a39562f8f42232b3db1773"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/README.md",
+      "sha256": "1fc0344617fe45f628c13e1533c5591886e4049551b1025b01823cc309ef6f29"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/__init__.py",
+      "sha256": "9593d6a5178aeddf05a493542e6cb6386d52ce5eb97e8f2c50c09dbf17e4f7a3"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/channel_factory.py",
+      "sha256": "9e4b88fb7fb6e51094412fe0b0555f48797ee1606a0cb5185f88f7f2cb7c6690"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/ros2_sportmode_source.py",
+      "sha256": "ce9f4f35b1e6f437969e87373de8cc351115eecfadb9eead19159b4e40f006aa"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/ros2_tf_source.py",
+      "sha256": "248bb0f6606f627a4a1615e758f3d859849c086a2f6945ce45af1c10041b6e09"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/sdk2_source.py",
+      "sha256": "b127d734ef913dcd9d6b44a85555d42c71c792be1ad615e5772b669f5b6b04ba"
+    },
+    {
+      "file": "src/ares_mapper/adapters/unitree/sport_commander.py",
+      "sha256": "1264cfda8e5b9de93ff30394d8f9bafba267039d40237aa824e946113c98dd17"
+    },
+    {
+      "file": "src/ares_mapper/api/__init__.py",
+      "sha256": "98baa31354cd40f693ccacfe0966cd641e2e1f82fd2a953e6850401c41309df1"
+    },
+    {
+      "file": "src/ares_mapper/api/app.py",
+      "sha256": "40f8c76979b7cfb3a9621499b0606de7cc6a3ccb68c7b3d8fe3004d5e67f35a6"
+    },
+    {
+      "file": "src/ares_mapper/api/routes.py",
+      "sha256": "5eafa2026c9154d8012e342e6a785ca09680f79ccf2baeacc2877efaa50c30df"
+    },
+    {
+      "file": "src/ares_mapper/api/schemas.py",
+      "sha256": "137c9f42fb2e9f0b51892fcbf94d94f728357f70efc794e432dcceea9a941908"
+    },
+    {
+      "file": "src/ares_mapper/api/websocket.py",
+      "sha256": "0bf548f9cc0a139056a2b4c64dc1ff0890572da40344fb78caea808788bd9b43"
+    },
+    {
+      "file": "src/ares_mapper/cli.py",
+      "sha256": "6d9caebe8ad509038fed3629f628d3d83ef6df8696a58e7b84fdad27ba86d316"
+    },
+    {
+      "file": "src/ares_mapper/config.py",
+      "sha256": "66c59d9b84f166ab92bd09a456397a271370d1bf56e5ae81f9aecfd52a4b7305"
+    },
+    {
+      "file": "src/ares_mapper/core/__init__.py",
+      "sha256": "764ec6357dd13eb5ee9b15b8dcd0a936859e11d12098223be6dbf52db80f27b6"
+    },
+    {
+      "file": "src/ares_mapper/core/clock.py",
+      "sha256": "5d22a50444a9a268d5d709430550fa41d6eabb7d3fa9160a0d4757ef375d9e45"
+    },
+    {
+      "file": "src/ares_mapper/core/event_bus.py",
+      "sha256": "328b64f5d22b6d6103c3d933e22cb71b39ff4c3839abc1949141b1ba204b1727"
+    },
+    {
+      "file": "src/ares_mapper/core/health.py",
+      "sha256": "8e32fc29c8773a869fd402c8065d3732a9e322a10a7469da39079ce28c372f55"
+    },
+    {
+      "file": "src/ares_mapper/core/mission_controller.py",
+      "sha256": "0c7d9f81b7a551a8ab715adc1c41ae21659efbcafb9ef97cf3aecb06968dc9d4"
+    },
+    {
+      "file": "src/ares_mapper/core/synchronizer.py",
+      "sha256": "53d45ed616f19712a0323bc8de37454781afd7bfbcaf36a76f3f9b87c1480a33"
+    },
+    {
+      "file": "src/ares_mapper/core/transforms.py",
+      "sha256": "685cf6dad2b5c563d2c94d0c8f6b0934e6d9b54ee87480db7042364373abc117"
+    },
+    {
+      "file": "src/ares_mapper/domain/__init__.py",
+      "sha256": "c348abd8037dc5c5d3eec6d02c1c0437c7a9590b519427ddab84fbb6b05c91b5"
+    },
+    {
+      "file": "src/ares_mapper/domain/enums.py",
+      "sha256": "0f13f195f3ce00cc24e83b7181cc2df13b9817e2c7e7bf0e150e8c6c2ca40143"
+    },
+    {
+      "file": "src/ares_mapper/domain/models.py",
+      "sha256": "2775c4ca430b7cba702ff14bbabf850db26b3e56a7c41d435cb1eedb8ceeb179"
+    },
+    {
+      "file": "src/ares_mapper/domain/validation.py",
+      "sha256": "dac46c18a5574c3cc504e0533be31232108b813130f7ecd6abb04bd84abd8b2a"
+    },
+    {
+      "file": "src/ares_mapper/fusion/__init__.py",
+      "sha256": "c68513f4ef2d75234f3c68a4582f0072d9b97cafbe6fad9a21d8fdc1cd17530b"
+    },
+    {
+      "file": "src/ares_mapper/fusion/trajectory.py",
+      "sha256": "d298ac6a7fca01cf3e2a3ed5fedf37fb04fdcd57adc0f55942abb8f048dcf6ea"
+    },
+    {
+      "file": "src/ares_mapper/inference/__init__.py",
+      "sha256": "0db16e797539e3e9fff7e1be4a87eec072c720894bb90aeb28b22ca57267f033"
+    },
+    {
+      "file": "src/ares_mapper/inference/identifiability.py",
+      "sha256": "cf15f975591c605af987a6db24d0282432077e3a25a83194e112af7d0e1bfb83"
+    },
+    {
+      "file": "src/ares_mapper/inference/observation.py",
+      "sha256": "3d9caff95b6d65d95139ccfad8bcd1d7c0cfaa747da67279443f64b8c66382f4"
+    },
+    {
+      "file": "src/ares_mapper/inference/particle_filter.py",
+      "sha256": "2fac288b96085e843cb9d84b53bf229eadd01cda50388bfbd73eb59e986203a5"
+    },
+    {
+      "file": "src/ares_mapper/inference/source_existence.py",
+      "sha256": "98ae658d325cad6a246fa931c14731e2d68b11aab1ea4e7a7dfb7d21c6627c5e"
+    },
+    {
+      "file": "src/ares_mapper/mapping/__init__.py",
+      "sha256": "c3c165fc4bce8e103b69df3130ee2dbe1790d9ca92151451fb8c20b3cb9780ca"
+    },
+    {
+      "file": "src/ares_mapper/mapping/confidence.py",
+      "sha256": "d91ad5b89622314a305ebef41703e637d734d52f8a18f7da9acec833d01af6a9"
+    },
+    {
+      "file": "src/ares_mapper/mapping/coverage.py",
+      "sha256": "3cc824c3e50e3d0bf0838169322cdf87e8252879749a95a3f51a179655cf2014"
+    },
+    {
+      "file": "src/ares_mapper/mapping/exposure.py",
+      "sha256": "2680938e63531756053e1edff76b9064db1f5a998b58aa6e929dbd3aa3de78d5"
+    },
+    {
+      "file": "src/ares_mapper/mapping/filters.py",
+      "sha256": "cac91d9d75ef9b2da7d508183ead24917184fb5f4a22d945f70accc29100a6be"
+    },
+    {
+      "file": "src/ares_mapper/mapping/fusion.py",
+      "sha256": "4319d7345465adb63725d9a4bd47cec018e53783ced2413115dc6930ed3b6d2f"
+    },
+    {
+      "file": "src/ares_mapper/mapping/grid.py",
+      "sha256": "e81fcbe0c8a913872ee8bb2c9ec1cffee9ec992a06ddabcc0f235eb93c22e04a"
+    },
+    {
+      "file": "src/ares_mapper/mapping/idw.py",
+      "sha256": "7c7fe0fa655ca06b92bd58bce24a78dba27650a504e9cb30420d6d6b2cada042"
+    },
+    {
+      "file": "src/ares_mapper/mapping/metrics.py",
+      "sha256": "d678247306e869b36b24dcc663f7d2559097f7c307d1ebc2aa945b4ba34b0856"
+    },
+    {
+      "file": "src/ares_mapper/mapping/observation_grid.py",
+      "sha256": "0a41aad58d1819746ce367651ff2218d2f58940021760755c65f46e0f0e89420"
+    },
+    {
+      "file": "src/ares_mapper/mapping/quadtree.py",
+      "sha256": "f17bbe5b032d60468acc0a4b931008fab87e743361514ed7f0d0252a8816e131"
+    },
+    {
+      "file": "src/ares_mapper/mapping/reconstruction.py",
+      "sha256": "51940f0b427dfce544a2b06bcec7134d26953ed253f892b1a49669237205c777"
+    },
+    {
+      "file": "src/ares_mapper/mapping/residual.py",
+      "sha256": "1300682082a8c1c72e20d8dcc3ef716b13885f125697b0aaed9fca266d405148"
+    },
+    {
+      "file": "src/ares_mapper/mapping/service.py",
+      "sha256": "708dd0b5b1b4f252fb2232595143a27d318894971154ab604c3e97ad6aa5d9f1"
+    },
+    {
+      "file": "src/ares_mapper/providers/__init__.py",
+      "sha256": "64fe97dd184d1c88ac9ad2314ad031d9bfe26cc049ee56c5b24a511880225c8f"
+    },
+    {
+      "file": "src/ares_mapper/providers/base.py",
+      "sha256": "26e324ca6521b740a6743bfa9d7435f0ef50a3b97b08622222f3cb030aba6165"
+    },
+    {
+      "file": "src/ares_mapper/providers/replay_pose.py",
+      "sha256": "8cd4fe294e64021539ac2af0856136e3b2193a2115e6147b4e5fa2e231208f86"
+    },
+    {
+      "file": "src/ares_mapper/providers/replay_radiation.py",
+      "sha256": "1c03bf06765cf058af7c6d9bb4be998d6b9646d484cce144f99c2d550e4b3464"
+    },
+    {
+      "file": "src/ares_mapper/radiological_scale.py",
+      "sha256": "0eda7ed840cd5e778e7975f4574a185f952e98300c7454970598638baafbb6a4"
+    },
+    {
+      "file": "src/ares_mapper/runtime.py",
+      "sha256": "0a925df78d4fbd11f60f380e7a22870c491ea81c52ab161a85ea843c740ec56d"
+    },
+    {
+      "file": "src/ares_mapper/simulation/__init__.py",
+      "sha256": "eb233225438fd08fd3e219dd35f2d013abe7ed70cd4e8fc3e41d0f19f5fd4479"
+    },
+    {
+      "file": "src/ares_mapper/simulation/csv_radiation_source.py",
+      "sha256": "57b9269532a88ad678cc7b7f24147e21fa4297cfb44349e609c155154f2ab119"
+    },
+    {
+      "file": "src/ares_mapper/simulation/detector.py",
+      "sha256": "a2b012cb11afaa0e33ef9e8cb24ba661c007541e5261e55bfb1410bd54db087b"
+    },
+    {
+      "file": "src/ares_mapper/simulation/events.py",
+      "sha256": "cc5b198e93519bf9c523c7d93211a6ea26362f6ff847512a0ae66f800f5a1f63"
+    },
+    {
+      "file": "src/ares_mapper/simulation/odometry.py",
+      "sha256": "1cb596e0ab726bdb7a9add314098208918c69045e89223fc70b16a3b6cc5fe21"
+    },
+    {
+      "file": "src/ares_mapper/simulation/pose_coupled_radiation_source.py",
+      "sha256": "5a6e2f3923df78af4742be0dd684092e15b3b7b295178140000941b85bbc5b36"
+    },
+    {
+      "file": "src/ares_mapper/simulation/pose_source.py",
+      "sha256": "f272e1b3bfb114d6658a5362f757bcfcc2d41bdcd9e9422be82a45ca74d581b0"
+    },
+    {
+      "file": "src/ares_mapper/simulation/radiation_field.py",
+      "sha256": "1cf6b4b71b8e0a573a78cb74b2b65c6a7d34551648aac3ad2fc15286f7ed2bb5"
+    },
+    {
+      "file": "src/ares_mapper/simulation/radiation_source.py",
+      "sha256": "00866d08a64a1137711464ddedc5f527b76b220b8b0c39d69444e49003605254"
+    },
+    {
+      "file": "src/ares_mapper/simulation/trajectory.py",
+      "sha256": "5d5a80dabc2fc2325255fae6cd0537ec8e4da47190d753e294c1cb839585956a"
+    },
+    {
+      "file": "src/ares_mapper/simulation/world.py",
+      "sha256": "721d40c6d073d6482c12af7b0537169e2c04f656b05340b33fb17ba87cbec2f9"
+    },
+    {
+      "file": "src/ares_mapper/storage/__init__.py",
+      "sha256": "7b2dc1e3a04777b3470fbf1b42c168f70454f49c23be742705e5e6bd5bcb270c"
+    },
+    {
+      "file": "src/ares_mapper/storage/database.py",
+      "sha256": "7effacd8bc217a70eee749d57d34e82219e7f8793c3b931c4446d69fb5c5bb59"
+    },
+    {
+      "file": "src/ares_mapper/storage/export.py",
+      "sha256": "4a1fd5931f1006b2f15466aa90f39054799949127ae44226a5e22360ced17809"
+    },
+    {
+      "file": "src/ares_mapper/storage/repositories.py",
+      "sha256": "c4ecf7d86925259f5adba3b63a08b40d05a2582cc3183a68f286b23fc8ae5d52"
+    },
+    {
+      "file": "src/ares_mapper/storage/schema.sql",
+      "sha256": "125a9f526ccb90ff56c736674c8c8401c587b0f457ba93bcd87f85cff4ae6006"
+    },
+    {
+      "file": "src/ares_mapper/validation/__init__.py",
+      "sha256": "1d71d2c5b73d1399ae6c346c3ad06036c1656f017264812f64ddaba32029a9f1"
+    },
+    {
+      "file": "src/ares_mapper/validation/monte_carlo.py",
+      "sha256": "159118fb558800f6dfdceae5334c8a162cceb506b3d5458fbfc39ac67c652b3c"
+    },
+    {
+      "file": "src/ares_mapper/version.py",
+      "sha256": "3e057bf4217d4f31696e42d1c6164629ab1e856730368e235bcfbf2db540a771"
+    },
+    {
+      "file": "src/ares_mapper/web/static/app.js",
+      "sha256": "83e4a091c1ef32f6f715711cc086a27ff41ac63cf484bd4d6f852a4d62955e01"
+    },
+    {
+      "file": "src/ares_mapper/web/static/styles.css",
+      "sha256": "97e1155a204594f4a04b6e531579a886f123ddab202685d75a07857ae3749233"
+    },
+    {
+      "file": "src/ares_mapper/web/templates/index.html",
+      "sha256": "d8996135c717f5483aa16066fa566048c36b482a670da6b436a6a2de9fd81bc9"
+    },
+    {
+      "file": "tools/operator_console/Dockerfile",
+      "sha256": "d15bbfc25447dc6d2fd9d1cba0d9ff5bd960485a4f60ab44f10c1195478fab1a"
+    },
+    {
+      "file": "tools/operator_console/__init__.py",
+      "sha256": "fdc810012e1aeacd23881687cb15a3a389a842eee8f8235527bd5c89c50523e4"
+    },
+    {
+      "file": "tools/operator_console/check_map_lock.py",
+      "sha256": "add3f0834e9a202cc158cf1aebd5bd7178dee93eb2ed4f52debec4e5aae30d44"
+    },
+    {
+      "file": "tools/operator_console/compose.yaml",
+      "sha256": "2f4bcb82d8325f92fe6670a2de3809b462b5126e120367e8dd5804d5c20ebd68"
+    },
+    {
+      "file": "tools/operator_console/map.lock.json",
+      "sha256": "68d0155885cd64c7f4f722eeb218fa224869f20d6ada7dc8f18ee28dff1f91de"
+    },
+    {
+      "file": "tools/operator_console/runtime.py",
+      "sha256": "aeba6af711f81289315c587a9c83172820c56bd70d6ffd55d429a4d60cd5f942"
+    },
+    {
+      "file": "tools/operator_console/server.py",
+      "sha256": "fbeb1ceba0cb27fd4c743c5bd5e7c32051e419ad9be4aa6d897ca18d013133d1"
+    },
+    {
+      "file": "tools/operator_console/static/ares-logo.png",
+      "sha256": "8a714cd6760f366812322e6729ad571974be429ba8fd5a77eb0cd55286e8341f"
+    },
+    {
+      "file": "tools/operator_console/static/console.css",
+      "sha256": "da06a21db44c90fb20600001db18483a8392efefa10df2749974e43eda9d6e9e"
+    },
+    {
+      "file": "tools/operator_console/static/console.js",
+      "sha256": "c6a76777e28580fac73680cee876ea53812b06045aa1dd871f02fde896258eb4"
+    },
+    {
+      "file": "tools/operator_console/static/index.html",
+      "sha256": "075b100b38dfde4014c64cf6c13557922f761873e4ac8034c06a5ce846e357bb"
+    },
+    {
+      "file": "tools/operator_console/test_console.py",
+      "sha256": "bfa3cd333a37f90e9e33674c29f8e5e106a1f397454e14ba75481500bf5756a1"
+    },
+    {
+      "file": "tools/operator_console/test_stationary_map.py",
+      "sha256": "0dfe96f73e20d0ba2114d6235314bb687df75e80e2fc5f23aa213422495de36f"
+    },
+    {
+      "file": "tools/radiacode_usb/Dockerfile.service",
+      "sha256": "7120706b711ddd438fe8e5b163f1c39894b98ab910bb155d47792198081f3085"
+    },
+    {
+      "file": "tools/radiacode_usb/counts.py",
+      "sha256": "ff70eaeea2ac85f64c3ce5653dd3598756e7e123522c7449149dd7f760e65da6"
+    },
+    {
+      "file": "tools/radiacode_usb/reader.py",
+      "sha256": "fb1328a73279923cba12a89b4c47d860f4bc492819ea1823f9cc1112e7d315a4"
+    },
+    {
+      "file": "tools/radiacode_usb/requirements-service.txt",
+      "sha256": "408573116bab98121d14a9262e426781adf992be7597970880f79c19eeefa25d"
+    },
+    {
+      "file": "tools/radiacode_usb/service.py",
+      "sha256": "c9a7615e511ca9aea3396d28dd0e6f9e2c20135870da02a114b550e86dac0982"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/__init__.py",
+      "sha256": "3a045b65fb5d36570b7dcd135a103dd6a6fec64e1bc7eab0abcbf19023790de2"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/__main__.py",
+      "sha256": "42211295c8e3dad099e7bd12e351eabf1489c4de6eda880930472cb334ef31a5"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/config.py",
+      "sha256": "b0129e8755440f87043be10fc7057573638f04d42b2772be36470928bdb8a175"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/estimativa.py",
+      "sha256": "4e47899161ae220ef3023b3a261bc00fe10ecab88bff16f63e7744b1930432bc"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/mapa.py",
+      "sha256": "db29b6f20d065d04afcc0fdda9e3b93210730d0f166b1506b6287840daa241a6"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/missao.py",
+      "sha256": "8a72a7688eb7db03f877011424b5addee75c4a492cb1dd2c66eaed4a96b8fac9"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/modelos.py",
+      "sha256": "cecec15ee0ff1ef411545b1bfc611945bbf0858a24691fb5dd9928e3ce341846"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/orquestrador.py",
+      "sha256": "653823179bf682719407f765772efc434b665416658657dfbe8445d41aa03d4e"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/radiacao/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/radiacao/base.py",
+      "sha256": "c3151edc3b522c1812fa7a3bceb3463c30f789bee808f85539363f36386c2612"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/radiacao/fs5000.py",
+      "sha256": "0c35dba377ba1bd6ded999a1d5d03fd92ad38f345983f300f4763440a2810f04"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/radiacao/radiacode.py",
+      "sha256": "36900bfa8dbb59a470da53ec6c29f9a87aaa307da1296a69c2b45738c6408dae"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/_compat.py",
+      "sha256": "d8cde26558d4f821a9bc9e866c40b17537787e81a65863b13c5247983444591d"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/base.py",
+      "sha256": "65ac8b318927d2e236823ff0bf0de0d8568098828cb2a199f98613947f6973a7"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/robo/go2.py",
+      "sha256": "3c4a446d42defb5d879e71bbafff939ab7392b7cf8ffe5ecd9808813108314fc"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/__init__.py",
+      "sha256": "79727e0d9f6cdfd808451ec413c58572eecdefe3ce4ff189775e6f995f0a1c00"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/app.py",
+      "sha256": "4c30f5dd1a2c3d54fc9b2ad204b456087e7e0916f4b2c3a85ce5d238bd449899"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/static/app.js",
+      "sha256": "6b1bbcd369d38ab392653436359df604c83b11b9001a11346b8ef91d89ca9a01"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/static/approved/index.html",
+      "sha256": "da2fc14b6ac4605f8373db3dd65c9164aa016516912d5daa8fc5642c3c56f91b"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/static/approved/integration.js",
+      "sha256": "31e1db5590f92eeb0d193478a7e3bd57fc88b1b0e30c115349d89175f8aa8370"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/static/approved/renderer.js",
+      "sha256": "364033274d2f4b26efc1b701c8d47255fdd91148f864aeccb48f1f9a7f254d75"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/static/approved/styles.css",
+      "sha256": "31830f0b0ffe50a4d21814e2ab32f6ece1499fd727c71f66e68cf1381ef795cf"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/servidor/static/index.html",
+      "sha256": "199f8102f40458ccac13d092e930c485896a5da28e511745161effd66470b3fb"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/simulacao/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/simulacao/campo.py",
+      "sha256": "accd016096e586fa4c0636babd718b977134d97dea3aa98646f036e7183b384c"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/simulacao/detector.py",
+      "sha256": "39f9f547e51ef32b7f0ebfa2b1b41da2079ef0d0fefb59c43a2d11b982e173af"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/simulacao/robo.py",
+      "sha256": "2f0d9fcad12132d42c7b30df47052d91033e1c096c1be1f52c7c7ad788781f36"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/sincronizacao.py",
+      "sha256": "cff28f98194fc858d4fd8f334df93235962d9db3a728eff3c933f21e7054e0b2"
+    },
+    {
+      "file": "vendor/go2_runtime/src/ares/teleop.py",
+      "sha256": "d5cf960ad4794a1bc623944a609a02523d1c221a93e391cc0255ae8aa10a8baf"
+    }
+  ],
+  "all_30_runtime_sources_unchanged": true,
+  "all_reference_test_source_files_unchanged": true,
+  "method_comparison_with_werik": {
+    "missao.py": {
+      "unchanged_methods": [
+        "fechar",
+        "registrar_pose",
+        "registrar_leitura",
+        "registrar_amostra",
+        "encerrar",
+        "_executar",
+        "listar",
+        "_amostras",
+        "exportar_csv"
+      ],
+      "adapted_methods": [
+        "__init__",
+        "criar",
+        "obter",
+        "exportar_json"
+      ],
+      "added_methods": []
+    },
+    "orquestrador.py": {
+      "unchanged_methods": [
+        "__init__",
+        "assinar",
+        "cancelar",
+        "_emitir",
+        "iniciar",
+        "encerrar",
+        "_ao_receber_pose",
+        "_ao_receber_leitura",
+        "_laco_estimador",
+        "_laco_publicacao",
+        "_laco_estado",
+        "_verificar_estado",
+        "estado",
+        "_fonte_sim",
+        "snapshot",
+        "encerrar_missao",
+        "definir_fonte_simulada"
+      ],
+      "adapted_methods": [
+        "_processar_amostras",
+        "_publicar_resultado",
+        "iniciar_missao"
+      ],
+      "added_methods": [
+        "_metadata_radiacode"
+      ]
+    }
+  },
+  "package_tests": {
+    "tests": 144,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "runtime_tests": {
+    "tests": 209,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "javascript_tests": {
+    "total": 19,
+    "failures": 0
+  },
+  "map_lock_files": 56,
+  "ruff": "passed",
+  "mypy": {
+    "result": "passed",
+    "files": 76
+  },
+  "github_actions_run_id": 37150422782,
+  "github_actions_run_url": "https://github.com/megadanielsj-commits/ares-radiation-mapper/actions/runs/37150422782",
+  "published_ci_jobs": [
+    {
+      "name": "test (3.12)",
+      "id": 111283008119,
+      "conclusion": "success",
+      "started_at": "2026-10-03T20:07:53Z",
+      "completed_at": "2026-10-03T20:12:43Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@v5",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Install",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Tests",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Publish exact pytest errors as check annotations",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Install Go2 reference test dependencies",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Go2 runtime compatibility regression",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Publish Go2 pytest errors as check annotations",
+          "conclusion": "success"
+        },
+        {
+          "number": 10,
+          "name": "Run actions/setup-node@v4",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "USB dashboard regression",
+          "conclusion": "success"
+        },
+        {
+          "number": 12,
+          "name": "Operator console and approved map regression",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Console rendering contracts",
+          "conclusion": "success"
+        },
+        {
+          "number": 14,
+          "name": "Go2 reference dashboard contracts",
+          "conclusion": "success"
+        },
+        {
+          "number": 15,
+          "name": "Lint",
+          "conclusion": "success"
+        },
+        {
+          "number": 16,
+          "name": "Types",
+          "conclusion": "success"
+        },
+        {
+          "number": 17,
+          "name": "Build simulation image",
+          "conclusion": "success"
+        },
+        {
+          "number": 18,
+          "name": "Smoke-test simulation image",
+          "conclusion": "success"
+        },
+        {
+          "number": 19,
+          "name": "Build hardware image",
+          "conclusion": "success"
+        },
+        {
+          "number": 20,
+          "name": "Build and smoke-test unified console",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Build Radiacode USB image and validate Compose",
+          "conclusion": "success"
+        },
+        {
+          "number": 40,
+          "name": "Post Run actions/setup-node@v4",
+          "conclusion": "success"
+        },
+        {
+          "number": 41,
+          "name": "Post Run actions/setup-python@v5",
+          "conclusion": "success"
+        },
+        {
+          "number": 42,
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "number": 43,
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "test (3.10)",
+      "id": 111283008245,
+      "conclusion": "cancelled",
+      "started_at": "2026-10-03T20:07:53Z",
+      "completed_at": "2026-10-04T02:08:09Z",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Run actions/setup-python@v5",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Install",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Tests",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Publish exact pytest errors as check annotations",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Install Go2 reference test dependencies",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 8,
+          "name": "Go2 runtime compatibility regression",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 9,
+          "name": "Publish Go2 pytest errors as check annotations",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 10,
+          "name": "Run actions/setup-node@v4",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 11,
+          "name": "USB dashboard regression",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 12,
+          "name": "Operator console and approved map regression",
+          "conclusion": "cancelled"
+        },
+        {
+          "number": 13,
+          "name": "Console rendering contracts",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 14,
+          "name": "Go2 reference dashboard contracts",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 15,
+          "name": "Lint",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 16,
+          "name": "Types",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 17,
+          "name": "Build simulation image",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 18,
+          "name": "Smoke-test simulation image",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 19,
+          "name": "Build hardware image",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 20,
+          "name": "Build and smoke-test unified console",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 21,
+          "name": "Build Radiacode USB image and validate Compose",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 41,
+          "name": "Post Run actions/setup-python@v5",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 42,
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "number": 43,
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "published_python310_timeout_annotation": [
+    "The job has exceeded the maximum execution time of 6h0m0s"
+  ],
+  "published_console_docker_build_and_smoke": "passed_in_python312_job",
+  "local_docker_engine_available": false,
+  "python310_console_hang_root_cause": "not_asserted; detailed logs unavailable over public access; official console is Python 3.12",
+  "ci_consolidation": {
+    "base_matrix": [
+      "3.10",
+      "3.12"
+    ],
+    "console_and_go2_python": "3.12",
+    "runner": "ubuntu-24.04",
+    "job_timeout_min": 20,
+    "suite_timeout_min": 5
+  },
+  "removed_old_paths": [
+    "00_INICIAR_USB_CORRIGIDO.sh",
+    "05_robo_simulado_usb.sh",
+    "06_FONTE_SIMULADA.sh",
+    "Dockerfile",
+    "LEIA_PRIMEIRO_FONTE_SIMULADA.md",
+    "LEIA_PRIMEIRO_INTEGRACAO.md",
+    "ares",
+    "ares-go2-only",
+    "compose.yaml",
+    "diagnose-go2-dds",
+    "docs/REVISAO_INTEGRACAO_20260930.md",
+    "docs/VALIDACAO_INTEGRACAO.md",
+    "docs/images/operator-console-v2.png",
+    "docs/images/operator-console-v3.png",
+    "ensaio",
+    "publicar_no_github.sh",
+    "simulacao",
+    "tools/go2_dds_probe.py",
+    "tools/integration/check_services.py",
+    "tools/integration/compose.yaml",
+    "tools/integration/export_sessions.py",
+    "tools/integration/validate_pipeline.py",
+    "tools/radiacode_usb/docker-entrypoint.sh",
+    "tools/radiacode_usb/launch.py",
+    "tools/source_simulation/compose.yaml",
+    "tools/source_simulation/dashboard.test.cjs",
+    "tools/source_simulation/server.py",
+    "tools/source_simulation/test_demo.py"
+  ],
+  "regression_helpers_moved_to": "tests/compatibility",
+  "old_radiacode_branches_present_at_check": [
+    "feat/radiacode-independent",
+    "feat/radiacode-go2-wifi"
+  ],
+  "archive_tags_requested_by_publisher_flag": [
+    "archive/radiacode-independent-20261004",
+    "archive/radiacode-go2-wifi-20261004"
+  ],
+  "publisher_local_tests": {
+    "actual_script_local_tests": {
+      "archive_and_publish": "passed",
+      "repeat_is_safe": "passed",
+      "conflicting_archive_tag_rejected_without_mutation": "passed"
+    },
+    "main_and_ares_wifi_preserved": true,
+    "archives_preserve_original_branch_heads": true,
+    "script_sha256": "c2c2fb09ed0de6c51fbbe432f5240496e2dc32c696644019b40cf32989272e11",
+    "github_pushed_here": false
+  },
+  "active_acquisition_independent": true,
+  "real_map_uses_reported_dose_no_cps_calibration": true,
+  "original_precision_preserved": true,
+  "physical_robot_trial_pending": true,
+  "hardware_tested_in_this_audit": false,
+  "consolidation_pushed_to_github_here": false,
+  "physical_checks_remaining": [
+    "LocalAP/firmware/AES",
+    "Single Go2 controller",
+    "Pose and stop/watchdog",
+    "Detector mounting offset",
+    "Rate channel unit/visor agreement",
+    "Dose-rate response latency",
+    "No progressive delay over mission",
+    "Export and USB reconnect",
+    "2D odometry and model height assumptions: base 0.32 m, detector 0.57 m"
+  ]
+}

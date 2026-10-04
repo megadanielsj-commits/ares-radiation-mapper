@@ -143,29 +143,34 @@ observação em metros, evitando falsos alarmes ao concentrar a localização.
 Essa correção não congela as cores
 ou o mapa e não impede o diagnóstico existente de inconsistência das leituras.
 
-O núcleo do Werik foi incluído da revisão `4048f7c` da adaptação Go2, baseada
-na branch original `ares-wifi`. Orquestrador, sincronizador, teleop, drivers e
-persistência não foram editados. Uma subclasse troca apenas a publicação do mapa
+O runtime de integração foi publicado na árvore `vendor/go2_runtime` da revisão
+`8c9a428`, baseada na branch original `ares-wifi`. O driver Go2, o sincronizador,
+a teleoperação/watchdog e o contrato FS-5000 são idênticos à referência do Werik.
+Modelos, orquestrador e persistência têm as adições Radiacode descritas na auditoria. Uma subclasse troca apenas a publicação do mapa
 para o `MapService` v4. A simulação completa chama o `MissionController` v4 sem
 adaptação. `map.lock.json` protege os arquivos por SHA-256 na construção da imagem
 e documenta os dois arquivos da correção autorizada de permanência. Os demais
 54 arquivos protegidos têm os mesmos hashes da v2.
 
-Para voltar ao painel anterior, pare o console e execute `bash simulacao iniciar`
-na pasta v4. Nenhum resultado antigo é apagado. Esta versão não substitui
-automaticamente as branches do ensaio físico no GitHub.
+Os iniciadores anteriores foram retirados desta árvore operacional. O histórico
+pode ser recuperado pelo Git em uma pasta de estudo separada. Os resultados
+antigos permanecem nas suas pastas de coleta.
 
 O pacote inclui `ARES_Console_Oficial_1.0.2_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
 O script publica `release/ares-console-1.0.2`, sem force push e sem editar `ares-wifi`.
-Consulte [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação, preparação
+O argumento `--arquivar-antigas` preserva as duas branches antigas do Radiacode
+em tags `archive/` e as retira da lista de branches, com verificação da revisão
+atual e publicação atômica. Consulte [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação, preparação
 sem internet no campo, sequência dos testes e critérios de aceitação.
 A imagem Docker é `ares-operator-console:1.0.2`. O CI constrói a imagem e testa
 início, encerramento e exportação em simulação completa.
 
 ## Verificação de desenvolvimento
 
+Use Python 3.12 para o console/runtime, como na imagem Docker oficial.
+
 ```bash
-PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py
-node --test tools/source_simulation/dashboard.test.cjs tools/operator_console/console.test.cjs
+PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py
+node --test tools/operator_console/console.test.cjs tests/radiacode/dashboard_usb.test.cjs vendor/go2_runtime/tests/approved_dashboard.test.cjs
 python -m tools.operator_console.check_map_lock
 ```

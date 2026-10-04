@@ -59,4 +59,7 @@ O operador confirmou funcionamento da 1.0.1. Não há detector/Go2 nem Docker En
 neste ambiente: os modos mistos aqui usam registros compatíveis com o SDK e
 contratos virtuais, não hardware físico. A imagem nova deve ser construída pelo
 iniciador no computador de operação. Esta execução não publicou no GitHub.
-O build/CI e o ensaio conjunto continuam previstos em [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md).
+A consulta posterior de 04/10 confirmou build e smoke-test Docker do console
+no job Python 3.12 do GitHub. O job 3.10 foi cancelado por tempo, e a consolidação
+restringe o console à mesma versão 3.12 da imagem. Veja
+[CHECKUP_20261004.md](CHECKUP_20261004.md). O ensaio conjunto com Go2 continua pendente.

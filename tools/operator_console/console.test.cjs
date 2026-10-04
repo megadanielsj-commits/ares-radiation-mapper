@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const {setup} = require('../source_simulation/dashboard.test.cjs');
+const {setup} = require('../../tests/compatibility/map_renderer.test.cjs');
 const shell = fs.readFileSync(__dirname+'/static/console.js','utf8');
 
 test('the new shell cannot replace map or palette functions', () => {

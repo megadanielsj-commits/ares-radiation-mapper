@@ -1,112 +1,53 @@
-# Radiacode 110: aquisição USB independente
+# Radiacode 110 — módulo de aquisição
 
-O Radiacode 110 já forneceu leituras reais via USB no Linux. O leitor roda em
-processo próprio e grava o fluxo radiológico antes de qualquer visualização.
-Não usa porta CH341, baud rate nem o processo de odometria do Go2.
-
-## Executar
-
-O procedimento de instalação/diagnóstico detalhado está em
-[`LEIA_PRIMEIRO_USB.md`](../LEIA_PRIMEIRO_USB.md). Com o ambiente instalado:
-
-```bash
-bash 04_teste_usb.sh                    # aquisição real por 60 segundos
-bash 05_robo_simulado_usb.sh            # Radiacode real + pose virtual
-```
-
-Para conferir um campo radiológico conhecido, sem detector conectado:
-
-```bash
-bash 06_FONTE_SIMULADA.sh              # fonte simulada + pose virtual
-```
-
-Com Docker Engine e Compose no Linux, após configurar a permissão no host com
-`bash 03_permissao_usb.sh` e reconectar o cabo, os modos equivalentes são:
-
-```bash
-./ares radiacode-usb          # leitor independente, 60 s
-./ares radiacode-dashboard    # leitura real + Go2 virtual
-./ares fonte-simulada         # campo simulado, sem USB
-```
-
-O painel Docker abre em `http://127.0.0.1:8000`; os arquivos de cada sessão
-ficam em `resultados/` no computador. `radiacode-usb` e `radiacode-dashboard`
-acessam o dispositivo conectado ao computador Linux que executa o Docker.
-O modo `fonte-simulada` simula o campo e o detector do ARES; não reproduz o
-firmware ou o protocolo USB do Radiacode. Não execute dois leitores USB ao
-mesmo tempo. O acesso USB em contêiner ainda requer validação com o aparelho
-físico no computador de destino.
-
-Na página da simulação configure a fonte e clique em **Iniciar mapeamento**.
-Use as setas para deslocar o Go2. Para comparar os modos, encerre um com
-`Ctrl+C` antes de iniciar o outro na mesma porta HTTP.
-
-## Fluxo e formatos
+O módulo acessa o detector por `radiacode==0.4.0`/libusb, em processo próprio.
+Não importa o robô ou a teleoperação. O console oficial tem um único iniciador,
+`bash ares-console iniciar`, e seleciona os quatro modos na interface.
 
 | Componente | Entrada | Saída |
 |---|---|---|
-| `tools/radiacode_usb/reader.py` | USB por `radiacode==0.4.0`/libusb | `readings.csv`, `readings.jsonl`, `raw_records.jsonl`, `spectra.jsonl`, metadados |
-| `src/ares_mapper/adapters/radiacode_jsonl.py` | Novas linhas do JSONL | Amostras da missão para o painel e o mapa |
-| `tools/radiacode_usb/launch.py` | Leitor e configuração de pose virtual | Dois processos; sessão em `resultados/` |
-| `06_FONTE_SIMULADA.sh` | Campo e detector simulados | Missão em `data/missions/` |
+| `reader.py` | Detector USB | Registros brutos, medidas, contagens de 1 s e espectros |
+| `counts.py` | Bins RawData consecutivos | Contagem nominal de 1 s, sem arredondar CPS suavizado |
+| `service.py` | Novas linhas de `counts_1s.jsonl` | WebSocket local `ws://127.0.0.1:1098/ws` |
+| `ClienteRadiacode` | WebSocket | `Leitura` no contrato do runtime de integração |
+| Orquestrador/sincronizador | Leitura e pose Go2 | Amostras posicionadas, SQLite e mapa aprovado |
 
-O arquivo `readings.jsonl` é a saída autoritativa da aquisição USB: a interface
-não bloqueia a leitura nem altera os registros gravados. Recebimento UTC e
-monotônico ficam em cada linha; espectros são snapshots acumulados. O cálculo
-`CPM = 60 × CPS` é derivado. A conversão da taxa para µSv/h ainda está marcada
-como provisória nos arquivos (`dose_conversion_verified=false`); a dose
-acumulada do instrumento permanece em unidade bruta até comparação documentada
-com o visor. Nada disso depende da posição virtual.
-O resumo da sessão informa `fresh_measurements` para separar registros novos
-dos buffers repetidos. Uma sequência de registros repetidos não confirma uma
-aquisição ativa e faz o gravador falhar após o intervalo sem dados novos.
+Os arquivos são gravados antes da publicação. Consumidores lentos não bloqueiam
+a leitura USB; a publicação descarta eventos antigos e informa indisponibilidade
+quando os dados deixam de ser recentes. Reconexão cria uma sessão identificável.
 
-O painel USB só usa coordenadas fictícias. Ele serve para verificar fluxo,
-latência aparente e desenho da interface; o gradiente espacial desse teste não
-representa a distribuição real. A integração com pose real exige um contrato
-de tempo e incerteza validado em outra etapa, mantendo a aquisição isolada.
+## Campos e unidades
 
-## Organização no GitHub
+- `readings.csv`/`readings.jsonl`: CPS suavizado/fracionário, taxa bruta e convertida,
+  erros fornecidos pelo SDK, recebimento UTC/monotônico e status disponíveis.
+- `raw_records.jsonl`: tipos, tempos e campos originais dos registros do SDK.
+- `counts_1s.jsonl`: CPS inteiro reconstruído de dois bins, CPM derivado, sequência,
+  sessão e metadados/timestamps próprios do canal de dose.
+- `spectra.jsonl`: snapshots de contagens por canal e energias pela calibração
+  fornecida pelo detector, quando disponíveis.
+- `session.json`: identificação, firmware, configuração, unidades e convenção
+  de conversão. Os números não são arredondados para exibição.
 
-- A dependência `radiacode==0.4.0` está declarada no extra `radiacode-usb`.
-- `.gitignore` exclui o ambiente Python, `resultados/` e dados pessoais da sessão.
-- O CI instala o extra e executa testes Python e um teste JavaScript para o
-  painel USB; os testes usam detector artificial e não alegam validação de
-  firmware nem hardware em CI.
-- A branch `ares-wifi` é a base para a integração Go2/WebRTC. O leitor Radiacode não
-  é ligado ao processo da odometria nem à teleop do Go2.
+O mapa real usa a taxa reportada em µSv/h. Não calibra CPS em dose e não reutiliza
+o fator do FS-5000. A interface escolhe prefixos SI somente para os rótulos.
+A dose da missão integra taxas dos intervalos posicionados aceitos e não é o
+acumulado histórico do detector. A conversão da unidade bruta continua marcada
+como provisória até conferência física documentada com o visor.
 
-Para validação local do código, com as dependências de desenvolvimento:
+## Executar sem robô
 
-```bash
-python -m pip install -e '.[dev,fs5000,radiacode-usb]'
-pytest
-node --test tests/radiacode/dashboard_usb.test.cjs
-```
-
-## Transferir a branch com o pacote Git
-
-O ZIP atual inclui `ARES_Radiacode_GO2_USB_GITHUB.bundle` com histórico
-completo das branches `feat/radiacode-independent` e
-`feat/radiacode-go2-wifi`. Dentro da pasta do pacote, publique com:
+Veja [LEIA_PRIMEIRO_USB.md](../LEIA_PRIMEIRO_USB.md) para diagnóstico, permissão
+e coleta isolada de 60 segundos ou uma hora. Para um serviço USB isolado com
+as dependências já instaladas:
 
 ```bash
-bash publicar_no_github.sh
+python tools/radiacode_usb/service.py --output resultados/usb-independente
 ```
 
-O script imprime os links das duas branches para revisão, sem alterar
-`main` ou `ares-wifi`. Os arquivos do ZIP de execução não incluem `.git`;
-o bundle preserva os commits. A publicação usa o acesso GitHub do computador
-onde o comando é executado.
+O serviço abre 1098 e supervisiona o processo leitor; não inicia missão ou
+movimento. Não o execute em paralelo ao modo USB do console, que já o inicia.
+O Dockerfile desse serviço permanece para instalação independente sem interface.
 
-## Entrada independente para a estrutura ARES
-
-O serviço `tools/radiacode_usb/service.py` expõe WebSocket local na porta 1098
-com os eventos `snapshot`, `estado` e `leitura` do contrato usado pelo serviço
-FS-5000 do Werik. O leitor USB roda em processo separado e grava antes da
-publicação. O serviço não importa nem controla o robô.
-
-`counts_1s.jsonl` registra contagens inteiras de dois RawData consecutivos.
-`readings.jsonl` e o painel anterior conservam os campos do teste aprovado.
-O roteiro e os limites estão em
-[LEIA_PRIMEIRO_INTEGRACAO.md](../LEIA_PRIMEIRO_INTEGRACAO.md).
+Detalhes de tempo, filas, ausência de taxa e eventos estão em
+[CONTRATO_USB_WEBSOCKET.md](CONTRATO_USB_WEBSOCKET.md). O ensaio conjunto está em
+[ROTEIRO_ENSAIO_GO2.md](../ROTEIRO_ENSAIO_GO2.md).

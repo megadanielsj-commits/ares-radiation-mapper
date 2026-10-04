@@ -35,10 +35,10 @@ Não é possível deduzir a eliminação de todo atraso apenas desses registros.
 | Persistência | Mantém registro de poses, leituras, amostras e CSV; acrescenta metadados de missão e exportação JSON das entradas |
 | Mapa/interface | Camada aprovada do console sobre o runtime; usa taxa reportada, sem converter CPS em dose |
 
-Os 30 arquivos versionados de `vendor/go2_runtime/src/ares` são idênticos à
-referência adaptada `4048f7c8b4ffe2cc0f604a8bae1b89d4763aa4f2`.
-Essa referência já incorpora a entrada Radiacode e as mudanças aditivas acima;
-não deve ser confundida com o original sem adaptação.
+Os 30 arquivos versionados de `vendor/go2_runtime/src/ares` permanecem idênticos
+à árvore publicada em `8c9a4280ebcf085ddf7cde3b2809750968bb10d2`, que incorpora
+a entrada Radiacode e as mudanças aditivas acima. Esta é a referência recuperável
+no GitHub; não deve ser confundida com o original sem adaptação.
 
 O módulo USB continua sendo o único dono do detector. O cliente Radiacode
 implementa a mesma interface `FonteRadiacao` e reutiliza o ciclo WebSocket do
@@ -78,22 +78,24 @@ latência para esse canal deve ser medida no ensaio, sem alterar o sincronizador
 | Lint/tipos | Passaram; 76 módulos verificados pelo mypy |
 | Quatro modos no navegador | Passaram em software, com substitutos para hardware indisponível |
 | Radiacode USB + robô virtual | Funcionamento informado pelo operador na base 1.0.1; a 1.0.2 muda somente rótulos SI |
-| Docker do console | Preparado; construção/saúde devem ser confirmadas no computador do teste ou pelo CI |
+| Docker do console | Build e início/encerramento/exportação passaram no CI publicado de Python 3.12 |
 | Radiacode + Go2 físico, pose e resposta temporal | Pendente do ensaio conjunto |
-| Branch oficial no GitHub | Publicação preparada; ainda ausente na consulta desta revisão |
+| Branch oficial no GitHub | `release/ares-console-1.0.2` publicada em `8c9a428`; consolidação posterior descrita em CHECKUP_20261004.md |
 
-O relatório reproduzível está em `validation/preparacao_ensaio_1.0.2.json` e
-os resultados detalhados em XML. Sem Docker Engine, Radiacode ou Go2 neste
+O relatório da preparação de 02/10 está em `validation/preparacao_ensaio_1.0.2.json`.
+A consulta atual e a consolidação estão em `validation/checkup_20261004.json`;
+os resultados detalhados estão nos XML correspondentes. Sem Docker Engine, Radiacode ou Go2 neste
 ambiente, não foi realizado build Docker nem teste físico aqui.
 
 ## Antes da reunião, no computador de operação
 
-Use o ZIP `ARES_Console_1.0.2_Ensaio.zip`. Ele extrai para a pasta oficial da
-1.0.2, preservando a identidade da versão. Com internet disponível:
+Use o ZIP `ARES_Console_1.0.2_Consolidado.zip`. Ele extrai para uma pasta nova,
+`ARES_Console_1.0.2_Consolidado`, para não conservar iniciadores antigos de uma
+extração anterior. A versão do programa permanece 1.0.2. Com internet disponível:
 
 ```bash
-python3 -m zipfile -e "$HOME/Downloads/ARES_Console_1.0.2_Ensaio.zip" "$HOME" &&
-cd "$HOME/ARES_Console_Oficial_1.0.2" &&
+python3 -m zipfile -e "$HOME/Downloads/ARES_Console_1.0.2_Consolidado.zip" "$HOME" &&
+cd "$HOME/ARES_Console_1.0.2_Consolidado" &&
 bash ares-console iniciar
 ```
 
@@ -118,14 +120,14 @@ essas coordenadas à localização física do detector.
 Publique a branch preparada, ainda com internet:
 
 ```bash
-cd "$HOME/ARES_Console_Oficial_1.0.2" && bash PUBLICAR_CONSOLE_GITHUB.sh
+cd "$HOME/ARES_Console_1.0.2_Consolidado" && bash PUBLICAR_CONSOLE_GITHUB.sh
 ```
 
 Após publicar, envie à equipe o link da branch:
 https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.2
 
 Confira os checks de Actions. O script não faz merge em `main`/`ares-wifi` nem
-envia dados de campo. O link só estará disponível depois dessa publicação.
+envia dados de campo. A branch já está publicada; o comando atualiza sua consolidação.
 Ao terminar, execute `bash ares-console parar`. Não remova a imagem preparada.
 Para levar a imagem a outro computador, veja [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md).
 
@@ -195,7 +197,7 @@ separadamente, para não misturar módulos homônimos dos dois projetos:
 python -m pip install -e '.[dev,fs5000,radiacode-usb]'
 python -m pip install -r vendor/go2_runtime/requirements-go2-wifi.txt
 python -m pip install --no-deps unitree_webrtc_connect==2.2.0
-PYTHONPATH=src python -m pytest -q tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py
+PYTHONPATH=src python -m pytest -q tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py
 PYTHONPATH=vendor/go2_runtime/src python -m pytest -q vendor/go2_runtime/tests
 node --test tools/operator_console/console.test.cjs tests/radiacode/dashboard_usb.test.cjs vendor/go2_runtime/tests/approved_dashboard.test.cjs
 python -m tools.operator_console.check_map_lock

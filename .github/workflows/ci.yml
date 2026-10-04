@@ -9,7 +9,8 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -23,7 +24,8 @@ jobs:
       - name: Install
         run: python -m pip install -e ".[dev,fs5000,radiacode-usb]"
       - name: Tests
-        run: python -m pytest --junitxml=pytest-results.xml
+        timeout-minutes: 5
+        run: python -m pytest --junitxml=pytest-results.xml -o faulthandler_timeout=60 --ignore=tests/compatibility/test_classic_map.py
       - name: Publish exact pytest errors as check annotations
         if: always()
         run: python tools/report_ci.py pytest-results.xml
@@ -34,7 +36,8 @@ jobs:
           python -m pip install --no-deps unitree_webrtc_connect==2.2.0
       - name: Go2 runtime compatibility regression
         if: matrix.python-version == '3.12'
-        run: PYTHONPATH=vendor/go2_runtime/src python -m pytest -q vendor/go2_runtime/tests --junitxml=pytest-go2-results.xml
+        timeout-minutes: 5
+        run: PYTHONPATH=vendor/go2_runtime/src python -m pytest -q vendor/go2_runtime/tests --junitxml=pytest-go2-results.xml -o faulthandler_timeout=60
       - name: Publish Go2 pytest errors as check annotations
         if: always() && matrix.python-version == '3.12'
         run: python tools/report_ci.py pytest-go2-results.xml
@@ -46,9 +49,14 @@ jobs:
         if: matrix.python-version == '3.12'
         run: node --test tests/radiacode/dashboard_usb.test.cjs
       - name: Operator console and approved map regression
+        if: matrix.python-version == '3.12'
+        timeout-minutes: 5
         run: |
-          PYTHONPATH=src:vendor/go2_runtime/src python -m pytest -q tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/source_simulation/test_demo.py
+          PYTHONPATH=src:vendor/go2_runtime/src python -m pytest -q tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tests/compatibility/test_classic_map.py --junitxml=pytest-console-results.xml -o faulthandler_timeout=60
           python -m tools.operator_console.check_map_lock
+      - name: Publish console pytest errors as check annotations
+        if: always() && matrix.python-version == '3.12'
+        run: python tools/report_ci.py pytest-console-results.xml
       - name: Console rendering contracts
         if: matrix.python-version == '3.12'
         run: node --test tools/operator_console/console.test.cjs
@@ -61,28 +69,6 @@ jobs:
       - name: Types
         if: matrix.python-version == '3.12'
         run: mypy src
-      - name: Build simulation image
-        if: matrix.python-version == '3.12'
-        run: docker build --target simulation -t ares-radiation-mapper:ci .
-      - name: Smoke-test simulation image
-        if: matrix.python-version == '3.12'
-        run: |
-          docker run --detach --name ares-ci --publish 8000:8000 ares-radiation-mapper:ci
-          trap 'docker rm --force ares-ci' EXIT
-          for attempt in {1..30}; do
-            curl --fail --silent http://127.0.0.1:8000/api/v1/health && break
-            sleep 1
-          done
-          curl --fail --silent \
-            --header 'Content-Type: application/json' \
-            --data '{"x_m":7.5,"y_m":5.5,"dose_rate_at_1m_uSv_h":10000}' \
-            http://127.0.0.1:8000/api/v1/simulation/start
-          sleep 2
-          test "$(curl --fail --silent http://127.0.0.1:8000/api/v1/status \
-            | python -c 'import json,sys; print(json.load(sys.stdin)["state"])')" = RUNNING
-      - name: Build hardware image
-        if: matrix.python-version == '3.12'
-        run: docker build --target hardware -t ares-radiation-mapper:hardware-ci .
       - name: Build and smoke-test unified console
         if: matrix.python-version == '3.12'
         run: |
@@ -98,13 +84,9 @@ jobs:
           sleep 3
           curl --fail --silent --header 'Content-Type: application/json' --data '{}' http://127.0.0.1:8001/api/console/stop
           curl --fail --silent http://127.0.0.1:8001/api/console/export --output /tmp/ares-console-mission.zip
-      - name: Build Radiacode USB image and validate Compose
+      - name: Build independent Radiacode USB service
         if: matrix.python-version == '3.12'
         run: |
-          docker build --target radiacode -t ares-radiation-mapper:radiacode-ci .
-          docker run --rm --entrypoint python ares-radiation-mapper:radiacode-ci \
-            -c 'import radiacode, ares_mapper; print("Radiacode USB image ready")'
-          docker compose --profile radiacode-dashboard config --quiet
           docker build -f tools/radiacode_usb/Dockerfile.service -t ares-radiacode-service:ci .
           docker run --rm --entrypoint python ares-radiacode-service:ci \
             -c 'import radiacode, fastapi; print("Standalone USB bridge dependencies ready")'

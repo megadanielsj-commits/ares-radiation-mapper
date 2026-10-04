@@ -9,9 +9,10 @@ software não validam o rádio, a montagem ou a resposta temporal do detector.
 ## Preparar no computador do teste, com internet
 
 Use Linux e o Docker Engine/Compose já utilizados nos ensaios anteriores.
-Extraia `ARES_Console_1.0.2_Ensaio.zip` (ou o pacote oficial 1.0.2 já instalado).
-A preparação para a reunião contém o mesmo programa de operação e acrescenta
-documentação/testes/CI. Ela extrai para `ARES_Console_Oficial_1.0.2`.
+Extraia `ARES_Console_1.0.2_Consolidado.zip` para uma pasta nova. A consolidação
+contém o mesmo programa de operação e retira iniciadores/guias antigos. Ela
+extrai para `ARES_Console_1.0.2_Consolidado`. Não extraia por cima de uma versão
+anterior, pois a extração de ZIP não remove arquivos antigos.
 Veja também [ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md). Na pasta extraída:
 
 ```bash
@@ -76,8 +77,16 @@ force push, não modifica `ares-wifi` e não envia registros de campo.
 Link para a equipe:
 https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.2
 
-Verifique os checks de **Actions** dessa branch. O CI executa testes em Python
-3.10/3.12, regressões do mapa, lint, tipos e construção/inicialização da imagem.
+Para também retirar as branches antigas da lista operacional, preservando o
+histórico em tags, use `bash PUBLICAR_CONSOLE_GITHUB.sh --arquivar-antigas`.
+O script guarda `feat/radiacode-independent` e `feat/radiacode-go2-wifi` em
+`archive/*-20261004` e só então as retira, na mesma publicação atômica. Uma mudança
+concorrente naquelas branches impede a operação. Não apaga a referência do Werik.
+
+Verifique os checks de **Actions**. O CI executa o pacote de base em Python
+3.10/3.12 e o console/runtime, regressões do mapa, lint, tipos e Docker em 3.12,
+a mesma versão da imagem oficial. Os jobs têm limite de 20 minutos e cada suíte
+de testes tem limite de cinco minutos.
 Depois abra:
 https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.2?expand=1
 

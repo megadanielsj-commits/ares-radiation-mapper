@@ -20,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def load_tool(name):
-    spec = importlib.util.spec_from_file_location(name, ROOT / "tools/radiacode_usb" / f"{name}.py")
+    path = (ROOT / "tests/compatibility/usb_dashboard_scenario.py" if name == "launch"
+            else ROOT / "tools/radiacode_usb" / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

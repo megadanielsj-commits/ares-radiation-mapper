@@ -16,3 +16,5 @@ data/missions/*
 !data/missions/.gitkeep
 
 pytest-results.xml
+pytest-go2-results.xml
+pytest-console-results.xml
