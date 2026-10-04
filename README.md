@@ -1,7 +1,7 @@
 # ARES Console 1.0.2 — Go2 e Radiacode 110
 
 Console de levantamento radiométrico com aquisição USB independente e integração
-Go2/WebRTC baseada no trabalho do Werik. Esta branch é a versão operacional.
+Go2/WebRTC baseada no trabalho da equipe de robótica. Esta branch é a versão operacional.
 Os iniciadores e guias das versões anteriores foram retirados da árvore atual;
 o histórico permanece no Git. O mapa, o gradiente, a paleta e a interface aprovada
 permanecem iguais à versão 1.0.2 publicada em `8c9a428`.
