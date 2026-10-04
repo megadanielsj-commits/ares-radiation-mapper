@@ -67,7 +67,7 @@ Guarde também a pasta completa, incluindo `session.json` e logs USB.
 e o contrato de radiação da referência `ares-wifi`, revisão `84f9148`.
 A adaptação Radiacode acrescenta dose opcional e metadados/exportações, e a
 camada do console publica o mapa aprovado. Não é uma reimplementação do controle
-ou do sincronizador do Werik. Veja [PROVENANCE.md](vendor/go2_runtime/PROVENANCE.md).
+ou do sincronizador da equipe de robótica. Veja [PROVENANCE.md](vendor/go2_runtime/PROVENANCE.md).
 
 O FS-5000 não é uma entrada selecionável neste console. Seu teste com o Go2 deve
 usar a [branch original ares-wifi](https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/ares-wifi),
