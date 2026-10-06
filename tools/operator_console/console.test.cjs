@@ -5,12 +5,84 @@ const vm = require('node:vm');
 const {setup} = require('../../tests/compatibility/map_renderer.test.cjs');
 const shell = fs.readFileSync(__dirname+'/static/console.js','utf8');
 
-test('the new shell cannot replace map or palette functions', () => {
-  for (const name of ['drawHeatmap','drawGridAndAxes','drawMeasuredPath','drawSource','drawRobot',
+test('the shell cannot replace the approved heatmap, palette or robot functions', () => {
+  for (const name of ['drawHeatmap','drawGridAndAxes','drawMeasuredPath','drawRobot',
     'radiationColor','radiationStops','colorFractionForTotalRate','colorMaximum','colorMinimum',
     'viewBounds','renderMapNow','mapValueAt','updateMap','calculatePlotGeometry','resizeCanvas','drawColorBar']) {
     assert.equal(new RegExp(`\\b${name}\\s*=`).test(shell), false, name);
     assert.equal(new RegExp(`function\\s+${name}\\b`).test(shell), false, name);
+  }
+});
+
+test('a fresh recording hides the active source; revealing it delegates to the approved marker', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};
+    document.querySelector=s=>s==='.legend.source'
+      ? {parentElement:document.getElementById('source-legend-test')} : document.getElementById(s);
+    state.scenario={detectors:[{source_type:'simulated'}]};
+    state.configuredSource={enabled:true,x_m:4,y_m:3,dose_rate_at_1m_uSv_h:8,background_uSv_h:.1};`);
+  const source = ui.run('JSON.stringify(state.configuredSource)');
+  const marker = ui.run('drawSource.toString()');
+  ui.run(shell);
+  assert.equal(ui.run('originalSourceMarker.toString()'), marker);
+  assert.equal(ui.run('sourceMarkerVisible()'), false);
+  assert.equal(ui.element('source-legend-test').hidden, true);
+  ui.run('renderMapNow(0)');
+  assert.equal(ui.labels.includes('FONTE'), false);
+  assert.ok(ui.labels.includes('GO2'));
+  assert.equal(ui.rasters.length, 0, 'no heatmap is invented before measurements');
+  assert.equal(ui.run('JSON.stringify(state.configuredSource)'), source);
+  ui.labels.length = 0;
+  ui.element('show-source-marker').checked = true;
+  ui.run('syncSourceMarkerLegend(); renderMapNow(0)');
+  assert.equal(ui.element('source-legend-test').hidden, false);
+  assert.ok(ui.labels.includes('FONTE'));
+  assert.equal(ui.run('JSON.stringify(state.configuredSource)'), source);
+  ui.labels.length = 0;
+  ui.element('show-source-marker').checked = false;
+  ui.run('syncSourceMarkerLegend(); renderMapNow(0)');
+  assert.equal(ui.labels.includes('FONTE'), false);
+  const html = fs.readFileSync(__dirname+'/static/index.html','utf8');
+  const control = html.match(/<input[^>]*id="show-source-marker"[^>]*>/)[0];
+  assert.equal(/\bchecked\b/.test(control), false);
+});
+
+test('source visibility changes no heatmap pixels, readings, coordinates or source settings', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};
+    state.scenario={detectors:[{source_type:'simulated'}]};
+    state.configuredSource={enabled:true,x_m:4,y_m:3,dose_rate_at_1m_uSv_h:8,background_uSv_h:.1};
+    state.map={grid_shape:[2,2],values_row_major:[1,2,3,4],
+      x_coordinates_m:[0,1],y_coordinates_m:[0,1]};
+    state.mapped=[{sensor_x_m:2,sensor_y_m:2,dose_rate_uSv_h_filtered:.12651909855776466}];
+    state.radiation={dose_rate_uSv_h:.12651909855776466,cps:123.456789};
+    const plot={left:0,right:100,top:0,bottom:100,width:100,height:100,scale:10,
+      bounds:{x_min:0,y_max:10},xToPixel:x=>x*10,yToPixel:y=>(10-y)*10};
+    const numeric=JSON.stringify([state.scenario,state.configuredSource,state.map,state.mapped,state.radiation]);`);
+  ui.run(shell);
+  ui.run('drawHeatmap(plot); drawSource(plot)');
+  const hidden = Array.from(ui.rasters.at(-1));
+  ui.element('show-source-marker').checked = true;
+  ui.run('drawHeatmap(plot); drawSource(plot)');
+  assert.deepEqual(Array.from(ui.rasters.at(-1)), hidden);
+  assert.equal(ui.run('JSON.stringify([state.scenario,state.configuredSource,state.map,state.mapped,state.radiation])'), ui.run('numeric'));
+  ui.element('show-source-marker').checked = false;
+  ui.run('drawHeatmap(plot); drawSource(plot)');
+  assert.deepEqual(Array.from(ui.rasters.at(-1)), hidden);
+});
+
+test('source reveal is available only with synthetic radiation, across all four modes', () => {
+  const ui = setup();
+  ui.run(`crypto={randomUUID:()=>'one'}; navigator={sendBeacon(){}};
+    document.querySelectorAll=()=>[]; document.addEventListener=()=>{};`);
+  ui.run(shell);
+  ui.element('show-source-marker').checked = true;
+  for (const [mode, expected] of [['simulation',true],['robot_simulated_source',true],
+    ['usb_simulated_robot',false],['hardware',false]]) {
+    ui.run(`consoleSnapshot={mode:'${mode}'};`);
+    assert.equal(ui.run('sourceMarkerVisible()'), expected, mode);
   }
 });
 

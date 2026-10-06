@@ -1,0 +1,33 @@
+{
+  "edition": "ARES Console 1.0.2 recording",
+  "date": "2026-10-06",
+  "base_commit": "244b7bbb6d83d5f5b86c6626783df7d6b1ea6ae2",
+  "change": "Only frontend visibility of the configured-source marker, optional reveal checkbox, recording image tag, documentation and regression coverage.",
+  "default_source_marker": "hidden",
+  "source_remains_enabled": true,
+  "visibility_in_synthetic_modes_only": true,
+  "original_gradient_pixels_preserved": true,
+  "protected_map_input_files_identical": 56,
+  "all_backend_input_source_files_identical_to_base": 152,
+  "python_console_and_stationary_tests": 16,
+  "python_failures": 0,
+  "javascript_tests": 22,
+  "javascript_failures": 0,
+  "http_smoke": {
+    "http_start_mapping_stop_export": "passed",
+    "configured_source_enabled": true,
+    "source_x_m": 4,
+    "source_y_m": 3,
+    "reported_simulated_rate_uSv_h": 1622.8600000000001,
+    "mapped_samples": 2,
+    "checkbox_default_hidden": true
+  },
+  "bash_syntax": "passed",
+  "map_lock": "passed",
+  "live_browser_visual_check": "unavailable: cloud browser blocked access to localhost with ERR_BLOCKED_BY_CLIENT",
+  "local_docker_engine_available": false,
+  "docker_build_executed_here": false,
+  "physical_hardware_tested": false,
+  "official_release_unchanged": true,
+  "github_pushed_here": false
+}

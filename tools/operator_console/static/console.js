@@ -1,6 +1,7 @@
 "use strict";
 
-// This shell does not replace any map, color, interpolation or drawing function.
+// The approved map, colors and interpolation stay unchanged. Only the optional
+// configured-source overlay is gated below, without changing its numeric data.
 const sessionId = crypto.randomUUID();
 let consoleSnapshot = null;
 let configuredFingerprint = null;
@@ -9,6 +10,20 @@ let pollPending = false;
 let consoleStarted = false;
 let positionedCount = 0;
 let positionedMission = null;
+
+const originalSourceMarker = drawSource;
+function sourceMarkerVisible() {
+  const mode = consoleSnapshot?.mode ?? "simulation";
+  return (mode === "simulation" || mode === "robot_simulated_source")
+    && $("show-source-marker").checked === true;
+}
+drawSource = function (plot) {
+  if (sourceMarkerVisible()) originalSourceMarker(plot);
+};
+function syncSourceMarkerLegend() {
+  const legend = document.querySelector(".legend.source")?.parentElement;
+  if (legend) legend.hidden = !sourceMarkerVisible();
+}
 
 // Mission totals come from the acquisition pipeline. The renderer keeps only
 // the latest 5,000 path points; its buffer length is not a mission total.
@@ -125,6 +140,7 @@ function showModeChoice() {
   $("source-details").hidden = !synthetic;
   $("input-explanation").textContent = modeDescription(mode);
   $("operation-mode").title = modeDescription(mode);
+  syncSourceMarkerLegend();
 }
 
 function elapsedLabel(seconds) {
@@ -328,6 +344,10 @@ $("operation-mode").addEventListener("change", () => {
   void perform(() => applyInputs(setup));
 });
 $("apply-source").addEventListener("click", () => void perform(() => applyInputs()));
+$("show-source-marker").addEventListener("change", () => {
+  syncSourceMarkerLegend();
+  scheduleRender();
+});
 $("finish-button").addEventListener("click", () => void perform(async () => {
   state.pressedKeys.clear(); state.lastCommand = null;
   await consoleApi("/stop", {});
@@ -364,4 +384,6 @@ async function pollConsole() {
   finally {pollPending = false;}
 }
 setInterval(() => void pollConsole(), 1000);
+syncSourceMarkerLegend();
+scheduleRender();
 void pollConsole();

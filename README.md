@@ -1,10 +1,19 @@
-# ARES Console 1.0.2 — Go2 e Radiacode 110
+# ARES Console 1.0.2 — gravação com fonte oculta
+
+Esta edição para gravação parte da versão consolidada do ensaio. A fonte
+simulada continua ativa, mas seu marcador começa oculto. A opção **Mostrar
+fonte no mapa** permite revelá-la ao final. O gradiente e seus cálculos não
+mudaram. Veja [LEIA_PRIMEIRO_GRAVACAO.md](LEIA_PRIMEIRO_GRAVACAO.md) para iniciar.
+
+A imagem desta edição é `ares-operator-console:1.0.2-recording`; a versão
+preparada para o ensaio permanece em `release/ares-console-1.0.2`.
 
 Console de levantamento radiométrico com aquisição USB independente e integração
-Go2/WebRTC baseada no trabalho do Werik. Esta branch é a versão operacional.
+Go2/WebRTC baseada no trabalho do Werik. Esta branch acrescenta somente a
+visibilidade do marcador à versão operacional.
 Os iniciadores e guias das versões anteriores foram retirados da árvore atual;
-o histórico permanece no Git. O mapa, o gradiente, a paleta e a interface aprovada
-permanecem iguais à versão 1.0.2 publicada em `8c9a428`.
+o histórico permanece no Git. O mapa, o gradiente, a paleta e o restante da
+interface permanecem iguais à versão 1.0.2 publicada em `8c9a428`.
 
 ## Executar
 

@@ -127,6 +127,8 @@ button:disabled,[aria-disabled=true] {opacity:.38;cursor:not-allowed!important}
 .source-details .input-unit input {padding:0 8px;font-size:12px}
 .source-details .input-unit b {padding:0 8px;font-size:10px}
 .source-details .secondary-button {margin-top:13px}
+.source-details .source-visibility {display:flex;align-items:center;gap:8px;margin-top:14px}
+.source-details .source-visibility input {width:auto;height:auto;min-height:0;padding:0;margin:0;flex:none}
 .duration-label {display:grid;gap:8px;margin-top:12px}
 .dialog-foot {border-top:1px solid #2d3d49;display:flex;justify-content:space-between;align-items:center;padding:17px 24px;gap:20px}
 .dialog-foot p {font-size:10px;line-height:1.5;color:#7892a3;margin:0;max-width:280px}
