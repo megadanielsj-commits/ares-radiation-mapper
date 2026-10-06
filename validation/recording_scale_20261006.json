@@ -1,0 +1,50 @@
+{
+  "edition": "ARES Console 1.0.2 recording v2",
+  "date": "2026-10-06",
+  "base_commit": "244b7bbb6d83d5f5b86c6626783df7d6b1ea6ae2",
+  "parent_recording_commit": "f480058cdb2051f7aab42a83d75a1e492c42db6e",
+  "default_source_marker": "hidden",
+  "default_color_scale": "automatic: original bounds",
+  "manual_scale_units": [
+    "nSv/h",
+    "uSv/h",
+    "mSv/h",
+    "Sv/h"
+  ],
+  "scale_repaints_all_grid_pixels_and_previous_points": true,
+  "manual_scale_does_not_change_numeric_readings_or_interpolation": true,
+  "original_renderer_palette_and_interpolation_files_unchanged": true,
+  "protected_map_input_files_identical": 56,
+  "src_vendor_config_and_usb_files_identical_to_official_base": 149,
+  "simulated_reading_period_s": 1.0,
+  "cadence_basis": "USB counts_1s.jsonl: PairRawData combines two nominal 0.5 s bins; not the 0.25 s polling period",
+  "full_simulation_clock_speed": 1.0,
+  "full_simulation_synthetic_receive_jitter_ms": 0,
+  "configurable_robot_speed_mode": "simulation only",
+  "robot_speed_range_m_s": [
+    0.05,
+    2
+  ],
+  "robot_speed_default_m_s": 0.45,
+  "physical_go2_teleop_limits_and_werik_sources_unchanged": true,
+  "python_tests": 26,
+  "python_failures": 0,
+  "javascript_tests": 28,
+  "javascript_failures": 0,
+  "four_mode_regression": "passed with hardware contract doubles; physical equipment not accessed",
+  "http_smoke": {
+    "http_assets": "passed",
+    "mission_start_stop_export": "passed",
+    "virtual_speed_config_m_s": 1.2,
+    "mapped_samples": 2
+  },
+  "bash_syntax": "passed",
+  "map_lock": "passed",
+  "git_diff_check": "passed",
+  "live_browser_visual_check": "unavailable: cloud browser blocked localhost with ERR_BLOCKED_BY_CLIENT",
+  "local_docker_engine_available": false,
+  "docker_build_executed_here": false,
+  "physical_hardware_tested": false,
+  "official_release_unchanged": true,
+  "github_pushed_here": false
+}

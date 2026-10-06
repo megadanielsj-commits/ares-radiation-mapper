@@ -44,6 +44,10 @@ MODES = {
     "hardware": {"name": "Go2 e Radiacode reais", "robot": "real", "radiation": "real"},
 }
 
+# The USB bridge publishes one pair of 0.5 s RawData bins per 1 s count window.
+# Its 0.25 s USB polling interval is not the measurement cadence.
+RADIACODE_READING_PERIOD_S = 1.0
+
 
 def json_finite(value):
     """Unknown statistical bounds become JSON null, without changing the model."""
@@ -69,6 +73,7 @@ class Setup(BaseModel):
     y_m: float = Field(default=5.5, ge=-100, le=100, allow_inf_nan=False)
     dose_rate_at_1m_uSv_h: float = Field(default=10_000, gt=0, le=10_000_000, allow_inf_nan=False)
     duration_s: int = Field(default=3600, ge=10, le=86400)
+    simulated_robot_speed_m_s: float = Field(default=.45, ge=.05, le=2, allow_inf_nan=False)
 
 
 def scenario(data, setup):
@@ -77,6 +82,14 @@ def scenario(data, setup):
     config.application.open_browser = False
     config.mission.duration_s = setup.duration_s
     if setup.mode == "simulation":
+        # Change motion speed, not the clock or the detector's sampling time.
+        config.mission.simulation_speed = 1.0
+        config.trajectory.speed_m_s = setup.simulated_robot_speed_m_s
+        for detector in config.detectors:
+            detector.publish_rate_hz = 1.0 / RADIACODE_READING_PERIOD_S
+            detector.jitter_ms_std = 0
+            detector.dropout_probability = 0
+            detector.duplicate_probability = 0
         controller = MissionController(config)
         controller.configure_static_simulation_source(x_m=setup.x_m, y_m=setup.y_m,
             dose_rate_at_1m_uSv_h=setup.dose_rate_at_1m_uSv_h)
@@ -206,7 +219,8 @@ class LiveController:
             def position():
                 pose = self.orq.ultima_pose
                 return (pose.x, pose.y) if pose is not None else None
-            radiation = DetectorSimulado(self.field, position, cps_por_usvh=self.sensitivity,
+            radiation = DetectorSimulado(self.field, position,
+                periodo_s=RADIACODE_READING_PERIOD_S, cps_por_usvh=self.sensitivity,
                 latencia_leitura_s=self.latency, semente=config.mission.seed)
         else:
             radiation = factories.get("real_radiation", ClienteRadiacode)()
@@ -518,7 +532,8 @@ class ConsoleRuntime:
         if isinstance(self.active, LiveController):
             self.active.teleop.definir(linear, 0, yaw)
         else:
-            await self.active.manual_control(max(-.45, min(.45, linear)), max(-.9, min(.9, yaw)))
+            limit = self.setup.simulated_robot_speed_m_s
+            await self.active.manual_control(max(-limit, min(limit, linear)), max(-.9, min(.9, yaw)))
 
     def snapshot(self):
         inputs = MODES[self.mode]
