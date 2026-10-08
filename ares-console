@@ -27,7 +27,7 @@ with socket.socket() as probe:
     except OSError:
         raise SystemExit('Porta 8001 ocupada. Pare o painel anterior com o iniciador dele antes de abrir o console.')
 CHECK_PORT
-    if ! docker image inspect ares-operator-console:1.0.2 >/dev/null 2>&1; then
+    if ! docker image inspect ares-operator-console:1.0.2-recording-v2 >/dev/null 2>&1; then
       "${compose[@]}" build console
     fi
     if ! "${compose[@]}" up -d --no-build --wait --wait-timeout 75; then

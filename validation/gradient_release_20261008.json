@@ -1,0 +1,32 @@
+{
+  "date_utc": "2026-10-08",
+  "purpose": "promote latest approved gradient edition to operational development branch",
+  "target_branch": "release/ares-console-1.0.2",
+  "published_base": "cdccfedae83e67c23d2a47cc9b5dae7e7ffa90b0",
+  "gradient_source": "954b5c4986f9f16435f7e7954b9b5250f9541410",
+  "core_usb_vendor_config_src_files_identical_to_published": 149,
+  "gradient_implementation_files_identical_to_tested_edition": 8,
+  "protected_files_check": 56,
+  "stationary_source_correction_files": 2,
+  "recent_published_readme_robotics_credits_and_framework_section_preserved": true,
+  "python_test_count": 33,
+  "python_failures": 0,
+  "python_errors": 0,
+  "javascript_tests": 28,
+  "javascript_failures": 0,
+  "bash_syntax": "passed",
+  "git_diff_check": "passed",
+  "publisher_local_regression": {
+    "normal_fast_forward": "passed",
+    "repeat_publication": "passed",
+    "divergent_remote_refused_without_overwrite": "passed",
+    "public_github_used_for_test": false
+  },
+  "docker_build_this_environment": false,
+  "physical_hardware_test_this_environment": false,
+  "radiacode_real_field_issue": "reported; not corrected by this publication",
+  "new_gaussian_runtime_incorporated": false,
+  "ares_wifi_and_main_update_requested": false,
+  "github_pushed_here": false,
+  "github_direct_push_result": "authentication unavailable; ready for authenticated local publication"
+}

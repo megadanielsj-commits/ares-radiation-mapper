@@ -4,12 +4,14 @@ O mapa, as cores, o gradiente, o desenho do Go2 e a interpolação da versão v4
 aprovada foram preservados. Esta revisão mantém a interface aprovada e a correção de permanência da v3.
 O título do mapa é **Mapa de calor** e sua legenda usa unidades automáticas de
 taxa de dose (nSv/h, µSv/h, mSv/h ou Sv/h) nos quatro modos.
-O pacote é a referência de software para o ensaio de 08/10/2026; a validação conjunta
-com o Go2 físico continua dependente desse ensaio.
+A versão com escala editável é a base operacional para desenvolvimento.
+No ensaio de 08/10, o Go2 funcionou com detector simulado; a integração com
+o Radiacode real apresentou falha e continua em investigação.
 
 Nesta revisão o mapa ocupa a área principal e a coluna de telemetria fica à esquerda.
 O título é **Levantamento Radiométrico**. A revisão 1.0.2 preserva as correções de
-aquisição da 1.0.1 e muda somente a apresentação das unidades. Dose e taxa usam
+aquisição da 1.0.1 e incorpora os controles de apresentação/simulação descritos
+em `LEIA_PRIMEIRO_GRAVACAO.md`. Dose e taxa usam
 o prefixo adequado à magnitude, normalmente com duas casas e sem notação
 científica. Para doses integradas muito pequenas, podem aparecer pSv ou fSv.
 Uma dose positiva pequena não vira zero. Além do menor prefixo disponível,
@@ -158,19 +160,19 @@ antigos permanecem nas suas pastas de coleta.
 
 O pacote inclui `ARES_Console_Oficial_1.0.2_GITHUB.bundle` e `PUBLICAR_CONSOLE_GITHUB.sh`.
 O script publica `release/ares-console-1.0.2`, sem force push e sem editar `ares-wifi`.
-O argumento `--arquivar-antigas` preserva as duas branches antigas do Radiacode
-em tags `archive/` e as retira da lista de branches, com verificação da revisão
-atual e publicação atômica. Consulte [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para publicação, preparação
-sem internet no campo, sequência dos testes e critérios de aceitação.
-A imagem Docker é `ares-operator-console:1.0.2`. O CI constrói a imagem e testa
-início, encerramento e exportação em simulação completa.
+O script exige atualização normal da branch e interrompe em caso de alterações
+novas incompatíveis. Consulte [PUBLICACAO_GRADIENTE.md](PUBLICACAO_GRADIENTE.md)
+para publicação e [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md) para preparação
+sem internet e critérios de aceitação. A imagem Docker é
+`ares-operator-console:1.0.2-recording-v2`. O CI verifica início, encerramento,
+exportação e os controles de simulação.
 
 ## Verificação de desenvolvimento
 
 Use Python 3.12 para o console/runtime, como na imagem Docker oficial.
 
 ```bash
-PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py
+PYTHONPATH=src:vendor/go2_runtime/src python -m pytest tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/operator_console/test_simulation_controls.py
 node --test tools/operator_console/console.test.cjs tests/radiacode/dashboard_usb.test.cjs vendor/go2_runtime/tests/approved_dashboard.test.cjs
 python -m tools.operator_console.check_map_lock
 ```

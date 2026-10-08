@@ -89,19 +89,19 @@ ambiente, não foi realizado build Docker nem teste físico aqui.
 
 ## Antes da reunião, no computador de operação
 
-Use o ZIP `ARES_Console_1.0.2_Consolidado.zip`. Ele extrai para uma pasta nova,
-`ARES_Console_1.0.2_Consolidado`, para não conservar iniciadores antigos de uma
-extração anterior. A versão do programa permanece 1.0.2. Com internet disponível:
+Use o ZIP `ARES_Console_1.0.2_Gradiente_GITHUB.zip` em uma pasta nova.
+Esta atualização incorpora os controles de escala e simulação à branch
+operacional. Com internet disponível:
 
 ```bash
-python3 -m zipfile -e "$HOME/Downloads/ARES_Console_1.0.2_Consolidado.zip" "$HOME" &&
-cd "$HOME/ARES_Console_1.0.2_Consolidado" &&
+python3 -m zipfile -e "$HOME/Downloads/ARES_Console_1.0.2_Gradiente_GITHUB.zip" "$HOME" &&
+cd "$HOME/ARES_Console_1.0.2_Gradiente_GITHUB" &&
 bash ares-console iniciar
 ```
 
 Abra **http://127.0.0.1:8001**. A imagem é construída se ainda não existir.
-Se já estiver construída como `ares-operator-console:1.0.2`, pode ser reutilizada:
-esta preparação não muda arquivos executáveis do produto.
+A imagem desta edição é `ares-operator-console:1.0.2-recording-v2`. A imagem
+antiga `1.0.2` não contém estes controles e não é selecionada pelo iniciador.
 
 | Modo do menu | Robô | Detector | Uso |
 |---|---|---|---|
@@ -120,7 +120,7 @@ essas coordenadas à localização física do detector.
 Publique a branch preparada, ainda com internet:
 
 ```bash
-cd "$HOME/ARES_Console_1.0.2_Consolidado" && bash PUBLICAR_CONSOLE_GITHUB.sh
+cd "$HOME/ARES_Console_1.0.2_Gradiente_GITHUB" && bash PUBLICAR_CONSOLE_GITHUB.sh
 ```
 
 Após publicar, envie à equipe o link da branch:

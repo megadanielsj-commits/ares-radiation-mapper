@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090e14">
   <title>ARES · Console de operação</title>
   <style>{{CLASSIC_CSS}}</style>
-  <link rel="stylesheet" href="/console-static/console.css?v=1.0.2">
+  <link rel="stylesheet" href="/console-static/console.css?v=1.0.2-recording-v2">
 </head>
 <body class="operator-console">
   <header class="console-header">
@@ -112,6 +112,19 @@
           </div>
           <label class="dose-input"><span>Taxa da fonte a 1 metro</span><div class="input-unit"><input id="source-strength" type="number" step="0.01" min="0.000001" max="10000" value="10.00"><b>mSv/h</b></div></label>
           <button id="apply-source" class="secondary-button" type="button">Aplicar fonte</button>
+          <label class="check-row source-visibility"><input id="show-source-marker" type="checkbox"><span>Mostrar fonte no mapa</span></label>
+        </div>
+      </details>
+      <details id="color-scale-details" class="rail-details color-scale-details">
+        <summary>Escala de cores</summary>
+        <div class="color-scale-settings">
+          <label><span>Ajuste da escala</span><select id="color-scale-mode"><option value="automatic" selected>Automático</option><option value="manual">Manual</option></select></label>
+          <div id="manual-color-scale" hidden>
+            <label><span>Azul · taxa mínima</span><div class="scale-input-row"><input id="scale-blue" type="number" step="any" min="0" inputmode="decimal"><select id="scale-blue-unit" aria-label="Unidade da taxa azul"><option value="nSv/h">nSv/h</option><option value="uSv/h" selected>µSv/h</option><option value="mSv/h">mSv/h</option><option value="Sv/h">Sv/h</option></select></div></label>
+            <label><span>Vermelho · taxa máxima</span><div class="scale-input-row"><input id="scale-red" type="number" step="any" min="0" inputmode="decimal"><select id="scale-red-unit" aria-label="Unidade da taxa vermelha"><option value="nSv/h">nSv/h</option><option value="uSv/h">µSv/h</option><option value="mSv/h" selected>mSv/h</option><option value="Sv/h">Sv/h</option></select></div></label>
+          </div>
+          <button id="apply-color-scale" class="secondary-button" type="button">Aplicar escala</button>
+          <p id="color-scale-message" class="scale-message" role="status">Automático · escala atual da missão.</p>
         </div>
       </details>
       <details class="rail-details">
@@ -129,11 +142,12 @@
     <div class="setup-panel">
       <div id="input-explanation" class="input-explanation">Fonte, detector e robô simulados. Nenhum equipamento é acessado.</div>
       <label class="duration-label"><span>Duração da missão</span><select id="mission-duration"><option value="600">10 minutos</option><option value="1800">30 minutos</option><option value="3600" selected>1 hora</option><option value="7200">2 horas</option></select></label>
+      <label id="simulated-robot-speed-row" class="duration-label"><span>Velocidade do robô virtual · m/s</span><input id="simulated-robot-speed" type="number" min="0.05" max="2" step="0.01" value="0.45"><small>Simulação completa · leituras a cada 1 segundo.</small></label>
       <p id="config-message" class="config-message" role="status" hidden></p>
     </div>
     <footer class="dialog-foot"><p>As entradas ficam bloqueadas durante o mapeamento.</p><button id="apply-mode" class="secondary-button" type="button">Aplicar entradas</button></footer>
   </dialog>
   <script>{{CLASSIC_JS}}</script>
-  <script src="/console-static/console.js?v=1.0.2"></script>
+  <script src="/console-static/console.js?v=1.0.2-recording-v2"></script>
 </body>
 </html>

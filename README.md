@@ -3,8 +3,23 @@
 Console de levantamento radiométrico com aquisição USB independente e integração
 Go2/WebRTC baseada no trabalho da equipe de robótica. Esta branch é a versão operacional.
 Os iniciadores e guias das versões anteriores foram retirados da árvore atual;
-o histórico permanece no Git. O mapa, o gradiente, a paleta e a interface aprovada
+o histórico permanece no Git. Esta versão incorpora a edição dos limites do
+gradiente, a visibilidade opcional da fonte simulada e os controles de velocidade
+e cadência da simulação. O renderizador, a paleta e o algoritmo de interpolação
 permanecem iguais à versão 1.0.2 publicada em `8c9a428`.
+
+**Escala de cores** permite usar os limites automáticos originais ou definir
+manualmente as taxas correspondentes ao azul e ao vermelho, em nSv/h, µSv/h,
+mSv/h ou Sv/h. A mudança redesenha todo o mapa e as medições anteriores sem
+alterar seus valores. A fonte simulada começa oculta e pode ser revelada.
+A simulação entrega leituras a cada 1 s; a velocidade do robô virtual é
+configurável antes da missão em **Simulação completa**. O uso desses controles
+está em [LEIA_PRIMEIRO_GRAVACAO.md](LEIA_PRIMEIRO_GRAVACAO.md).
+
+No ensaio relatado em 08/10/2026, conexão/movimentação do Go2 real e operação
+com detector simulado funcionaram. A integração com o Radiacode real apresentou
+falha e permanece em investigação pela equipe de robótica. Esta publicação
+atualiza a base de desenvolvimento; não contém uma correção dessa falha.
 
 ## Executar
 
@@ -34,10 +49,10 @@ bash ares-console parar
 ```
 
 Construa a imagem com internet **antes** de conectar ao Wi-Fi LocalAP do Go2.
-A imagem oficial usa Python 3.12. Seu nome permanece `ares-operator-console:1.0.2`:
-a consolidação modifica documentação, testes, CI e iniciadores antigos, sem mudar
-o programa executado por essa imagem. A primeira execução constrói a imagem
-se ela não estiver no computador.
+A imagem usa Python 3.12 e a identificação
+`ares-operator-console:1.0.2-recording-v2`, correspondente à versão com edição
+da escala. A primeira execução constrói essa imagem se ela não estiver no
+computador; a imagem antiga `1.0.2` não é usada pelo Compose atual.
 
 ## Dados e mapa
 
@@ -59,7 +74,8 @@ Guarde também a pasta completa, incluindo `session.json` e logs USB.
 - [LEIA_PRIMEIRO_USB.md](LEIA_PRIMEIRO_USB.md): diagnóstico e leitor independente.
 - [CONTRATO_USB_WEBSOCKET.md](docs/CONTRATO_USB_WEBSOCKET.md): eventos e timestamps.
 - [PUBLICACAO_E_TESTE.md](PUBLICACAO_E_TESTE.md): publicação e preparação offline.
-- [CHECKUP_20261004.md](CHECKUP_20261004.md): auditoria do GitHub e consolidação.
+- [CHECKUP_20261004.md](CHECKUP_20261004.md): auditoria histórica do GitHub e consolidação.
+- [PUBLICACAO_GRADIENTE.md](PUBLICACAO_GRADIENTE.md): procedência e publicação desta atualização.
 
 ## Framework de integração
 
@@ -97,7 +113,7 @@ continua testada em Python 3.10 e 3.12; console/runtime/Docker usam 3.12.
 python -m pip install -e '.[dev,fs5000,radiacode-usb]'
 python -m pip install -r vendor/go2_runtime/requirements-go2-wifi.txt
 python -m pip install --no-deps unitree_webrtc_connect==2.2.0
-PYTHONPATH=src python -m pytest -q tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py
+PYTHONPATH=src python -m pytest -q tests tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/operator_console/test_simulation_controls.py
 PYTHONPATH=vendor/go2_runtime/src python -m pytest -q vendor/go2_runtime/tests
 node --test tools/operator_console/console.test.cjs tests/radiacode/dashboard_usb.test.cjs vendor/go2_runtime/tests/approved_dashboard.test.cjs
 python -m tools.operator_console.check_map_lock

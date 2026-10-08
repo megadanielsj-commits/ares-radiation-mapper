@@ -1,6 +1,7 @@
 "use strict";
 
-// This shell does not replace any map, color, interpolation or drawing function.
+// The approved map geometry, palette and interpolation stay unchanged. Source
+// visibility and optional display-scale bounds do not change its numeric data.
 const sessionId = crypto.randomUUID();
 let consoleSnapshot = null;
 let configuredFingerprint = null;
@@ -9,6 +10,80 @@ let pollPending = false;
 let consoleStarted = false;
 let positionedCount = 0;
 let positionedMission = null;
+
+const originalSourceMarker = drawSource;
+function sourceMarkerVisible() {
+  const mode = consoleSnapshot?.mode ?? "simulation";
+  return (mode === "simulation" || mode === "robot_simulated_source")
+    && $("show-source-marker").checked === true;
+}
+drawSource = function (plot) {
+  if (sourceMarkerVisible()) originalSourceMarker(plot);
+};
+function syncSourceMarkerLegend() {
+  const legend = document.querySelector(".legend.source")?.parentElement;
+  if (legend) legend.hidden = !sourceMarkerVisible();
+}
+
+// The original logarithmic transform, raster renderer and color bar all consult
+// these two bounds, so a scale change repaints old and new points together.
+const originalColorMinimum = colorMinimum;
+const originalColorMaximum = colorMaximum;
+const scaleUnitFactors = Object.freeze({"nSv/h": .001, "uSv/h": 1, "mSv/h": 1000, "Sv/h": 1000000});
+let displayColorScale = {mode: "automatic"};
+let scaleInputsInitialized = false;
+colorMinimum = function () {
+  return displayColorScale.mode === "manual" ? displayColorScale.blue_uSv_h : originalColorMinimum();
+};
+colorMaximum = function () {
+  return displayColorScale.mode === "manual" ? displayColorScale.red_uSv_h : originalColorMaximum();
+};
+function showColorScaleInputs() {
+  const manual = $("color-scale-mode").value === "manual";
+  $("manual-color-scale").hidden = !manual;
+  if (manual && !scaleInputsInitialized) {
+    $("scale-blue-unit").value = "uSv/h";
+    $("scale-red-unit").value = "mSv/h";
+    $("scale-blue").value = String(colorMinimum());
+    $("scale-red").value = String(colorMaximum() / 1000);
+    scaleInputsInitialized = true;
+  }
+}
+function readColorScaleRate(name) {
+  const text = $("scale-" + name).value.trim();
+  const factor = scaleUnitFactors[$("scale-" + name + "-unit").value];
+  const value = text === "" ? NaN : Number(text.replace(",", ".")) * factor;
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error("Informe taxas positivas para azul e vermelho. A escala é logarítmica.");
+  }
+  return value;
+}
+function applyColorScale() {
+  const message = $("color-scale-message");
+  try {
+    let next;
+    if ($("color-scale-mode").value === "automatic") {
+      next = {mode: "automatic"};
+    } else if ($("color-scale-mode").value === "manual") {
+      const blue = readColorScaleRate("blue"), red = readColorScaleRate("red");
+      // Keep both original logarithmic bounds and color-bar endpoints identical.
+      if (red < blue * 1.000001) throw new Error("A taxa do vermelho deve ser maior que a do azul.");
+      next = {mode: "manual", blue_uSv_h: blue, red_uSv_h: red};
+    } else {
+      throw new Error("Selecione escala automática ou manual.");
+    }
+    displayColorScale = next;
+    message.textContent = next.mode === "automatic" ? "Automático · escala atual da missão."
+      : `Manual · azul ${formatRateWithUnit(next.blue_uSv_h)} · vermelho ${formatRateWithUnit(next.red_uSv_h)}`;
+    message.classList.toggle("error", false);
+    scheduleRender();
+    return true;
+  } catch (error) {
+    message.textContent = `${error.message} A escala anterior foi mantida.`;
+    message.classList.toggle("error", true);
+    return false;
+  }
+}
 
 // Mission totals come from the acquisition pipeline. The renderer keeps only
 // the latest 5,000 path points; its buffer length is not a mission total.
@@ -107,6 +182,7 @@ function readSetup() {
     x_m: numberFromInput("source-x"), y_m: numberFromInput("source-y"),
     dose_rate_at_1m_uSv_h: numberFromInput("source-strength") * 1000,
     duration_s: Number($("mission-duration").value),
+    simulated_robot_speed_m_s: Number($("simulated-robot-speed").value),
   };
 }
 
@@ -123,8 +199,10 @@ function showModeChoice() {
   const mode = $("operation-mode").value;
   const synthetic = mode === "simulation" || mode === "robot_simulated_source";
   $("source-details").hidden = !synthetic;
+  $("simulated-robot-speed-row").hidden = mode !== "simulation";
   $("input-explanation").textContent = modeDescription(mode);
   $("operation-mode").title = modeDescription(mode);
+  syncSourceMarkerLegend();
 }
 
 function elapsedLabel(seconds) {
@@ -168,7 +246,7 @@ function paintConsole(snapshot) {
   $("mission-lock").textContent = running ? "· Entradas bloqueadas durante a missão" : "· Entradas editáveis";
   $("operation-mode").disabled = running || actionPending;
   $("configure-button").disabled = running || actionPending;
-  for (const id of ["source-x", "source-y", "source-strength", "mission-duration", "apply-mode", "apply-source"]) $(id).disabled = running || actionPending;
+  for (const id of ["source-x", "source-y", "source-strength", "mission-duration", "simulated-robot-speed", "apply-mode", "apply-source"]) $(id).disabled = running || actionPending;
   for (const id of ["source-x", "source-y", "source-strength"]) {
     const input = $(id);
     if (document.activeElement !== input) input.value = setupNumber(input.value);
@@ -265,6 +343,18 @@ startSimulation = async function () {
   });
 };
 
+const originalCurrentCommand = currentCommand;
+currentCommand = function () {
+  const command = originalCurrentCommand();
+  if (consoleSnapshot?.mode === "simulation") {
+    const speed = consoleSnapshot.setup.simulated_robot_speed_m_s;
+    if (Number.isFinite(speed) && speed >= .05 && speed <= 2) {
+      command.linear_m_s = Math.sign(command.linear_m_s) * speed;
+    }
+  }
+  return command;
+};
+
 sendCurrentCommand = async function (force = false) {
   if (!consoleSnapshot?.control_enabled || state.missionState !== "RUNNING") return;
   const command = currentCommand();
@@ -299,19 +389,25 @@ function fillSetup(setup) {
   $("source-y").value = setupNumber(setup.y_m);
   $("source-strength").value = setupNumber(setup.dose_rate_at_1m_uSv_h / 1000);
   $("mission-duration").value = String(setup.duration_s);
+  $("simulated-robot-speed").value = setupNumber(setup.simulated_robot_speed_m_s);
   showModeChoice();
 }
 $("configure-button").addEventListener("click", () => {
-  if (consoleSnapshot) $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
+  if (consoleSnapshot) {
+    $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
+    $("simulated-robot-speed").value = setupNumber(consoleSnapshot.setup.simulated_robot_speed_m_s);
+  }
   $("config-message").hidden = true;
   $("config-dialog").showModal();
 });
 $("close-config").addEventListener("click", () => {
-  if (consoleSnapshot) $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
   $("config-dialog").close();
 });
 $("config-dialog").addEventListener("close", () => {
-  if (consoleSnapshot) $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
+  if (consoleSnapshot) {
+    $("mission-duration").value = String(consoleSnapshot.setup.duration_s);
+    $("simulated-robot-speed").value = setupNumber(consoleSnapshot.setup.simulated_robot_speed_m_s);
+  }
 });
 $("apply-mode").addEventListener("click", () => void perform(async () => {
   await applyInputs();
@@ -328,6 +424,12 @@ $("operation-mode").addEventListener("change", () => {
   void perform(() => applyInputs(setup));
 });
 $("apply-source").addEventListener("click", () => void perform(() => applyInputs()));
+$("show-source-marker").addEventListener("change", () => {
+  syncSourceMarkerLegend();
+  scheduleRender();
+});
+$("color-scale-mode").addEventListener("change", showColorScaleInputs);
+$("apply-color-scale").addEventListener("click", applyColorScale);
 $("finish-button").addEventListener("click", () => void perform(async () => {
   state.pressedKeys.clear(); state.lastCommand = null;
   await consoleApi("/stop", {});
@@ -364,4 +466,7 @@ async function pollConsole() {
   finally {pollPending = false;}
 }
 setInterval(() => void pollConsole(), 1000);
+syncSourceMarkerLegend();
+showColorScaleInputs();
+scheduleRender();
 void pollConsole();

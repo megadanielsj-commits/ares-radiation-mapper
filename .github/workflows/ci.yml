@@ -52,7 +52,7 @@ jobs:
         if: matrix.python-version == '3.12'
         timeout-minutes: 5
         run: |
-          PYTHONPATH=src:vendor/go2_runtime/src python -m pytest -q tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tests/compatibility/test_classic_map.py --junitxml=pytest-console-results.xml -o faulthandler_timeout=60
+          PYTHONPATH=src:vendor/go2_runtime/src python -m pytest -q tools/operator_console/test_console.py tools/operator_console/test_stationary_map.py tools/operator_console/test_simulation_controls.py tests/compatibility/test_classic_map.py --junitxml=pytest-console-results.xml -o faulthandler_timeout=60
           python -m tools.operator_console.check_map_lock
       - name: Publish console pytest errors as check annotations
         if: always() && matrix.python-version == '3.12'

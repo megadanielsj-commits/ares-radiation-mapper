@@ -3,15 +3,17 @@
 Esta é a versão de referência do console aprovado. O mapa usa taxa de dose com
 prefixos automáticos nos quatro modos, sem notação científica. O canal USB permanece independente do robô e conserva
 contagens, taxa reportada, espectros disponíveis e timestamps em seus arquivos.
-O teste conjunto com Go2 físico ainda precisa ser realizado: os testes de
-software não validam o rádio, a montagem ou a resposta temporal do detector.
+No ensaio relatado em 08/10, o Go2 real funcionou com detector simulado.
+A integração com o Radiacode real apresentou falha e está em investigação.
+Esta atualização incorpora a escala editável e os controles de simulação;
+consulte `PUBLICACAO_GRADIENTE.md` para a procedência e o estado atual.
 
 ## Preparar no computador do teste, com internet
 
 Use Linux e o Docker Engine/Compose já utilizados nos ensaios anteriores.
-Extraia `ARES_Console_1.0.2_Consolidado.zip` para uma pasta nova. A consolidação
-contém o mesmo programa de operação e retira iniciadores/guias antigos. Ela
-extrai para `ARES_Console_1.0.2_Consolidado`. Não extraia por cima de uma versão
+Extraia `ARES_Console_1.0.2_Gradiente_GITHUB.zip` para uma pasta nova. O pacote
+contém a versão com escala editável e extrai para
+`ARES_Console_1.0.2_Gradiente_GITHUB`. Não extraia por cima de uma versão
 anterior, pois a extração de ZIP não remove arquivos antigos.
 Veja também [ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md). Na pasta extraída:
 
@@ -19,7 +21,7 @@ Veja também [ROTEIRO_ENSAIO_GO2.md](ROTEIRO_ENSAIO_GO2.md). Na pasta extraída:
 bash ares-console iniciar
 ```
 
-Abra http://127.0.0.1:8001. O iniciador constrói a imagem `ares-operator-console:1.0.2`
+Abra http://127.0.0.1:8001. O iniciador constrói a imagem `ares-operator-console:1.0.2-recording-v2`
 se ela ainda não existir, espera o servidor ficar saudável e preserva dados do
 console anterior ao encerrá-lo. Faça isso **antes** de conectar ao Wi-Fi do Go2,
 que pode não oferecer internet. O modo inicial é Simulação completa.
@@ -52,13 +54,13 @@ necessário transferir para outro computador Linux compatível com a arquitetura
 da imagem, exporte-a antes, ainda no computador preparado:
 
 ```bash
-docker save ares-operator-console:1.0.2 | gzip > ARES_Console_1.0.2_imagem.tar.gz
+docker save ares-operator-console:1.0.2-recording-v2 | gzip > ARES_Console_1.0.2_Gradiente_imagem.tar.gz
 ```
 
 No outro computador, com Docker instalado e o pacote extraído:
 
 ```bash
-gunzip -c ARES_Console_1.0.2_imagem.tar.gz | docker load
+gunzip -c ARES_Console_1.0.2_Gradiente_imagem.tar.gz | docker load
 bash ares-console iniciar
 ```
 
@@ -77,11 +79,8 @@ force push, não modifica `ares-wifi` e não envia registros de campo.
 Link para a equipe:
 https://github.com/megadanielsj-commits/ares-radiation-mapper/tree/release/ares-console-1.0.2
 
-Para também retirar as branches antigas da lista operacional, preservando o
-histórico em tags, use `bash PUBLICAR_CONSOLE_GITHUB.sh --arquivar-antigas`.
-O script guarda `feat/radiacode-independent` e `feat/radiacode-go2-wifi` em
-`archive/*-20261004` e só então as retira, na mesma publicação atômica. Uma mudança
-concorrente naquelas branches impede a operação. Não apaga a referência do Werik.
+Esta publicação atualiza somente a branch operacional. As branches antigas
+já arquivadas não são reabertas nem removidas por este iniciador.
 
 Verifique os checks de **Actions**. O CI executa o pacote de base em Python
 3.10/3.12 e o console/runtime, regressões do mapa, lint, tipos e Docker em 3.12,
@@ -90,18 +89,15 @@ de testes tem limite de cinco minutos.
 Depois abra:
 https://github.com/megadanielsj-commits/ares-radiation-mapper/compare/main...release/ares-console-1.0.2?expand=1
 
-Título sugerido: `ARES Console 1.0.2: aquisição de dose e operação Go2/Radiacode`.
+Título sugerido: `ARES Console: escala editável e controles de simulação`.
 Descrição sugerida:
 
-> Acrescenta operação unificada para os quatro modos, mantendo o driver Go2,
-> o sincronizador e a teleoperação/watchdog da referência ares-wifi. O Radiacode
-> permanece em aquisição USB independente; a taxa reportada alimenta o mapa,
-> CPS/CPM continuam separados e os registros conservam a precisão original.
-> A interface aprovada usa prefixos SI para dose/taxa. Inclui roteiro do ensaio
-> e regressões de compatibilidade no CI. Validação: 144 testes Python do pacote,
-> 209 do runtime, 19 JavaScript e 56 arquivos protegidos; quatro modos no navegador
-> com substitutos de hardware. O build Docker/CI e o ensaio conjunto com Go2
-> devem ser confirmados no computador de operação.
+> Incorpora a versão com escala automática/manual, visibilidade opcional da
+> fonte simulada, cadência sintética de 1 s e velocidade virtual configurável.
+> Conserva o leitor/serviço USB, o motor, a interpolação e o runtime Go2.
+> Validação desta promoção: 33 testes Python, 28 JavaScript, 56 arquivos
+> protegidos e publicação exercitada em repositórios locais isolados.
+> O problema relatado com o Radiacode real permanece em investigação.
 
 Após revisão e checks verdes, o merge torna essa versão visível na branch
 principal. Até lá, a equipe deve usar o link da branch de release, pois a página
